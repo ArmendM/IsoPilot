@@ -10,7 +10,7 @@
 set -euo pipefail
 
 DOMAIN="cockpit.isoteam-suljejmani.ch"
-GHREPO="DEINUSER/isopilot"      # anpassen
+GHREPO="armendm/isopilot"       # ghcr.io verlangt Kleinschreibung
 
 w() { # w <pfad>  — Inhalt von stdin, nur wenn Datei fehlt
   if [ -e "$1" ]; then echo "  übersprungen (existiert): $1"; cat >/dev/null; return; fi
