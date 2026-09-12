@@ -349,6 +349,13 @@ model VsiRate {
 // Zeiterfassung
 // ─────────────────────────────────────────────────────────────
 
+// Wie die Stunden gegenüber dem Auftraggeber abgerechnet werden.
+// Pauschal heisst nach Ausmass, Regie heisst im Stundenlohn.
+enum BillingMode {
+  PAUSCHAL
+  REGIE
+}
+
 enum EntrySource {
   MANUAL
   CLOCK
@@ -364,6 +371,10 @@ model TimeEntry {
   breakMinutes Int         @default(0)
   note         String?
   source       EntrySource @default(MANUAL)
+
+  // Nur Vorgesetzte setzen Regie. Der Ansatz selbst kommt aus
+  // Company.regieRateA/B und User.regieTariff.
+  billingMode BillingMode @default(PAUSCHAL)
 
   createdById String
   createdAt   DateTime  @default(now())

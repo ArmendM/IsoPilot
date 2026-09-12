@@ -22,6 +22,9 @@ backup/
 .DS_Store
 *.log
 *.tsbuildinfo
+# Von Next erzeugt und je nach letztem Lauf verschieden.
+# next typegen legt die Datei in der CI vor tsc wieder an.
+next-env.d.ts
 coverage/
 .vscode/
 !.vscode/extensions.json

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 
@@ -27,16 +28,30 @@ export default async function StartPage() {
         </form>
       </header>
 
-      <section className="mt-8 rounded-lg border border-black/10 p-4 dark:border-white/15">
-        <h2 className="text-sm font-medium">Nächster Schritt</h2>
-        <p className="mt-2 text-sm text-black/70 dark:text-white/70">
-          Das Fundament steht: Anmeldung über Infomaniak, Sitzung, Rollen und
-          Protokoll. Die Zeiterfassung kommt in M2.
-        </p>
-        <p className="mt-2 text-sm text-black/70 dark:text-white/70">
-          Ferienanspruch: {user.vacationDays} Tage
-        </p>
-      </section>
+      <nav className="mt-8 grid gap-3 sm:grid-cols-2">
+        <Link
+          href="/zeiten"
+          className="rounded-lg border border-black/10 p-4 hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/5"
+        >
+          <h2 className="text-sm font-medium">Zeiterfassung</h2>
+          <p className="mt-1 text-sm text-black/60 dark:text-white/60">
+            Stunden erfassen, ändern und nachschauen. Mehrere Einträge pro Tag
+            sind möglich.
+          </p>
+        </Link>
+        <div className="rounded-lg border border-dashed border-black/15 p-4 dark:border-white/20">
+          <h2 className="text-sm font-medium text-black/50 dark:text-white/50">
+            Absenzen und Ferien
+          </h2>
+          <p className="mt-1 text-sm text-black/40 dark:text-white/40">
+            Kommt als nächstes Stück von M2.
+          </p>
+        </div>
+      </nav>
+
+      <p className="mt-6 text-sm text-black/60 dark:text-white/60">
+        Ferienanspruch: {user.vacationDays} Tage
+      </p>
     </main>
   );
 }

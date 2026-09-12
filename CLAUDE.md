@@ -188,7 +188,7 @@ und werden deshalb kürzer aufbewahrt als der Absenzeintrag selbst.
 
 ```bash
 npm run dev          # Next.js lokal
-npm run db:migrate   # prisma migrate dev, erzeugt den Client gleich mit
+npm run db:migrate -- --name kurzer_name   # Migration, erzeugt den Client mit
 npm run db:generate  # nur den Client neu erzeugen
 npm run db:studio    # Daten ansehen
 npm run db:seed      # Stammdaten
