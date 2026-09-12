@@ -39,6 +39,17 @@ export default async function StartPage() {
             sind möglich.
           </p>
         </Link>
+        <Link
+          href="/zeiten/monat"
+          className="rounded-lg border border-black/10 p-4 hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/5"
+        >
+          <h2 className="text-sm font-medium">Monatsansicht</h2>
+          <p className="mt-1 text-sm text-black/60 dark:text-white/60">
+            Ganzer Monat auf einen Blick, mit den offenen Tagen und den
+            Feiertagen.
+          </p>
+        </Link>
+
         <div className="rounded-lg border border-dashed border-black/15 p-4 dark:border-white/20">
           <h2 className="text-sm font-medium text-black/50 dark:text-white/50">
             Absenzen und Ferien

@@ -2,7 +2,16 @@ import { NextResponse, type NextRequest } from "next/server";
 
 // Grobfilter (in Next 16 heisst die Middleware-Konvention "proxy"): ohne Cookie gar nicht erst in die App. Die eigentliche Prüfung
 // passiert in getSession(), weil die Middleware keine Datenbank sieht.
-const PUBLIC = ["/login", "/api/auth", "/api/health", "/_next", "/favicon.ico"];
+// /api/cron schützt sich selbst über x-cron-secret. Ohne Ausnahme hier
+// würde der nächtliche Timer auf /login umgeleitet und nie etwas tun.
+const PUBLIC = [
+  "/login",
+  "/api/auth",
+  "/api/health",
+  "/api/cron",
+  "/_next",
+  "/favicon.ico",
+];
 
 export default function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
