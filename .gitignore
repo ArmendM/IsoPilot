@@ -1,0 +1,27 @@
+node_modules/
+.next/
+out/
+build/
+dist/
+
+# Geheimnisse und echte Daten
+.env
+.env.*
+!.env.example
+secrets/
+uploads/
+backup/
+*.dump
+*.dump.age
+*.sql
+# Migrationen sind Quellcode, nicht Daten. Ohne sie hat
+# prisma migrate deploy auf dem Server nichts anzuwenden.
+!prisma/migrations/**/*.sql
+
+# Werkzeuge
+.DS_Store
+*.log
+*.tsbuildinfo
+coverage/
+.vscode/
+!.vscode/extensions.json

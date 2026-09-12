@@ -1,0 +1,6 @@
+[Unit]
+Description=IsoPilot Datenbanksicherung
+
+[Service]
+Type=oneshot
+ExecStart=/opt/isopilot/backup.sh

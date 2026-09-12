@@ -1,0 +1,27 @@
+# Quadlet, nach /etc/containers/systemd/ kopieren
+# Danach: systemctl daemon-reload && systemctl start isopilot
+
+[Unit]
+Description=IsoPilot Anwendung
+After=postgresql.service network-online.target
+Wants=postgresql.service
+
+[Container]
+Image=ghcr.io/armendm/isopilot:latest
+ContainerName=isopilot-app
+Network=host
+EnvironmentFile=/etc/isopilot/app.env
+Volume=/var/lib/isopilot/uploads:/app/uploads:Z
+HealthCmd=wget -qO- http://localhost:3000/api/health || exit 1
+HealthInterval=30s
+HealthRetries=3
+AutoUpdate=registry
+NoNewPrivileges=true
+DropCapability=ALL
+
+[Service]
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

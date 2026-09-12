@@ -9,7 +9,8 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  // Die Verbindungs-URL steht seit Prisma 7 in prisma.config.ts,
+  // zur Laufzeit kommt sie über den Adapter in src/lib/db.ts.
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -29,6 +30,14 @@ model Company {
   markPath            String?
   canton              String   @default("LU") // für die Feiertagsquelle
   defaultVacationDays Int      @default(25)
+
+  // Regietarife nach Preisliste. Stundenansätze für Arbeiten im Stundenlohn.
+  regieRateA     Decimal?  @db.Decimal(10, 2)
+  regieRateB     Decimal?  @db.Decimal(10, 2)
+  regieValidFrom DateTime? @db.Date
+
+  // QR-IBAN, erst für den Zahlteil ab M7 nötig.
+  iban String?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
@@ -41,6 +50,7 @@ model Company {
   holidays   Holiday[]
   vsiLists   VsiList[]
   auditLogs  AuditLog[]
+  emailLogs  EmailLog[]
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -52,22 +62,53 @@ enum Role {
   ADMIN
 }
 
+// Welcher Stundenansatz der Preisliste für diese Person gilt.
+enum RegieTariff {
+  A
+  B
+}
+
 model User {
-  id           String  @id @default(cuid())
-  companyId    String
-  name         String
-  email        String  @unique
-  role         Role    @default(EMPLOYEE)
-  vacationDays Int     @default(25)
-  isActive     Boolean @default(true)
+  id        String @id @default(cuid())
+  companyId String
+
+  // Name und Mailadresse kommen vom IdP und werden bei jeder Anmeldung
+  // nachgeführt. In IsoPilot wird nichts davon von Hand gepflegt.
+  name String
+
+  role         Role @default(EMPLOYEE)
+  vacationDays Int  @default(25)
+
+  // Freigabe durch einen Vorgesetzten. Ein Konto entsteht bei der ersten
+  // Anmeldung gesperrt, sonst käme jedes Organisationskonto sofort hinein.
+  // Dasselbe Feld sperrt später ausgetretene Personen.
+  isActive Boolean @default(false)
+
+  regieTariff RegieTariff @default(A)
 
   employedFrom  DateTime? @db.Date
   employedUntil DateTime? @db.Date
 
-  // Argon2id-Hash. Null bedeutet: Passwort zurückgesetzt, muss neu gesetzt werden.
+  // Anmeldung über Infomaniak als IdP (OIDC, Authorization Code mit PKCE).
+  // oidcSub ist der einzige Schlüssel zur Person: Mailadressen ändern sich,
+  // sub nicht. Deshalb gibt es hier auch kein eigenes email-Feld.
+  oidcSub String? @unique
+
+  // Die Mailadresse aus dem Token, für Versand und Anzeige. Nachgeführt bei
+  // jeder Anmeldung, nie ein Schlüssel.
+  oidcEmail String?
+
+  // Notfallkonto, falls der IdP ausfällt. Nur für ein Konto mit isBreakGlass
+  // sind passwordHash und totpSecret gesetzt, alle anderen melden sich
+  // ausschliesslich über den IdP an.
+  isBreakGlass Boolean @default(false)
+
+  // Argon2id-Hash, nur für das Notfallkonto.
+  // Null bedeutet: Passwort zurückgesetzt, muss neu gesetzt werden.
   passwordHash    String?
   passwordSetAt   DateTime?
   // AES-GCM-verschlüsselt mit einem Schlüssel aus der Umgebung, nie im Klartext.
+  // Ebenfalls nur für das Notfallkonto, sonst liegt der zweite Faktor beim IdP.
   totpSecret      String?
   totpConfirmedAt DateTime?
 
@@ -110,6 +151,10 @@ model Session {
   userId    String
   tokenHash String   @unique // nur der Hash, das Cookie enthält das Original
   expiresAt DateTime
+
+  // Nach dem ersten Schritt der Anmeldung existiert die Sitzung bereits,
+  // darf aber noch nichts. Erst mit dem zweiten Faktor wird sie gültig.
+  mfaVerified Boolean @default(false)
   ip        String?
   userAgent String?
   createdAt DateTime @default(now())
@@ -172,7 +217,7 @@ model Site {
   zip         String
   city        String
   targetHours Decimal    @default(0) @db.Decimal(10, 2) // Soll
-  discountPct Int        @default(50) // Objektrabatt für VSI-Positionen
+  discountPct Int        @default(0) // Objektrabatt für VSI-Positionen, pro Baustelle anpassbar
   status      SiteStatus @default(OPEN)
   doneAt      DateTime?
   createdAt   DateTime   @default(now())
@@ -222,6 +267,13 @@ model Material {
   stock      Decimal  @default(0) @db.Decimal(12, 2)
   minStock   Decimal  @default(0) @db.Decimal(12, 2)
   isActive   Boolean  @default(true)
+
+  // EI 30, EI 60, EI 90 oder VKF. Freitext, weil die Listen sich ändern.
+  fireClass String?
+
+  // Kleinmengenzuschlag: unter threshold kostet die Einheit surcharge mehr.
+  smallQtyThreshold Decimal? @db.Decimal(10, 2)
+  smallQtySurcharge Decimal? @db.Decimal(10, 2)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -478,4 +530,34 @@ model AuditLog {
 
   @@index([companyId, createdAt])
   @@index([entity, entityId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Mailversand
+// ─────────────────────────────────────────────────────────────
+
+enum EmailStatus {
+  PENDING // angelegt, noch nicht übergeben
+  SENT
+  FAILED
+}
+
+model EmailLog {
+  id        String      @id @default(cuid())
+  companyId String
+  to        String
+  subject   String
+  kind      String      @default("system") // system, offerte, rechnung, mahnung
+  refId     String? // Beleg, auf den sich die Mail bezieht
+  status    EmailStatus @default(PENDING)
+  messageId String?
+  attempts  Int         @default(0)
+  error     String?
+  sentAt    DateTime?
+  createdAt DateTime    @default(now())
+
+  company Company @relation(fields: [companyId], references: [id])
+
+  @@index([companyId, createdAt])
+  @@index([status])
 }
