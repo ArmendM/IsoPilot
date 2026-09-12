@@ -31,7 +31,8 @@ export async function saveTimeEntry(raw: unknown): Promise<ActionResult> {
     assertOwnerOrAdmin(user, i.userId);
     await assertSameCompany(user.companyId, i.userId);
     // Nur Vorgesetzte entscheiden über Regie
-    if (i.isRegie && user.role !== "ADMIN") return { ok: false, error: "Keine Berechtigung." };
+    if (i.isRegie && user.role !== "ADMIN")
+      return { ok: false, error: "Regie darf nur ein Vorgesetzter setzen." };
 
     const workDate = new Date(`${i.workDate}T00:00:00Z`);
     await assertMonthOpen(user.companyId, workDate);
@@ -50,7 +51,8 @@ export async function saveTimeEntry(raw: unknown): Promise<ActionResult> {
         startedAt: { lt: endedAt }, endedAt: { gt: startedAt },
       },
     });
-    if (clash) return { ok: false, error: "Überschneidet sich mit einem bestehenden Eintrag." };
+    if (clash)
+      return { ok: false, error: "Diese Zeit überschneidet sich mit einem bestehenden Eintrag." };
 
     const data = {
       userId: i.userId, siteId: i.siteId, workDate, startedAt, endedAt,
@@ -84,10 +86,57 @@ export async function saveTimeEntry(raw: unknown): Promise<ActionResult> {
     revalidatePath("/zeiten");
     return { ok: true };
   } catch (e) {
-    const m = e instanceof Error ? e.message : "";
-    if (m.startsWith("MONTH_LOCKED")) return { ok: false, error: "Dieser Monat ist abgeschlossen." };
-    if (m === "FORBIDDEN") return { ok: false, error: "Keine Berechtigung." };
-    console.error(e);
-    return { ok: false, error: "Speichern fehlgeschlagen." };
+    return fehler(e, "Speichern fehlgeschlagen.");
   }
+}
+
+/** Löschen ist ein Soft Delete. Korrekturen müssen nachvollziehbar
+ *  bleiben, ein Eintrag verschwindet nie wirklich. */
+export async function deleteTimeEntry(id: string): Promise<ActionResult> {
+  const user = await requireUser();
+  if (typeof id !== "string" || !id) return { ok: false, error: "Ungültige Eingabe." };
+
+  try {
+    const before = await db.timeEntry.findUnique({ where: { id } });
+    if (!before || before.deletedAt) return { ok: false, error: "Eintrag nicht gefunden." };
+
+    assertOwnerOrAdmin(user, before.userId);
+    await assertSameCompany(user.companyId, before.userId);
+    await assertMonthOpen(user.companyId, before.workDate);
+
+    await db.$transaction(async (tx) => {
+      const after = await tx.timeEntry.update({
+        where: { id },
+        data: { deletedAt: new Date() },
+      });
+      await tx.auditLog.create({
+        data: {
+          companyId: user.companyId,
+          actorId: user.id,
+          action: "DELETE",
+          entity: "TimeEntry",
+          entityId: id,
+          before: JSON.parse(JSON.stringify(before)),
+          after: JSON.parse(JSON.stringify(after)),
+        },
+      });
+    });
+
+    revalidatePath("/");
+    revalidatePath("/zeiten");
+    return { ok: true };
+  } catch (e) {
+    return fehler(e, "Löschen fehlgeschlagen.");
+  }
+}
+
+/** Technische Ursachen bleiben im Serverprotokoll, der Browser bekommt
+ *  einen Satz, der sagt was zu tun ist. */
+function fehler(e: unknown, fallback: string): ActionResult {
+  const m = e instanceof Error ? e.message : "";
+  if (m.startsWith("MONTH_LOCKED"))
+    return { ok: false, error: "Dieser Monat ist abgeschlossen und kann nicht mehr geändert werden." };
+  if (m === "FORBIDDEN") return { ok: false, error: "Dafür fehlt dir die Berechtigung." };
+  console.error(e);
+  return { ok: false, error: fallback };
 }
