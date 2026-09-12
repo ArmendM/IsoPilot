@@ -1,0 +1,481 @@
+// IsoPilot Cockpit — Datenmodell
+// PostgreSQL 16+, Prisma 6
+// Alle Geldbeträge als Decimal, niemals Float.
+// Alle Zeitstempel als timestamptz (Prisma: DateTime), Datumsfelder als @db.Date.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Mandant und Stammdaten
+// ─────────────────────────────────────────────────────────────
+
+model Company {
+  id                  String   @id @default(cuid())
+  name                String
+  street              String
+  zip                 String
+  city                String
+  vatNumber           String?
+  phone               String?
+  email               String?
+  logoPath            String? // Pfad im Objektspeicher, nicht die Datei selbst
+  markPath            String?
+  canton              String   @default("LU") // für die Feiertagsquelle
+  defaultVacationDays Int      @default(25)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  users      User[]
+  partners   Partner[]
+  sites      Site[]
+  categories Category[]
+  materials  Material[]
+  monthLocks MonthLock[]
+  holidays   Holiday[]
+  vsiLists   VsiList[]
+  auditLogs  AuditLog[]
+}
+
+// ─────────────────────────────────────────────────────────────
+// Benutzer, Anmeldung, Sitzungen
+// ─────────────────────────────────────────────────────────────
+
+enum Role {
+  EMPLOYEE
+  ADMIN
+}
+
+model User {
+  id           String  @id @default(cuid())
+  companyId    String
+  name         String
+  email        String  @unique
+  role         Role    @default(EMPLOYEE)
+  vacationDays Int     @default(25)
+  isActive     Boolean @default(true)
+
+  employedFrom  DateTime? @db.Date
+  employedUntil DateTime? @db.Date
+
+  // Argon2id-Hash. Null bedeutet: Passwort zurückgesetzt, muss neu gesetzt werden.
+  passwordHash    String?
+  passwordSetAt   DateTime?
+  // AES-GCM-verschlüsselt mit einem Schlüssel aus der Umgebung, nie im Klartext.
+  totpSecret      String?
+  totpConfirmedAt DateTime?
+
+  failedLogins Int       @default(0)
+  lockedUntil  DateTime?
+  lastLoginAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company           Company           @relation(fields: [companyId], references: [id])
+  sessions          Session[]
+  recoveryCodes     RecoveryCode[]
+  loginTokens       LoginToken[]
+  timeEntries       TimeEntry[]       @relation("EntryOwner")
+  createdEntries    TimeEntry[]       @relation("EntryAuthor")
+  absences          Absence[]         @relation("AbsenceOwner")
+  decidedAbsences   Absence[]         @relation("AbsenceDecider")
+  materialBookings  MaterialBooking[]
+  stockMovements    StockMovement[]
+  monthLockActions  MonthLockEvent[]
+  auditLogs         AuditLog[]
+
+  @@index([companyId, isActive])
+}
+
+model RecoveryCode {
+  id       String    @id @default(cuid())
+  userId   String
+  codeHash String // Argon2id, nie im Klartext gespeichert
+  usedAt   DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique // nur der Hash, das Cookie enthält das Original
+  expiresAt DateTime
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+// Magic Link oder E-Mail-Code, einmalig verwendbar
+model LoginToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Auftraggeber und Baustellen
+// ─────────────────────────────────────────────────────────────
+
+model Partner {
+  id        String   @id @default(cuid())
+  companyId String
+  name      String
+  street    String?
+  zip       String?
+  city      String?
+  contact   String?
+  phone     String?
+  website   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id])
+  sites   Site[]
+
+  @@unique([companyId, name])
+}
+
+enum SiteStatus {
+  OPEN
+  PAUSED
+  DONE
+}
+
+model Site {
+  id          String     @id @default(cuid())
+  companyId   String
+  partnerId   String?
+  name        String? // Objektname, optional
+  street      String
+  zip         String
+  city        String
+  targetHours Decimal    @default(0) @db.Decimal(10, 2) // Soll
+  discountPct Int        @default(50) // Objektrabatt für VSI-Positionen
+  status      SiteStatus @default(OPEN)
+  doneAt      DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  company  Company           @relation(fields: [companyId], references: [id])
+  partner  Partner?          @relation(fields: [partnerId], references: [id])
+  entries  TimeEntry[]
+  bookings MaterialBooking[]
+
+  @@index([companyId, status])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Materialkatalog und Lager
+// ─────────────────────────────────────────────────────────────
+
+model Category {
+  id        String   @id @default(cuid())
+  companyId String
+  name      String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  company   Company    @relation(fields: [companyId], references: [id])
+  materials Material[]
+
+  @@unique([companyId, name])
+}
+
+enum Unit {
+  M2
+  LFM
+  STK
+  KG
+  ROLLE
+}
+
+model Material {
+  id         String   @id @default(cuid())
+  companyId  String
+  categoryId String?
+  sku        String? // Artikelnummer, Schlüssel für den Excel-Import
+  name       String
+  unit       Unit     @default(M2)
+  price      Decimal  @db.Decimal(10, 2)
+  stock      Decimal  @default(0) @db.Decimal(12, 2)
+  minStock   Decimal  @default(0) @db.Decimal(12, 2)
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  company   Company           @relation(fields: [companyId], references: [id])
+  category  Category?         @relation(fields: [categoryId], references: [id])
+  bookings  MaterialBooking[]
+  movements StockMovement[]
+
+  // Schlüssel für den Import: SKU zuerst, sonst Kategorie plus Name
+  @@unique([companyId, sku])
+  @@unique([companyId, categoryId, name])
+  @@index([companyId, isActive])
+}
+
+enum StockReason {
+  DELIVERY // Wareneingang
+  BOOKING // Verbrauch auf Baustelle
+  CORRECTION // Inventurdifferenz
+  RETURN // Rückgabe ans Lager
+}
+
+model StockMovement {
+  id         String      @id @default(cuid())
+  materialId String
+  userId     String
+  delta      Decimal     @db.Decimal(12, 2) // negativ bei Verbrauch
+  reason     StockReason
+  note       String?
+  createdAt  DateTime    @default(now())
+
+  material Material @relation(fields: [materialId], references: [id])
+  user     User     @relation(fields: [userId], references: [id])
+
+  @@index([materialId, createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────
+// VSI-Tarife (Ausmasspreise nach Nennweite und Isolierdicke)
+// ─────────────────────────────────────────────────────────────
+
+model VsiList {
+  id              String   @id @default(cuid())
+  companyId       String
+  key             String // "kautschuk", "pir"
+  name            String
+  description     String?
+  defaultDiscount Int      @default(50)
+  validFrom       DateTime @db.Date
+  createdAt       DateTime @default(now())
+
+  company Company   @relation(fields: [companyId], references: [id])
+  rates   VsiRate[]
+
+  @@unique([companyId, key, validFrom])
+}
+
+model VsiRate {
+  id          String  @id @default(cuid())
+  listId      String
+  thicknessMm Int // 6, 9, 13, 19, 25, 32 bzw. 20, 30, 40, 50, 60, 80
+  position    String // "Rohre", "Bogen 90°", "Flanschen", ...
+  nominalDn   Int // 10 bis 300
+  unit        Unit    @default(STK)
+  price       Decimal @db.Decimal(10, 2)
+
+  list VsiList @relation(fields: [listId], references: [id], onDelete: Cascade)
+
+  @@unique([listId, thicknessMm, position, nominalDn])
+  @@index([listId, thicknessMm, nominalDn])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Zeiterfassung
+// ─────────────────────────────────────────────────────────────
+
+enum EntrySource {
+  MANUAL
+  CLOCK
+}
+
+model TimeEntry {
+  id           String      @id @default(cuid())
+  userId       String
+  siteId       String?
+  workDate     DateTime    @db.Date
+  startedAt    DateTime // timestamptz, Zeitzone Europe/Zurich beim Anzeigen
+  endedAt      DateTime?
+  breakMinutes Int         @default(0)
+  note         String?
+  source       EntrySource @default(MANUAL)
+
+  createdById String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime? // Soft Delete, damit Korrekturen nachvollziehbar bleiben
+
+  // Aufbewahrung 10 Jahre nach OR 958f, per Migration als generierte Spalte:
+  // ALTER TABLE "TimeEntry" ADD COLUMN "deleteAfter" date
+  //   GENERATED ALWAYS AS (("workDate" + interval '10 years')::date) STORED;
+  deleteAfter DateTime? @db.Date
+
+  user      User  @relation("EntryOwner", fields: [userId], references: [id])
+  createdBy User  @relation("EntryAuthor", fields: [createdById], references: [id])
+  site      Site? @relation(fields: [siteId], references: [id])
+
+  // Mehrere Einträge pro Tag sind erlaubt, damit ein Tag auf zwei Baustellen
+  // aufgeteilt werden kann. Die Überschneidungsprüfung erfolgt im Service.
+  @@index([userId, workDate])
+  @@index([siteId, workDate])
+  @@index([deleteAfter])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Absenzen
+// ─────────────────────────────────────────────────────────────
+
+enum AbsenceType {
+  VACATION
+  SICK
+  OTHER
+}
+
+enum AbsenceStatus {
+  PENDING
+  APPROVED
+  DENIED
+}
+
+model Absence {
+  id          String        @id @default(cuid())
+  userId      String
+  type        AbsenceType
+  startDate   DateTime      @db.Date
+  endDate     DateTime      @db.Date
+  workingDays Decimal       @db.Decimal(5, 2) // ohne Wochenenden und Feiertage
+  status      AbsenceStatus @default(PENDING)
+  note        String? // Bei SICK: Gesundheitsdaten, kürzere Aufbewahrung
+  noteClearAt DateTime?     @db.Date // Notiz nach 18 Monaten leeren
+
+  decidedById String?
+  decidedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  user      User  @relation("AbsenceOwner", fields: [userId], references: [id])
+  decidedBy User? @relation("AbsenceDecider", fields: [decidedById], references: [id])
+
+  @@index([userId, startDate])
+  @@index([status])
+  @@index([noteClearAt])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Materialbuchungen auf Baustellen
+// ─────────────────────────────────────────────────────────────
+
+enum BookingKind {
+  CATALOG // Artikel aus dem Katalog, reduziert den Lagerbestand
+  VSI // Ausmassposition, berührt das Lager nicht
+}
+
+model MaterialBooking {
+  id         String      @id @default(cuid())
+  siteId     String
+  userId     String
+  kind       BookingKind @default(CATALOG)
+  materialId String? // nur bei CATALOG
+  label      String? // nur bei VSI: "Kautschuk 13mm DN25 · Bogen 90°"
+  quantity   Decimal     @db.Decimal(12, 2)
+  unit       Unit
+  unitPrice  Decimal     @db.Decimal(10, 2) // Preis zum Buchungszeitpunkt, eingefroren
+  discountPct Int        @default(0)
+  bookedOn   DateTime    @db.Date
+  createdAt  DateTime    @default(now())
+  deletedAt  DateTime?
+
+  site     Site      @relation(fields: [siteId], references: [id])
+  user     User      @relation(fields: [userId], references: [id])
+  material Material? @relation(fields: [materialId], references: [id])
+
+  @@index([siteId, bookedOn])
+  @@index([materialId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Monatsabschluss
+// ─────────────────────────────────────────────────────────────
+
+model MonthLock {
+  id        String  @id @default(cuid())
+  companyId String
+  month     String  @db.Char(7) // "2026-08"
+  isLocked  Boolean @default(true)
+
+  company Company          @relation(fields: [companyId], references: [id])
+  events  MonthLockEvent[]
+
+  @@unique([companyId, month])
+}
+
+model MonthLockEvent {
+  id          String   @id @default(cuid())
+  monthLockId String
+  actorId     String
+  action      String // "LOCKED" oder "UNLOCKED"
+  reason      String?
+  createdAt   DateTime @default(now())
+
+  monthLock MonthLock @relation(fields: [monthLockId], references: [id], onDelete: Cascade)
+  actor     User      @relation(fields: [actorId], references: [id])
+
+  @@index([monthLockId, createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Feiertage
+// ─────────────────────────────────────────────────────────────
+
+model Holiday {
+  id          String    @id @default(cuid())
+  companyId   String
+  date        DateTime  @db.Date
+  name        String
+  subdivision String    @default("CH-LU")
+  source      String // "openholidays" oder "manual"
+  fetchedAt   DateTime  @default(now())
+  confirmedAt DateTime? // jährliche Bestätigung durch eine vorgesetzte Person
+
+  company Company @relation(fields: [companyId], references: [id])
+
+  @@unique([companyId, date, subdivision])
+  @@index([companyId, date])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Protokoll
+// ─────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  companyId String
+  actorId   String?
+  action    String // "CREATE", "UPDATE", "DELETE", "LOGIN", "RESET_PASSWORD", ...
+  entity    String // "TimeEntry", "Absence", "User", ...
+  entityId  String?
+  before    Json?
+  after     Json?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id])
+  actor   User?   @relation(fields: [actorId], references: [id])
+
+  @@index([companyId, createdAt])
+  @@index([entity, entityId])
+}
