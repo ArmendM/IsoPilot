@@ -67,9 +67,15 @@ export default async function ZeitenPage({ searchParams }: PageProps<"/zeiten">)
 
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 p-6">
-      <nav className="text-sm">
+      <nav className="flex gap-4 text-sm">
         <Link href="/" className="text-black/60 underline dark:text-white/60">
-          Zurück zur Übersicht
+          Übersicht
+        </Link>
+        <Link
+          href={`/zeiten/monat?monat=${monthKey(tag)}&person=${personId}`}
+          className="text-black/60 underline dark:text-white/60"
+        >
+          Monatsansicht
         </Link>
       </nav>
 

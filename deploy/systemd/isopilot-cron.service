@@ -4,5 +4,7 @@ Description=IsoPilot Hintergrundjobs
 [Service]
 Type=oneshot
 EnvironmentFile=/etc/isopilot/app.env
+# Feiertage zuerst: Absenzen und Kalender rechnen damit.
+ExecStart=/usr/bin/curl -fsS -X POST -H "x-cron-secret: ${CRON_SECRET}" http://127.0.0.1:3000/api/cron/holidays
 ExecStart=/usr/bin/curl -fsS -X POST -H "x-cron-secret: ${CRON_SECRET}" http://127.0.0.1:3000/api/cron/retention
 ExecStart=/usr/bin/curl -fsS -X POST -H "x-cron-secret: ${CRON_SECRET}" http://127.0.0.1:3000/api/cron/sessions
