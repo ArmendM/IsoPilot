@@ -50,14 +50,15 @@ export default async function StartPage() {
           </p>
         </Link>
 
-        <div className="rounded-lg border border-dashed border-black/15 p-4 dark:border-white/20">
-          <h2 className="text-sm font-medium text-black/50 dark:text-white/50">
-            Absenzen und Ferien
-          </h2>
-          <p className="mt-1 text-sm text-black/40 dark:text-white/40">
-            Kommt als nächstes Stück von M2.
+        <Link
+          href="/absenzen"
+          className="rounded-lg border border-black/10 p-4 hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/5"
+        >
+          <h2 className="text-sm font-medium">Absenzen und Ferien</h2>
+          <p className="mt-1 text-sm text-black/60 dark:text-white/60">
+            Ferien beantragen, krank melden, Ferienstand ansehen.
           </p>
-        </div>
+        </Link>
       </nav>
 
       <p className="mt-6 text-sm text-black/60 dark:text-white/60">

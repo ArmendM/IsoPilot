@@ -420,7 +420,14 @@ model Absence {
   startDate   DateTime      @db.Date
   endDate     DateTime      @db.Date
   workingDays Decimal       @db.Decimal(5, 2) // ohne Wochenenden und Feiertage
-  status      AbsenceStatus @default(PENDING)
+
+  // Halber Tag, etwa ein Arzttermin am Nachmittag. Nur für eine Absenz
+  // an einem einzigen Tag zulässig, das prüft der Server.
+  isHalfDay Boolean @default(false)
+
+  // Krankmeldungen gelten ab dem Erfassen: krank ist man unabhängig von
+  // einer Freigabe. Ferien und übrige Absenzen starten als PENDING.
+  status AbsenceStatus @default(PENDING)
   note        String? // Bei SICK: Gesundheitsdaten, kürzere Aufbewahrung
   noteClearAt DateTime?     @db.Date // Notiz nach 18 Monaten leeren
 
