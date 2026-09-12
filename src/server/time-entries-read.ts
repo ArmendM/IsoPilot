@@ -85,7 +85,11 @@ export type MonatsTag = {
   tagImMonat: number;
   istWochenende: boolean;
   feiertag: string | null;
-  absenz: { typ: "VACATION" | "SICK" | "OTHER"; status: "PENDING" | "APPROVED" } | null;
+  absenz: {
+    typ: "VACATION" | "SICK" | "OTHER";
+    status: "PENDING" | "APPROVED";
+    halberTag: boolean;
+  } | null;
   stunden: number;
   eintraege: number;
   /** Arbeitstag ohne Eintrag und ohne Absenz. Das ist die Lücke, die
@@ -134,7 +138,13 @@ export async function monatsuebersicht(
         startDate: { lte: bis },
         endDate: { gte: von },
       },
-      select: { type: true, status: true, startDate: true, endDate: true },
+      select: {
+        type: true,
+        status: true,
+        startDate: true,
+        endDate: true,
+        isHalfDay: true,
+      },
     }),
   ]);
 
@@ -164,10 +174,19 @@ export async function monatsuebersicht(
       tagImMonat: t,
       istWochenende,
       feiertag,
-      absenz: treffer ? { typ: treffer.type, status: treffer.status as "PENDING" | "APPROVED" } : null,
+      absenz: treffer
+        ? {
+            typ: treffer.type,
+            status: treffer.status as "PENDING" | "APPROVED",
+            halberTag: treffer.isHalfDay,
+          }
+        : null,
       stunden: v?.stunden ?? 0,
       eintraege: v?.anzahl ?? 0,
-      istOffen: !istWochenende && !feiertag && !treffer && !v,
+      // Ein halber Absenztag deckt den Tag nicht ganz: die andere Hälfte
+      // wurde gearbeitet und gehört erfasst.
+      istOffen:
+        !istWochenende && !feiertag && !v && !(treffer && !treffer.isHalfDay),
     });
   }
 
@@ -177,6 +196,8 @@ export async function monatsuebersicht(
     arbeitstage: tage.filter((t) => !t.istWochenende && !t.feiertag).length,
     offeneTage: tage.filter((t) => t.istOffen).length,
     feiertage: tage.filter((t) => t.feiertag && !t.istWochenende).length,
-    absenztage: tage.filter((t) => t.absenz && !t.istWochenende && !t.feiertag).length,
+    absenztage: tage
+      .filter((t) => t.absenz && !t.istWochenende && !t.feiertag)
+      .reduce((s, t) => s + (t.absenz!.halberTag ? 0.5 : 1), 0),
   };
 }

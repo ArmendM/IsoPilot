@@ -149,7 +149,17 @@ export default async function MonatPage({ searchParams }: PageProps<"/zeiten/mon
             : t.absenz
               // Nicht "offen" nennen: daneben bedeutet das Wort bereits
               // "Arbeitstag ohne Eintrag".
-              ? `${t.absenz.typ === "VACATION" ? "Ferien" : t.absenz.typ === "SICK" ? "Krank" : "Absenz"}${t.absenz.status === "PENDING" ? ", beantragt" : ""}`
+              ? [
+                  t.absenz.typ === "VACATION"
+                    ? "Ferien"
+                    : t.absenz.typ === "SICK"
+                      ? "Krank"
+                      : "Absenz",
+                  t.absenz.halberTag ? "halb" : null,
+                  t.absenz.status === "PENDING" ? "beantragt" : null,
+                ]
+                  .filter(Boolean)
+                  .join(", ")
               : null;
 
           return (
