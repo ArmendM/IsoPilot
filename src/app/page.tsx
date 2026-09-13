@@ -61,6 +61,16 @@ export default async function StartPage() {
         </Link>
 
         <Link
+          href="/material"
+          className="rounded-lg border border-black/10 p-4 hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/5"
+        >
+          <h2 className="text-sm font-medium">Material</h2>
+          <p className="mt-1 text-sm text-black/60 dark:text-white/60">
+            Katalog mit Preisen, Lagerbestand und Mindestbestand.
+          </p>
+        </Link>
+
+        <Link
           href="/absenzen"
           className="rounded-lg border border-black/10 p-4 hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/5"
         >
