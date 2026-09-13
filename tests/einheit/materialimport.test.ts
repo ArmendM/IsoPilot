@@ -25,10 +25,10 @@ const zeile = (p: Partial<Importzeile> & { name: string }): Importzeile => ({
 });
 
 const KATALOG: Katalogartikel[] = [
-  { id: "m1", sku: "AF-19", name: "Armaflex AF 19 mm", kategorie: "Armaflex" },
-  { id: "m2", sku: "AF-25", name: "Armaflex AF 25 mm", kategorie: "Armaflex" },
-  { id: "m3", sku: null, name: "Rockwool", kategorie: "Brandschutz" },
-  { id: "m4", sku: null, name: "Rockwool", kategorie: "Dämmung" },
+  { id: "m1", sku: "AF-19", name: "Armaflex AF 19 mm", kategorie: "Armaflex", aktiv: true },
+  { id: "m2", sku: "AF-25", name: "Armaflex AF 25 mm", kategorie: "Armaflex", aktiv: true },
+  { id: "m3", sku: null, name: "Rockwool", kategorie: "Brandschutz", aktiv: true },
+  { id: "m4", sku: null, name: "Rockwool", kategorie: "Dämmung", aktiv: true },
 ];
 
 describe("Preise aus einer Schweizer Liste", () => {
@@ -146,8 +146,8 @@ describe("Uneindeutige Zeilen", () => {
    * keine hat, und von zwei gleichnamigen wird lautlos einer geändert. */
   it("nimmt eine leere Kategorie nicht als Treffer gegen einen Artikel ohne Kategorie", () => {
     const katalog: Katalogartikel[] = [
-      { id: "x1", sku: null, name: "Rockwool", kategorie: null },
-      { id: "x2", sku: null, name: "Rockwool", kategorie: "Brandschutz" },
+      { id: "x1", sku: null, name: "Rockwool", kategorie: null, aktiv: true },
+      { id: "x2", sku: null, name: "Rockwool", kategorie: "Brandschutz", aktiv: true },
     ];
     const [a] = gleicheAlleAb([zeile({ name: "Rockwool", preis: 99 })], katalog);
     expect(a.art).toBe("uneindeutig");
@@ -157,6 +157,64 @@ describe("Uneindeutige Zeilen", () => {
   it("legt eine uneindeutige Zeile nicht als neuen Artikel an", () => {
     const [a] = gleicheAlleAb([zeile({ name: "Rockwool" })], KATALOG);
     expect(a.art).not.toBe("anlegen");
+  });
+});
+
+/* Ein stillgelegter Artikel bleibt in der Datenbank, und seine
+ * Artikelnummer ist eindeutig. Wer ihn beim Abgleich übergeht, versucht
+ * ihn anzulegen und scheitert an Material_companyId_sku_key. Genau so ist
+ * der erste Import in der Praxis fehlgeschlagen. */
+describe("Stillgelegte Artikel", () => {
+  const MIT_STILLGELEGTEM: Katalogartikel[] = [
+    ...KATALOG,
+    { id: "alt", sku: "PRUEF-1", name: "Prüfartikel", kategorie: null, aktiv: false },
+  ];
+
+  it("aktualisiert einen stillgelegten Artikel, statt ihn neu anzulegen", () => {
+    const [a] = gleicheAlleAb(
+      [zeile({ sku: "PRUEF-1", name: "Prüfartikel", preis: 9 })],
+      MIT_STILLGELEGTEM,
+    );
+    expect(a.art).toBe("aktualisieren");
+    expect(a.art === "aktualisieren" && a.treffer.id).toBe("alt");
+  });
+
+  it("trifft einen stillgelegten Artikel auch über den Namen", () => {
+    const [a] = gleicheAlleAb([zeile({ name: "Prüfartikel" })], MIT_STILLGELEGTEM);
+    expect(a.art === "aktualisieren" && a.treffer.id).toBe("alt");
+  });
+});
+
+/* Zwei Zeilen mit derselben Artikelnummer: die erste legt an, die zweite
+ * liefe in dieselbe Eindeutigkeitsbedingung. Lieber in der Vorschau
+ * benennen als beim Schreiben scheitern. */
+describe("Doppelte Artikelnummern in der Datei", () => {
+  it("weist beide Zeilen als fehlerhaft aus", () => {
+    const a = gleicheAlleAb(
+      [
+        zeile({ sku: "NEU-1", name: "Erster" }),
+        zeile({ sku: "NEU-1", name: "Zweiter" }),
+      ],
+      KATALOG,
+    );
+    expect(a.map((x) => x.art)).toEqual(["fehlerhaft", "fehlerhaft"]);
+    expect(a[0]).toMatchObject({ grund: "Artikelnummer kommt in der Datei mehrfach vor" });
+  });
+
+  it("stört sich nicht an mehreren Zeilen ganz ohne Artikelnummer", () => {
+    const a = gleicheAlleAb(
+      [zeile({ name: "Erster" }), zeile({ name: "Zweiter" })],
+      KATALOG,
+    );
+    expect(a.map((x) => x.art)).toEqual(["anlegen", "anlegen"]);
+  });
+
+  it("erkennt die Dopplung unabhängig von der Schreibweise", () => {
+    const a = gleicheAlleAb(
+      [zeile({ sku: "neu-1", name: "Erster" }), zeile({ sku: " NEU-1 ", name: "Zweiter" })],
+      KATALOG,
+    );
+    expect(a.map((x) => x.art)).toEqual(["fehlerhaft", "fehlerhaft"]);
   });
 });
 

@@ -12,6 +12,12 @@ export type Katalogartikel = {
   sku: string | null;
   name: string;
   kategorie: string | null;
+  /* Stillgelegte Artikel gehören in den Abgleich. Sie bleiben in der
+   * Datenbank und die Artikelnummer ist eindeutig, also scheiterte ein
+   * Anlegen an der Bedingung `Material_companyId_sku_key`. Aktiviert
+   * werden sie durch den Import nicht: das Stilllegen war ein Entscheid
+   * im Betrieb und keine Frage der Lieferantenliste. */
+  aktiv: boolean;
 };
 
 export type Importzeile = {
@@ -196,7 +202,27 @@ export function gleicheAb(zeile: Importzeile, schluessel: Schluessel): Abgleich 
 
 export function gleicheAlleAb(zeilen: Importzeile[], katalog: Katalogartikel[]): Abgleich[] {
   const schluessel = indiziere(katalog);
-  return zeilen.map((z) => gleicheAb(z, schluessel));
+
+  /* Dieselbe Artikelnummer zweimal in einer Datei: die erste Zeile legte
+   * an, die zweite liefe in dieselbe Eindeutigkeitsbedingung. Lieber
+   * benennen als beim Schreiben scheitern, dann sieht man es schon in
+   * der Vorschau und weiss, welche Zeilen gemeint sind. */
+  const wieOft = new Map<string, number>();
+  for (const z of zeilen) {
+    const k = vergleichbar(z.sku);
+    if (k) wieOft.set(k, (wieOft.get(k) ?? 0) + 1);
+  }
+
+  return zeilen.map((z) => {
+    const k = vergleichbar(z.sku);
+    if (k && (wieOft.get(k) ?? 0) > 1)
+      return {
+        art: "fehlerhaft" as const,
+        zeile: z,
+        grund: "Artikelnummer kommt in der Datei mehrfach vor",
+      };
+    return gleicheAb(z, schluessel);
+  });
 }
 
 export type Zusammenfassung = {
