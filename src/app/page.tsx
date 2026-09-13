@@ -61,6 +61,21 @@ export default async function StartPage() {
         </Link>
       </nav>
 
+      {user.role === "ADMIN" && (
+        <nav className="mt-3">
+          <Link
+            href="/personen"
+            className="block rounded-lg border border-black/10 p-4 hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/5"
+          >
+            <h2 className="text-sm font-medium">Personen</h2>
+            <p className="mt-1 text-sm text-black/60 dark:text-white/60">
+              Konten freigeben, Rolle setzen, Ferientage und Eintrittsdatum
+              pflegen.
+            </p>
+          </Link>
+        </nav>
+      )}
+
       <p className="mt-6 text-sm text-black/60 dark:text-white/60">
         Ferienanspruch: {user.vacationDays} Tage
       </p>
