@@ -57,8 +57,17 @@ export function ZahlFeld({
   wert,
   onWert,
   onFocus,
+  onMouseUp,
+  onBlur,
   ...rest
 }: Basis & { wert?: number; onWert?: (n: number) => void }) {
+  // select() im onFocus allein genügt nicht: das darauffolgende mouseup
+  // setzt den Cursor an die Klickstelle und hebt die Markierung wieder
+  // auf. Bei einer einzelnen 0 fällt das nicht auf, bei 500 landet der
+  // Cursor mitten in der Zahl. Deshalb wird nur das erste mouseup nach
+  // dem Fokussieren unterdrückt, spätere Klicks setzen den Cursor wie
+  // gewohnt.
+  const geradeFokussiert = useRef(false);
   // Eigener Textzustand, damit das Feld zwischendurch leer sein darf.
   // Bei einer reinen Zahl würde eine geleerte Eingabe sofort wieder zu 0.
   const [roh, setRoh] = useState(() => (wert === undefined ? "" : String(wert)));
@@ -89,7 +98,19 @@ export function ZahlFeld({
       {...gesteuert}
       onFocus={(e) => {
         onFocus?.(e);
+        geradeFokussiert.current = true;
         e.currentTarget.select();
+      }}
+      onMouseUp={(e) => {
+        onMouseUp?.(e);
+        if (geradeFokussiert.current) {
+          geradeFokussiert.current = false;
+          e.preventDefault();
+        }
+      }}
+      onBlur={(e) => {
+        onBlur?.(e);
+        geradeFokussiert.current = false;
       }}
       {...rest}
     />
