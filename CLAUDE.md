@@ -341,6 +341,13 @@ Mailpit-Oberfläche: http://localhost:8025
 - **Nach `npm run db:migrate` den Dev-Server neu starten.** Er hält den
   erzeugten Prisma-Client im Speicher. Sonst ist ein neues Feld still
   `undefined`, ohne Fehlermeldung, und die Anzeige zeigt es einfach nicht.
+- **TypeScript bleibt auf 5.x und ESLint auf 9.x**, beides blockiert von
+  oben, nicht von unserem Code. TypeScript 7 lehnt `typescript-eslint`
+  mit "does not support TS 7.0" ab, und ESLint 10 bricht in
+  `eslint-config-next`, das ein `eslint-plugin-react` mitbringt, welches
+  die entfernte API `context.getFilename` benutzt. Vor dem nächsten
+  Versuch prüfen, ob `eslint-config-next` und `typescript-eslint`
+  nachgezogen haben, sonst kostet es nur Zeit.
 - **`@types/node` bleibt auf `^22`, passend zu `node:22` im Dockerfile
   und in der CI.** Eine neuere Hauptversion beschreibt APIs, die in der
   Produktion nicht existieren, und der Typecheck liesse sie durch.
