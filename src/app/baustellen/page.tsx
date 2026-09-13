@@ -30,6 +30,9 @@ export default async function BaustellenPage({
         <Link href="/zeiten" className="text-black/60 underline dark:text-white/60">
           Tagesansicht
         </Link>
+        <Link href="/material" className="text-black/60 underline dark:text-white/60">
+          Material
+        </Link>
       </nav>
 
       <h1 className="mt-4 text-2xl font-semibold tracking-tight">Baustellen</h1>
