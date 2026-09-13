@@ -124,6 +124,12 @@ Reihenfolge:
 - Überschneidungen werden serverseitig verhindert
 - Pause standardmässig **0 Minuten**, Auswertungen rechnen mit Nettostunden
 - Baustelle ist ein **freiwilliges** Feld, Werkstatt- und Bürotage gibt es
+- **An Wochenenden und Feiertagen wird gebucht wie an jedem anderen Tag.**
+  Es gibt keine Sperre und soll keine geben, Samstagsarbeit kommt vor.
+  Der Feiertag erscheint in der Tagesansicht nur als Hinweis.
+- **Sollarbeitszeit 42 Stunden je Woche**, anpassbar je Firma und je
+  Person. Wer weniger arbeitet, bekommt ein eigenes Soll, nicht eine
+  Ausnahme im Code.
 
 **Ferien und Absenzen**
 - Ferienanspruch pro Person, standardmässig 25 Tage
@@ -339,7 +345,9 @@ Rückfall, `/abschluss` Monatsabschluss.
 
 **M4 Auswertung**
 Auswertung Mitarbeitende, Auswertung Baustellen, Export Excel und PDF,
-Firmeneinstellungen mit Logo-Upload, Aufbewahrungsjob
+Firmeneinstellungen mit Logo-Upload, Aufbewahrungsjob. Dazu **Sollstunden
+und Zeitsaldo**, siehe den eigenen Abschnitt weiter unten: dafür fehlt
+das Datenmodell noch ganz.
 
 **M5 Produktivstart**
 Seed mit echten Stammdaten, ein Monat Parallelbetrieb neben dem alten
@@ -423,6 +431,55 @@ kaputt, alles wird es mit mehr Daten oder mehr Nebenläufigkeit:
   mit anderer Logik, rohes UTC statt Zürich. Heute gleich, weil `bookedOn`
   immer UTC-Mitternacht ist. Sobald ein `bookedOn` eine Uhrzeit trägt,
   laufen die beiden still auseinander.
+
+### Offen: Sollstunden und Zeitsaldo
+
+Heute rechnet IsoPilot nur Ist-Stunden zusammen. Es gibt **kein Soll**,
+also auch keine Antwort auf "wer hat Überstunden und wer ist im Minus".
+Weder `User` noch `Company` haben ein Feld dafür, `Company` kennt bisher
+nur `defaultVacationDays`.
+
+Gewollt ist: 42 Stunden je Woche als Vorgabe, anpassbar, daraus je Person
+ein laufender Saldo aus Soll und Ist.
+
+**Erst nicht verwechseln:** `workingDays` in `src/lib/dates.ts` zählt
+Arbeitstage **ohne Wochenenden und Feiertage** und rechnet damit, wie
+viele Ferientage eine Absenz verbraucht. Das muss so bleiben, niemand
+verbraucht am Sonntag einen Ferientag. Dass an einem Samstag gebucht
+werden darf, ist eine andere Frage und heute bereits erfüllt:
+`saveTimeEntry` kennt keine Wochenend- oder Feiertagssperre. Wer das
+"flexibel machen" will, darf `workingDays` nicht anfassen.
+
+Zu entscheiden, bevor mit dem Code begonnen wird:
+
+- **Wo steht das Soll?** Naheliegend im Muster, das schon da ist:
+  `Company.weeklyHours` mit 42 als Vorgabe und `User.weeklyHours` als
+  Ausnahme je Person, genau wie `defaultVacationDays` und `vacationDays`.
+- **Wie wird ein Tagessoll daraus?** 42 geteilt durch 5 sind 8,4 Stunden.
+  Gilt das für jeden Werktag gleich, oder gibt es ein Wochenmuster, etwa
+  freitags kürzer? Bei Teilzeit dieselbe Frage.
+- **Was zählt als erfüllt?** Ein Feiertag, ein Ferientag und ein
+  Krankheitstag senken das Soll, sonst baut jeder in den Ferien Minus auf.
+  Ein halber Ferientag entsprechend halb.
+- **Ab wann wird gerechnet?** Ab `employedFrom`, oder gibt es je Person
+  einen **Anfangssaldo**? Für den Parallelbetrieb in M5 braucht es fast
+  sicher einen: die vier bringen einen Saldo aus dem alten Vorgehen mit.
+- **Was passiert bei einer Änderung?** Steigt jemand von 100 auf 80
+  Prozent, darf das vergangene Monate nicht rückwirkend verändern. Das
+  Soll braucht also ein Gültigkeitsdatum, wie `regieValidFrom` es bei den
+  Regietarifen schon hat. Siehe auch `docs/lifecycle.md`: "Eine
+  Tariferhöhung darf alte Baustellen nicht rückwirkend verändern."
+- **Was macht der Monatsabschluss?** Ein gesperrter Monat sollte seinen
+  Saldo festhalten, sonst verschiebt eine spätere Sollkorrektur die
+  Vergangenheit.
+- **Wo steht der Saldo?** Vorschlag: als Zeile in `/zeiten` für einen
+  selbst, und in der Auswertung Mitarbeitende je Person mit Soll, Ist und
+  Differenz über den gewählten Zeitraum. Vorgesetzte sehen alle, wie
+  überall sonst.
+
+Gehört der Sache nach zu M4, die Auswertung Mitarbeitende ist der Ort, wo
+der Saldo sichtbar wird. Das Datenmodell dafür fehlt aber noch ganz und
+braucht eine Migration.
 
 ### M3f, Materialbuchung verbessern (offen)
 
