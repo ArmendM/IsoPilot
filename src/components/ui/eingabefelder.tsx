@@ -59,6 +59,7 @@ export function ZahlFeld({
   onFocus,
   onMouseUp,
   onBlur,
+  onWheel,
   ...rest
 }: Basis & { wert?: number; onWert?: (n: number) => void }) {
   // select() im onFocus allein genügt nicht: das darauffolgende mouseup
@@ -111,6 +112,13 @@ export function ZahlFeld({
       onBlur={(e) => {
         onBlur?.(e);
         geradeFokussiert.current = false;
+      }}
+      onWheel={(e) => {
+        onWheel?.(e);
+        // Über einem fokussierten Zahlenfeld verstellt das Mausrad den
+        // Wert. Beim Scrollen der Seite würde so lautlos aus 400 eine
+        // 380. Den Fokus abgeben, dann scrollt die Seite wie erwartet.
+        if (document.activeElement === e.currentTarget) e.currentTarget.blur();
       }}
       {...rest}
     />
