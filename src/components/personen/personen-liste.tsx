@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { setZugang, setStammdaten } from "@/server/users";
+import { setZugang, setLagerrecht, setStammdaten } from "@/server/users";
 import { DatumFeld, ZahlFeld } from "@/components/ui/eingabefelder";
 
 export type Zeile = {
@@ -11,6 +11,7 @@ export type Zeile = {
   email: string | null;
   role: "EMPLOYEE" | "ADMIN";
   isActive: boolean;
+  canManageStock: boolean;
   vacationDays: number;
   regieTariff: "A" | "B";
   employedFrom: string | null;
@@ -87,6 +88,10 @@ function Karte({ z }: { z: Zeile }) {
   const zugang = (role: Zeile["role"], isActive: boolean) =>
     lauf(() => setZugang({ id: z.id, role, isActive }));
 
+  /* Nur bei einer mitarbeitenden Person: ein Vorgesetzter darf das Lager
+   * über die Rolle, dort wäre der Knopf ohne Wirkung. */
+  const zeigeLagerrecht = z.isActive && z.role !== "ADMIN";
+
   return (
     <li
       className={[
@@ -119,6 +124,9 @@ function Karte({ z }: { z: Zeile }) {
 
       <p className="mt-2 text-sm text-black/60 dark:text-white/60">
         {z.vacationDays} Ferientage, Regieansatz {z.regieTariff}
+        {z.role === "ADMIN"
+          ? ", Lager über die Rolle"
+          : z.canManageStock && ", mit Lagerberechtigung"}
         {z.employedFrom && `, Eintritt ${datumDE(z.employedFrom)}`}
         {z.employedUntil && `, Austritt ${datumDE(z.employedUntil)}`}
         {!z.employedFrom && (
@@ -176,6 +184,20 @@ function Karte({ z }: { z: Zeile }) {
               Zugang entziehen
             </button>
           </>
+        )}
+        {zeigeLagerrecht && (
+          <button
+            type="button"
+            disabled={laeuft}
+            onClick={() =>
+              lauf(() => setLagerrecht({ id: z.id, canManageStock: !z.canManageStock }))
+            }
+            className="h-9 rounded-md border border-black/15 px-3 disabled:opacity-50 dark:border-white/20"
+          >
+            {z.canManageStock
+              ? "Lagerberechtigung entziehen"
+              : "Lagerberechtigung geben"}
+          </button>
         )}
         <button
           type="button"

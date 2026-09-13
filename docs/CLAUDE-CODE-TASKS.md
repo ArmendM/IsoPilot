@@ -42,8 +42,9 @@ Stand 14.09.2026 umgesetzt und in `CLAUDE.md` beschrieben: Katalog mit
 Kategorien, Lager und Mindestbestand (M3b), Buchung auf eine Baustelle mit
 eingefrorenem Preis (M3c), Excel-Import mit Vorschau und ohne Duplikate
 (M3d), Kategoriefilter und Ändern einer Buchung (M3f), Fehlmenge,
-Bestellbedarf, Wareneingang und Lagerverlauf (M3g). Gedeckt durch Tests in
-`tests/einheit` und `tests/server`.
+Bestellbedarf, Wareneingang und Lagerverlauf (M3g), Lagerberechtigung als
+Merkmal an `User` (M3h). Gedeckt durch Tests in `tests/einheit` und
+`tests/server`.
 
 **Offen bleibt daraus:**
 
@@ -54,8 +55,6 @@ Bestellbedarf, Wareneingang und Lagerverlauf (M3g). Gedeckt durch Tests in
 - **Bestand nur noch über Bewegungen.** Das Artikelformular schreibt den
   Bestand heute direkt, ohne `StockMovement`. `StockReason.CORRECTION`
   steht dafür bereit und wird nicht benutzt.
-- **Lagerberechtigung** als Merkmal an `User`, damit ein Mitarbeitender
-  eine Lieferung annehmen kann, ohne Vorgesetzter zu sein.
 
 ### Dazugekommen, Tests (war in jeder Aufgabe gefordert, fehlte ganz)
 

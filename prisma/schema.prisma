@@ -86,6 +86,11 @@ model User {
 
   regieTariff RegieTariff @default(A)
 
+  // Lagerberechtigung neben der Rolle, nicht als dritte Rolle: wer eine
+  // Lieferung annimmt, soll deswegen nicht die Zeiten der anderen sehen.
+  // Ein Vorgesetzter hat das Recht ohnehin, siehe lib/berechtigung.ts.
+  canManageStock Boolean @default(false)
+
   employedFrom  DateTime? @db.Date
   employedUntil DateTime? @db.Date
 

@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
+import { darfLager } from "@/lib/berechtigung";
 import { lagerverlauf, verlaufFilter } from "@/server/lager-read";
 
 /* Der Lagerverlauf als eigene Seite: wo ist die Ware hingegangen, und was
- * ist wann hereingekommen. Vorerst nur für Vorgesetzte, eine eigene
- * Lagerberechtigung kommt als nächstes Stück. */
+ * ist wann hereingekommen. Sichtbar für Vorgesetzte und für jede Person
+ * mit Lagerberechtigung. */
 
 const GRUND: Record<string, string> = {
   DELIVERY: "Wareneingang",
@@ -30,7 +31,7 @@ const menge = (n: number) =>
 export default async function LagerPage({ searchParams }: PageProps<"/lager">) {
   const user = await getSession();
   if (!user) redirect("/login");
-  if (user.role !== "ADMIN") redirect("/material");
+  if (!darfLager(user)) redirect("/material");
 
   const q = await searchParams;
   const materialId = typeof q.artikel === "string" ? q.artikel : "";

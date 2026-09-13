@@ -212,11 +212,13 @@ Reihenfolge:
 - Der Kalender mit Ferien und Feiertagen ist für alle sichtbar,
   das ist Planungsgrundlage
 - Jede Berechtigungsprüfung gehört serverseitig in die Server Action
-- Wareneingang und Lagerverlauf sehen vorerst nur Vorgesetzte. **Offen:
-  eine eigene Lagerberechtigung**, die sich einer Person zuweisen lässt,
-  damit ein Mitarbeitender eine Lieferung annehmen kann, ohne Vorgesetzter
-  zu werden. Als Berechtigung neben der Rolle, nicht als dritte Rolle: ein
-  Lagerist soll deswegen nicht die Zeiten der anderen sehen.
+- Wareneingang und Lagerverlauf sehen Vorgesetzte und wer die
+  **Lagerberechtigung** hat (`User.canManageStock`, zugewiesen unter
+  `/personen`). Bewusst eine Berechtigung neben der Rolle, nicht eine
+  dritte Rolle: ein Lagerist soll deswegen nicht die Zeiten der anderen
+  sehen. Die Regel steht an einer Stelle, `darfLager` in
+  `src/lib/berechtigung.ts`. Den Katalog pflegen und importieren bleibt
+  beim Vorgesetzten.
 
 ## Auswertungen
 
@@ -435,6 +437,7 @@ Rückfall, `/abschluss` Monatsabschluss.
 - M3e VSI-Tarifmatrix: **als Nächstes**, blockiert, siehe unten
 - M3f Materialbuchung verbessern, Kategoriefilter und Ändern: **fertig**
 - M3g Lager: Fehlmenge, Bestellbedarf, Wareneingang, Lagerverlauf: **fertig**
+- M3h Lagerberechtigung als eigenes Merkmal an `User`: **fertig**
 
 **M4 Auswertung**
 Auswertung Mitarbeitende, Auswertung Baustellen, Export Excel und PDF,
@@ -553,23 +556,38 @@ immer die neuste Fassung, für Brandschutz also 2022.
 Nächster Schritt ist deshalb nicht Code, sondern die beiden Papierlisten
 mit Daut oder Qail durchzugehen.
 
-### Offen: Lagerberechtigung als eigenes Merkmal
+### M3h, Lagerberechtigung als eigenes Merkmal (fertig)
 
-Wareneingang (`/material`) und Lagerverlauf (`/lager`) sehen heute nur
-Vorgesetzte. Gewollt ist, dass eine Lieferung annehmen kann, wer gerade da
-ist, ohne deswegen Vorgesetzter zu sein.
+`User.canManageStock`, zugewiesen unter `/personen`. Eine Lieferung nimmt
+an, wer gerade da ist, ohne deswegen Vorgesetzter zu sein.
 
-**Als Berechtigung neben der Rolle, nicht als dritte Rolle.** Ein Lagerist
-soll Lieferungen einbuchen können, aber deswegen nicht die Zeiten der
-anderen sehen. Mit einer dritten Rolle müsste für jede bestehende Prüfung
-neu entschieden werden, wo sie einzuordnen ist. Als eigenes Merkmal an
-`User` ist es eine Zeile je Prüfung und lässt sich einer Person unter
-`/personen` zuweisen, ohne sonst etwas zu ändern.
+**Als Berechtigung neben der Rolle, nicht als dritte Rolle.** Mit einer
+dritten Rolle müsste für jede bestehende Prüfung neu entschieden werden,
+wo sie einzuordnen ist. Als eigenes Merkmal ist es eine Zeile je Prüfung.
 
-Betroffen: `prisma/schema.prisma` (Migration), `src/lib/session.ts`
-(`SessionUser` muss das Merkmal mitführen), `src/server/lager.ts`,
-`src/app/lager/page.tsx`, `src/app/material/page.tsx` und die
-Benutzerverwaltung.
+Entschieden beim Bauen:
+
+- **Die Regel steht einmal**, als `darfLager` in
+  `src/lib/berechtigung.ts`, ohne Prisma und ohne React, festgenagelt in
+  `tests/einheit/berechtigung.test.ts`. Eine Prüfung, die an vier Stellen
+  von Hand ausgeschrieben wird, läuft irgendwann an einer davon
+  auseinander.
+- **Ein Vorgesetzter darf es immer**, das Merkmal nimmt ihm nichts weg.
+  Sonst müsste es ihm einzeln gesetzt werden und ein Vergessen sperrte ihn
+  aus dem eigenen Lager aus. Der Knopf erscheint deshalb nur bei einer
+  mitarbeitenden Person.
+- **Eigene Server Action `setLagerrecht`**, nicht als weiteres Feld in
+  `setZugang`. Sonst schickt jeder Rollenwechsel das Merkmal mit, und ein
+  vergessenes Feld setzt es lautlos zurück. Im Protokoll steht so
+  ausserdem `USER_STOCK_GRANTED` statt eines allgemeinen "Rolle geändert".
+  Ein Test hält fest, dass ein Rollenwechsel die Berechtigung stehen
+  lässt.
+- **Am eigenen Konto erlaubt**, anders als Rolle und Freigabe: damit kann
+  sich niemand aussperren, und wer die Seite überhaupt sieht, ist
+  Vorgesetzter und hat das Recht ohnehin.
+- **Nur Wareneingang und Lagerverlauf hängen daran.** Den Katalog pflegen
+  und der Excel-Import bleiben beim Vorgesetzten: das sind Preise und
+  Stammdaten, nicht die Annahme einer Lieferung.
 
 ### Offen: Bestand ändern hinterlässt keine Spur
 

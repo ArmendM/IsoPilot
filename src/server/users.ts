@@ -14,6 +14,11 @@ const Zugang = z.object({
   isActive: z.boolean(),
 });
 
+const Lagerrecht = z.object({
+  id: z.string().min(1),
+  canManageStock: z.boolean(),
+});
+
 const Stammdaten = z.object({
   id: z.string().min(1),
   vacationDays: z.number().int().min(0).max(60),
@@ -87,6 +92,59 @@ export async function setZugang(raw: unknown): Promise<ActionResult> {
     });
 
     revalidatePath("/personen");
+    return { ok: true };
+  } catch (e) {
+    return fehler(e);
+  }
+}
+
+/**
+ * Lagerberechtigung, bewusst als eigene Aktion neben setZugang.
+ *
+ * Zusammen mit Rolle und Freigabe in einem Aufruf hiesse, dass jeder
+ * Rollenwechsel das Merkmal mitschickt und ein vergessenes Feld es
+ * lautlos zurücksetzt. Und im Protokoll steht so, was tatsächlich
+ * geschah, statt eines allgemeinen "Rolle geändert".
+ *
+ * Am eigenen Konto ist es erlaubt: anders als bei Rolle und Freigabe
+ * kann sich damit niemand aussperren, und ein Vorgesetzter hat das Recht
+ * ohnehin schon über die Rolle.
+ */
+export async function setLagerrecht(raw: unknown): Promise<ActionResult> {
+  const user = await requireUser();
+  if (user.role !== "ADMIN")
+    return { ok: false, error: "Nur ein Vorgesetzter verwaltet Konten." };
+
+  const parsed = Lagerrecht.safeParse(raw);
+  if (!parsed.success) return { ok: false, error: "Ungültige Eingabe." };
+  const i = parsed.data;
+
+  try {
+    const before = await db.user.findUnique({ where: { id: i.id } });
+    if (!before || before.companyId !== user.companyId)
+      return { ok: false, error: "Person nicht gefunden." };
+
+    await db.$transaction(async (tx) => {
+      const after = await tx.user.update({
+        where: { id: i.id },
+        data: { canManageStock: i.canManageStock },
+      });
+      await tx.auditLog.create({
+        data: {
+          companyId: user.companyId,
+          actorId: user.id,
+          action: i.canManageStock ? "USER_STOCK_GRANTED" : "USER_STOCK_REVOKED",
+          entity: "User",
+          entityId: i.id,
+          before: JSON.parse(JSON.stringify(before)),
+          after: JSON.parse(JSON.stringify(after)),
+        },
+      });
+    });
+
+    revalidatePath("/personen");
+    revalidatePath("/material");
+    revalidatePath("/lager");
     return { ok: true };
   } catch (e) {
     return fehler(e);

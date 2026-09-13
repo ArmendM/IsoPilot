@@ -10,6 +10,7 @@ export type PersonZeile = {
   email: string | null;
   role: "EMPLOYEE" | "ADMIN";
   isActive: boolean;
+  canManageStock: boolean;
   vacationDays: number;
   regieTariff: "A" | "B";
   employedFrom: string | null;
@@ -32,6 +33,7 @@ export async function personen(user: SessionUser): Promise<PersonZeile[]> {
       oidcEmail: true,
       role: true,
       isActive: true,
+      canManageStock: true,
       vacationDays: true,
       regieTariff: true,
       employedFrom: true,
@@ -47,6 +49,7 @@ export async function personen(user: SessionUser): Promise<PersonZeile[]> {
     email: r.oidcEmail,
     role: r.role,
     isActive: r.isActive,
+    canManageStock: r.canManageStock,
     vacationDays: r.vacationDays,
     regieTariff: r.regieTariff,
     employedFrom: isoUtc(r.employedFrom),
