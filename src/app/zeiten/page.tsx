@@ -78,6 +78,9 @@ export default async function ZeitenPage({ searchParams }: PageProps<"/zeiten">)
         >
           Monatsansicht
         </Link>
+        <Link href="/baustellen" className="text-black/60 underline dark:text-white/60">
+          Baustellen
+        </Link>
       </nav>
 
       <h1 className="mt-4 text-2xl font-semibold tracking-tight">Zeiterfassung</h1>
