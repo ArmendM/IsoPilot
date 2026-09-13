@@ -74,6 +74,88 @@ describe("Material buchen", () => {
   });
 });
 
+/* Der Bestand geht nie ins Minus, gebucht wird trotzdem. Was nicht
+ * gedeckt ist, steht als Fehlmenge und ist das, was bestellt werden muss. */
+describe("Fehlmenge statt negativem Lager", () => {
+  const deckung = async (id: string) => {
+    const m = await db.material.findUniqueOrThrow({ where: { id } });
+    return { bestand: Number(m.stock), fehlmenge: Number(m.shortfall) };
+  };
+
+  it("bucht bis genau auf null ohne Fehlmenge", async () => {
+    const { liridon, site, material } = await aufbau();
+    expect(await buchen(site.id, liridon.id, material.id, 100)).toEqual({ ok: true });
+    expect(await deckung(material.id)).toEqual({ bestand: 0, fehlmenge: 0 });
+  });
+
+  it("lässt eine Buchung über den Bestand hinaus zu und merkt sich die Fehlmenge", async () => {
+    const { liridon, site, material } = await aufbau();
+    expect(await buchen(site.id, liridon.id, material.id, 130)).toEqual({ ok: true });
+
+    expect(await deckung(material.id)).toEqual({ bestand: 0, fehlmenge: 30 });
+    // Die Buchung selbst trägt die volle Menge, sie ist die Grundlage der Kosten.
+    expect(Number((await db.materialBooking.findFirstOrThrow()).quantity)).toBe(130);
+  });
+
+  it("bucht bei leerem Lager alles als Fehlmenge", async () => {
+    const { liridon, site, material } = await aufbau();
+    await db.material.update({ where: { id: material.id }, data: { stock: "0" } });
+
+    expect(await buchen(site.id, liridon.id, material.id, 12)).toEqual({ ok: true });
+    expect(await deckung(material.id)).toEqual({ bestand: 0, fehlmenge: 12 });
+  });
+
+  /* Die Bewegung hält die tatsächliche Bestandsänderung fest, nicht die
+   * gebuchte Menge. Sonst ginge die Summe der Bewegungen nicht mehr mit
+   * dem Bestand auf. */
+  it("schreibt die Lagerbewegung über den echten Abgang, nicht über die Menge", async () => {
+    const { liridon, site, material } = await aufbau();
+    await buchen(site.id, liridon.id, material.id, 130);
+
+    const bewegungen = await db.stockMovement.findMany();
+    expect(bewegungen).toHaveLength(1);
+    expect(Number(bewegungen[0].delta)).toBe(-100);
+  });
+
+  it("schreibt gar keine Bewegung, wenn das Lager nichts hergibt", async () => {
+    const { liridon, site, material } = await aufbau();
+    await db.material.update({ where: { id: material.id }, data: { stock: "0" } });
+    await buchen(site.id, liridon.id, material.id, 12);
+
+    expect(await db.stockMovement.count()).toBe(0);
+  });
+
+  it("häuft Fehlmengen über mehrere Buchungen auf", async () => {
+    const { liridon, site, material } = await aufbau();
+    await buchen(site.id, liridon.id, material.id, 80);
+    await buchen(site.id, liridon.id, material.id, 50);
+
+    expect(await deckung(material.id)).toEqual({ bestand: 0, fehlmenge: 30 });
+  });
+
+  /* Zuerst die Fehlmenge tilgen: sonst stünde Ware im Lager und
+   * gleichzeitig eine Bestellung offen, die es nicht mehr braucht. */
+  it("tilgt beim Rückgängigmachen zuerst die Fehlmenge", async () => {
+    const { liridon, site, material } = await aufbau();
+    await buchen(site.id, liridon.id, material.id, 130);
+    const b = await db.materialBooking.findFirstOrThrow();
+
+    expect(await deleteMaterialBooking(b.id)).toEqual({ ok: true });
+    expect(await deckung(material.id)).toEqual({ bestand: 100, fehlmenge: 0 });
+  });
+
+  it("stellt nach Buchen und Rückgängigmachen genau den Ausgangszustand her", async () => {
+    const { liridon, site, material } = await aufbau();
+    await db.material.update({ where: { id: material.id }, data: { stock: "0", shortfall: "7" } });
+
+    await buchen(site.id, liridon.id, material.id, 9);
+    const b = await db.materialBooking.findFirstOrThrow();
+    await deleteMaterialBooking(b.id);
+
+    expect(await deckung(material.id)).toEqual({ bestand: 0, fehlmenge: 7 });
+  });
+});
+
 describe("Geschlossene Baustellen", () => {
   it.each(["PAUSED", "DONE"] as const)("nimmt auf einer %s-Baustelle nichts an", async (status) => {
     const { liridon, site, material } = await aufbau(status);

@@ -267,6 +267,11 @@ model Material {
   price      Decimal  @db.Decimal(10, 2)
   stock      Decimal  @default(0) @db.Decimal(12, 2)
   minStock   Decimal  @default(0) @db.Decimal(12, 2)
+  // Was auf Baustellen gebucht wurde, ohne dass das Lager es decken
+  // konnte. Der Bestand geht nie ins Minus, die Differenz steht hier und
+  // ist das, was nachbestellt werden muss. Beide Werte sind nie zugleich
+  // grösser als null, siehe src/lib/lagerdeckung.ts.
+  shortfall  Decimal  @default(0) @db.Decimal(12, 2)
   isActive   Boolean  @default(true)
 
   // EI 30, EI 60, EI 90 oder VKF. Freitext, weil die Listen sich ändern.

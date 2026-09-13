@@ -1,4 +1,5 @@
 // Lesezugriffe auf den Materialkatalog.
+import { bestellbedarf } from "@/lib/lagerdeckung";
 import { db } from "@/lib/db";
 import type { SessionUser } from "@/lib/session";
 
@@ -20,6 +21,10 @@ export type ArtikelZeile = {
   preis: number;
   lager: number;
   mindestbestand: number;
+  /** Auf Baustellen gebucht, ohne dass das Lager es decken konnte. */
+  fehlmenge: number;
+  /** Was bestellt werden muss: Fehlmenge plus was bis zum Mindestbestand fehlt. */
+  bestellbedarf: number;
   fireClass: string | null;
   istAktiv: boolean;
   /** Lager unter dem Mindestbestand. Nur wenn ein Mindestbestand gesetzt ist. */
@@ -59,6 +64,7 @@ export async function katalog(
 
   return rows.map((m) => {
     const lager = Number(m.stock);
+    const fehlmenge = Number(m.shortfall);
     const mindest = Number(m.minStock);
     return {
       id: m.id,
@@ -70,6 +76,8 @@ export async function katalog(
       preis: Number(m.price),
       lager,
       mindestbestand: mindest,
+      fehlmenge,
+      bestellbedarf: bestellbedarf({ bestand: lager, fehlmenge }, mindest),
       fireClass: m.fireClass,
       istAktiv: m.isActive,
       unterMindestbestand: mindest > 0 && lager < mindest,

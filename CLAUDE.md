@@ -154,6 +154,29 @@ Reihenfolge:
 - Excel-Import: Abgleich über Artikelnummer, sonst Kategorie plus Name,
   sonst Name. **Nie Duplikate anlegen, nur aktualisieren.**
 - Buchung auf eine Baustelle reduziert den Lagerbestand
+- **Der Lagerbestand geht nie ins Minus, gebucht wird trotzdem immer.**
+  Wer auf der Baustelle Material verbaut hat, muss das erfassen können,
+  auch wenn das Lager im System nicht nachgeführt war. Was das Lager nicht
+  deckt, landet als **Fehlmenge** am Artikel (`Material.shortfall`).
+- **Bestellbedarf = Fehlmenge + was bis zum Mindestbestand fehlt.** Genau
+  die Menge, mit der die Baustellen gedeckt sind und der Mindestbestand
+  wieder steht. Der Katalog zeigt sie oben als Liste und je Artikel.
+- Bestand und Fehlmenge sind **nie zugleich grösser als null**: wer sieben
+  schuldet, hat die fünf im Lager längst verbraucht. Alles rechnet
+  deshalb über einen einzigen Saldo, siehe `src/lib/lagerdeckung.ts`.
+  Ohne das heben sich Verbrauch und Rückgabe nicht mehr auf.
+- Die **Lagerbewegung** hält die tatsächliche Bestandsänderung fest, nicht
+  die gebuchte Menge. Sonst ginge die Summe der Bewegungen nicht mehr mit
+  dem Bestand auf. Deckt das Lager gar nichts, entsteht folgerichtig auch
+  keine Bewegung, nur die Fehlmenge wächst.
+- Offen: **einen Wareneingang gibt es noch nicht.** `StockReason.DELIVERY`
+  steht im Schema und wird nirgends benutzt. Bis dahin wird die Fehlmenge
+  nach einer Lieferung von Hand im Artikelformular auf 0 gesetzt, neben
+  dem gezählten Lagerbestand. Ein echter Wareneingang würde beides
+  zusammen erledigen und im Lagerverlauf festhalten.
+- Anfangsbestände stehen im Seed, damit nicht jede erste Buchung ins Minus
+  läuft. Sie stehen nur im `create`-Zweig: ein erneuter Seed darf einen
+  gewachsenen Bestand niemals zurücksetzen.
 - Preise werden bei der Buchung eingefroren, ein Preisimport ändert
   abgeschlossene Baustellen nicht rückwirkend
 
@@ -460,8 +483,17 @@ UI: ein Abschnitt "Material buchen" je Baustellen-Karte in
 `/baustellen` (`src/components/baustellen/material-buchung.tsx`), sichtbar
 für alle, nicht nur Vorgesetzte. Mitarbeitende sehen und buchen nur eigene
 Buchungen, Vorgesetzte alle und können auch für eine andere Person buchen,
-wie bei der Zeiterfassung. Absichtlich kein Hardstop bei negativem Lager,
-nur der bestehende Mindestbestand-Hinweis im Materialkatalog.
+wie bei der Zeiterfassung.
+
+**Nachträglich geändert:** M3c liess einen negativen Lagerbestand bewusst
+zu, es gab nur den Mindestbestand-Hinweis im Katalog. Das ist verworfen.
+Der Bestand geht nicht mehr ins Minus, was nicht gedeckt ist, steht als
+Fehlmenge, siehe "Material" oben. Der Auslöser war der Testbetrieb: weil
+der Seed keine Anfangsbestände setzte, standen nach wenigen Buchungen
+sieben Artikel bei bis zu -115. Ein Hardstop, der die Buchung abweist,
+war zwischenzeitlich gebaut und wieder verworfen: er hätte jemanden auf
+der Baustelle daran gehindert, tatsächlich verbautes Material zu
+erfassen, und dafür einen Anruf beim Vorgesetzten verlangt.
 
 ### Nachträglich an M3c gefunden und behoben
 
