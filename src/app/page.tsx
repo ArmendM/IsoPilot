@@ -63,16 +63,27 @@ export default async function StartPage() {
 
       {user.role === "ADMIN" && (
         <nav className="mt-3">
-          <Link
-            href="/personen"
-            className="block rounded-lg border border-black/10 p-4 hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/5"
-          >
-            <h2 className="text-sm font-medium">Personen</h2>
-            <p className="mt-1 text-sm text-black/60 dark:text-white/60">
-              Konten freigeben, Rolle setzen, Ferientage und Eintrittsdatum
-              pflegen.
-            </p>
-          </Link>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Link
+              href="/personen"
+              className="rounded-lg border border-black/10 p-4 hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/5"
+            >
+              <h2 className="text-sm font-medium">Personen</h2>
+              <p className="mt-1 text-sm text-black/60 dark:text-white/60">
+                Konten freigeben, Rolle setzen, Ferientage und Eintrittsdatum
+                pflegen.
+              </p>
+            </Link>
+            <Link
+              href="/abschluss"
+              className="rounded-lg border border-black/10 p-4 hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/5"
+            >
+              <h2 className="text-sm font-medium">Monatsabschluss</h2>
+              <p className="mt-1 text-sm text-black/60 dark:text-white/60">
+                Stand pro Person ansehen und den Monat zusperren.
+              </p>
+            </Link>
+          </div>
         </nav>
       )}
 

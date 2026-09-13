@@ -50,3 +50,8 @@ export function workingDays(
     (d) => !isWeekend(d) && !holidays.has(isoDate(d)),
   ).length;
 }
+
+/** Läuft dieser Monat noch? "2026-09" gegen den heutigen Monat, in
+ *  Schweizer Zeit. Ein laufender Monat lässt sich nicht abschliessen. */
+export const monatLaeuftNoch = (monat: string, heute = new Date()): boolean =>
+  monat >= monthKey(isoDate(heute));
