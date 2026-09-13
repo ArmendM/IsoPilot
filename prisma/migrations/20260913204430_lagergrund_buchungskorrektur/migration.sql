@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "StockReason" ADD VALUE 'BOOKING_CHANGE';

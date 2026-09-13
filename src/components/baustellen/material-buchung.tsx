@@ -2,7 +2,11 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { saveMaterialBooking, deleteMaterialBooking } from "@/server/bookings";
+import {
+  deleteMaterialBooking,
+  saveMaterialBooking,
+  updateMaterialBooking,
+} from "@/server/bookings";
 import { ZahlFeld, DatumFeld } from "@/components/ui/eingabefelder";
 import { todayISO } from "@/lib/dates";
 import { ALLE_KATEGORIEN, kategorienAus, nachKategorie } from "@/lib/materialwahl";
@@ -87,6 +91,15 @@ export function MaterialBuchung({
     bookedOn: todayISO(),
   });
 
+  /* Eine Buchung wird an Ort und Stelle bearbeitet, nicht in einem
+   * eigenen Fenster: auf der Baustelle ist die Liste der Zusammenhang. */
+  const [bearbeitet, setBearbeitet] = useState<{
+    id: string;
+    materialId: string;
+    menge: number;
+    bookedOn: string;
+  } | null>(null);
+
   /* Nach einem Kategoriewechsel zeigt f.materialId noch auf einen Artikel
    * der alten Kategorie. Sichtbar ist dann der erste der neuen, und genau
    * der wird gebucht: sonst bucht das Formular etwas anderes, als im
@@ -96,6 +109,18 @@ export function MaterialBuchung({
     : (sichtbar[0]?.id ?? "");
   const gewaehlt = sichtbar.find((a) => a.id === materialId);
   const summe = gewaehlt ? gewaehlt.preis * f.menge : 0;
+
+  function aenderungSpeichern() {
+    if (!bearbeitet || bearbeitet.menge <= 0) return;
+    setFehler("");
+    start(async () => {
+      const r = await updateMaterialBooking(bearbeitet);
+      if (r.ok) {
+        setBearbeitet(null);
+        router.refresh();
+      } else setFehler(r.error);
+    });
+  }
 
   function loeschen(id: string) {
     if (!confirm("Diese Buchung rückgängig machen? Der Lagerbestand wird zurückgebucht."))
@@ -136,6 +161,27 @@ export function MaterialBuchung({
               </span>
               <span className="flex items-center gap-2 text-xs text-black/60 dark:text-white/60">
                 {datumDE(b.bookedOn)} · {b.userName}
+                {(istAdmin || b.userId === userId) && offen && (
+                  <button
+                    type="button"
+                    disabled={laeuft}
+                    onClick={() =>
+                      setBearbeitet(
+                        bearbeitet?.id === b.id
+                          ? null
+                          : {
+                              id: b.id,
+                              materialId: b.materialId ?? "",
+                              menge: b.menge,
+                              bookedOn: b.bookedOn,
+                            },
+                      )
+                    }
+                    className="underline disabled:opacity-50"
+                  >
+                    {bearbeitet?.id === b.id ? "Abbrechen" : "Ändern"}
+                  </button>
+                )}
                 {(istAdmin || b.userId === userId) && (
                   <button
                     type="button"
@@ -147,6 +193,72 @@ export function MaterialBuchung({
                   </button>
                 )}
               </span>
+
+              {bearbeitet?.id === b.id && (
+                <form
+                  className="flex w-full flex-wrap items-end gap-3 border-t border-black/10 pt-2 dark:border-white/15"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    aenderungSpeichern();
+                  }}
+                >
+                  <label className="space-y-1">
+                    <span className={bez}>Artikel</span>
+                    <select
+                      value={bearbeitet.materialId}
+                      onChange={(e) =>
+                        setBearbeitet({ ...bearbeitet, materialId: e.target.value })
+                      }
+                      className={feld}
+                    >
+                      {artikel.map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.sku ? `${a.sku} · ` : ""}
+                          {a.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="space-y-1">
+                    <span className={bez}>Menge</span>
+                    <ZahlFeld
+                      min={0}
+                      step={0.01}
+                      wert={bearbeitet.menge}
+                      onWert={(n) => setBearbeitet({ ...bearbeitet, menge: n })}
+                      className={`${feld} w-28`}
+                    />
+                  </label>
+
+                  <label className="space-y-1">
+                    <span className={bez}>Datum</span>
+                    <DatumFeld
+                      required
+                      value={bearbeitet.bookedOn}
+                      onChange={(e) =>
+                        setBearbeitet({ ...bearbeitet, bookedOn: e.target.value })
+                      }
+                      className={`${feld} w-40`}
+                    />
+                  </label>
+
+                  <button
+                    type="submit"
+                    disabled={laeuft || bearbeitet.menge <= 0}
+                    className="h-10 rounded-md bg-foreground px-4 text-sm font-medium text-background disabled:opacity-50"
+                  >
+                    {laeuft ? "Speichert" : "Speichern"}
+                  </button>
+
+                  {bearbeitet.materialId !== b.materialId && (
+                    <span className="pb-2 text-xs text-amber-700 dark:text-amber-300">
+                      Anderer Artikel: der Preis wird auf den heutigen
+                      Katalogpreis gesetzt.
+                    </span>
+                  )}
+                </form>
+              )}
             </li>
           ))}
         </ul>
