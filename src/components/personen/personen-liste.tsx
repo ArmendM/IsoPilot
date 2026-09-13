@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { setZugang, setStammdaten } from "@/server/users";
-import { DatumFeld } from "@/components/ui/eingabefelder";
+import { DatumFeld, ZahlFeld } from "@/components/ui/eingabefelder";
 
 export type Zeile = {
   id: string;
@@ -205,12 +205,11 @@ function Karte({ z }: { z: Zeile }) {
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <label className="space-y-1">
               <span className={bez}>Ferientage im Jahr</span>
-              <input
-                type="number"
+              <ZahlFeld
                 min={0}
                 max={60}
-                value={f.vacationDays}
-                onChange={(e) => setF({ ...f, vacationDays: Number(e.target.value) })}
+                wert={f.vacationDays}
+                onWert={(n) => setF({ ...f, vacationDays: n })}
                 className={feld}
               />
             </label>

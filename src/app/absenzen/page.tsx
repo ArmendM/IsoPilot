@@ -5,6 +5,7 @@ import { auswaehlbarePersonen } from "@/server/time-entries-read";
 import { absenzen } from "@/server/absences-read";
 import { ferienstand } from "@/server/vacation";
 import { AbsenzenAnsicht } from "@/components/absenzen/absenzen-ansicht";
+import { ZahlFeld } from "@/components/ui/eingabefelder";
 
 const datumDE = (iso: string) => iso.split("-").reverse().join(".");
 
@@ -60,8 +61,7 @@ export default async function AbsenzenPage({ searchParams }: PageProps<"/absenze
           <span className="block text-xs font-medium text-black/60 dark:text-white/60">
             Jahr
           </span>
-          <input
-            type="number"
+          <ZahlFeld
             name="jahr"
             min={2020}
             max={2100}

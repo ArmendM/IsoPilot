@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { saveTimeEntry, deleteTimeEntry } from "@/server/time-entries";
-import { ZeitFeld } from "@/components/ui/eingabefelder";
+import { ZeitFeld, ZahlFeld } from "@/components/ui/eingabefelder";
 
 export type ZeileDaten = {
   id: string;
@@ -265,16 +265,15 @@ function Formular({
         </label>
         <label className="space-y-1">
           <span className={beschriftung}>Pause in Minuten</span>
-          <input
-            type="number"
+          <ZahlFeld
             min={0}
             max={480}
             // Schrittweite 1, nicht 15: sonst wäre eine getippte 20 nach
             // HTML-Regeln ungültig und das Formular liesse sich nicht
             // absenden. Die 15er-Schritte stehen als Tasten darunter.
             step={1}
-            value={f.pause}
-            onChange={(e) => setF({ ...f, pause: Number(e.target.value) })}
+            wert={f.pause}
+            onWert={(n) => setF({ ...f, pause: n })}
             className={feld}
           />
         </label>
