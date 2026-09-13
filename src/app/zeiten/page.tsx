@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DatumFeld } from "@/components/ui/eingabefelder";
 import { redirect } from "next/navigation";
 import { format } from "date-fns";
 import { getSession } from "@/lib/session";
@@ -90,8 +91,7 @@ export default async function ZeitenPage({ searchParams }: PageProps<"/zeiten">)
           <span className="block text-xs font-medium text-black/60 dark:text-white/60">
             Tag
           </span>
-          <input
-            type="date"
+          <DatumFeld
             name="tag"
             defaultValue={tag}
             className="h-10 rounded-md border border-black/15 bg-transparent px-3 text-sm dark:border-white/20"

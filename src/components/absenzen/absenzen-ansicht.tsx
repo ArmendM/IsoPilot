@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { saveAbsence, decideAbsence, deleteAbsence } from "@/server/absences";
+import { DatumFeld } from "@/components/ui/eingabefelder";
 
 export type Zeile = {
   id: string;
@@ -280,8 +281,7 @@ function Formular({
 
         <label className="space-y-1">
           <span className={bez}>Von</span>
-          <input
-            type="date"
+          <DatumFeld
             required
             value={f.von}
             onChange={(e) =>
@@ -293,8 +293,7 @@ function Formular({
 
         <label className="space-y-1">
           <span className={bez}>Bis</span>
-          <input
-            type="date"
+          <DatumFeld
             required
             min={f.von}
             value={f.bis}
