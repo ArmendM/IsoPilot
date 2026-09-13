@@ -54,6 +54,7 @@ export function MaterialBuchung({
   personen,
   userId,
   istAdmin,
+  offen,
 }: {
   siteId: string;
   buchungen: Buchung[];
@@ -61,6 +62,9 @@ export function MaterialBuchung({
   personen: Person[];
   userId: string;
   istAdmin: boolean;
+  /** Nur eine offene Baustelle nimmt neue Buchungen an. Bereits Gebuchtes
+   *  bleibt sichtbar und lässt sich weiterhin rückgängig machen. */
+  offen: boolean;
 }) {
   const router = useRouter();
   const [laeuft, start] = useTransition();
@@ -130,7 +134,12 @@ export function MaterialBuchung({
         </ul>
       )}
 
-      {artikel.length === 0 ? (
+      {!offen ? (
+        <p className="text-sm text-black/50 dark:text-white/50">
+          Diese Baustelle ist pausiert oder abgeschlossen. Zum Buchen zuerst
+          wieder öffnen.
+        </p>
+      ) : artikel.length === 0 ? (
         <p className="text-sm text-black/50 dark:text-white/50">
           Der Materialkatalog ist leer. Zuerst unter „Material&rdquo; Artikel anlegen.
         </p>
