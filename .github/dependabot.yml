@@ -7,6 +7,15 @@ updates:
     groups:
       minor-und-patch:
         update-types: ["minor", "patch"]
+    ignore:
+      # @types/node beschreibt die Laufzeit, nicht die neueste Node-Version.
+      # Dockerfile und CI fahren node:22, also gehört hier ^22 hin. Ein
+      # Sprung auf ^26 würde APIs beschreiben, die in der Produktion gar
+      # nicht existieren, und der Typecheck liesse es durch.
+      # Wegnehmen, sobald Dockerfile und ci.yml auf eine neuere Node-Version
+      # gehen. Beides zusammen ändern, nie nur eines.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: "/"

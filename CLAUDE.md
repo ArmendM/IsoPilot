@@ -341,6 +341,12 @@ Mailpit-Oberfläche: http://localhost:8025
 - **Nach `npm run db:migrate` den Dev-Server neu starten.** Er hält den
   erzeugten Prisma-Client im Speicher. Sonst ist ein neues Feld still
   `undefined`, ohne Fehlermeldung, und die Anzeige zeigt es einfach nicht.
+- **`@types/node` bleibt auf `^22`, passend zu `node:22` im Dockerfile
+  und in der CI.** Eine neuere Hauptversion beschreibt APIs, die in der
+  Produktion nicht existieren, und der Typecheck liesse sie durch.
+  `.github/dependabot.yml` ignoriert deshalb Hauptversionen dieses Pakets.
+  Wer Node anhebt, ändert Dockerfile, `ci.yml` und diese Regel zusammen,
+  nie nur eines davon.
 - **Den Abschluss eines CI-Laufs direkt auslesen**, mit
   `gh run view <id> --json conclusion`. Bei `gh run watch … | tail; echo $?`
   liest man den Status von `tail` und hält einen roten Lauf für grün.
