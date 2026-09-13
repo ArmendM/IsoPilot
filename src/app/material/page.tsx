@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { katalog, kategorien } from "@/server/materials-read";
 import { MaterialAnsicht } from "@/components/material/material-ansicht";
+import { MaterialImport } from "@/components/material/material-import";
 
 export default async function MaterialPage({ searchParams }: PageProps<"/material">) {
   const user = await getSession();
@@ -94,6 +95,15 @@ export default async function MaterialPage({ searchParams }: PageProps<"/materia
       </p>
 
       <MaterialAnsicht artikel={liste} kategorien={kats} istAdmin={istAdmin} />
+
+      {istAdmin && (
+        <section className="mt-8 border-t border-black/10 pt-6 dark:border-white/15">
+          <h2 className="text-lg font-semibold tracking-tight">Excel-Import</h2>
+          <div className="mt-3">
+            <MaterialImport />
+          </div>
+        </section>
+      )}
     </main>
   );
 }

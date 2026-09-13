@@ -381,8 +381,8 @@ Rückfall, `/abschluss` Monatsabschluss.
 - M3a `/baustellen` mit Soll-Ist, Status und Auftraggeber: **fertig**
 - M3b `/material` Katalog mit Lager, Mindestbestand, Kategorien: **fertig**
 - M3c Materialbuchung auf eine Baustelle: **fertig**
-- M3d Excel-Import in den Katalog: **als Nächstes**
-- M3e VSI-Tarifmatrix: offen
+- M3d Excel-Import in den Katalog: **fertig**
+- M3e VSI-Tarifmatrix: **als Nächstes**
 - M3f Materialbuchung verbessern: Kategoriefilter **fertig**, Ändern offen
 
 **M4 Auswertung**
@@ -566,25 +566,48 @@ sind:
 Wie bei M3c: Schreiben und Audit-Log in einer Transaktion, `assertMonthOpen`,
 und Mitarbeitende ändern nur eigene Buchungen.
 
-### Als Nächstes: M3d, Excel-Import in den Katalog
+### M3d, Excel-Import in den Katalog (fertig)
 
-Eine Excel-Liste einlesen und den Materialkatalog aktualisieren, ohne
-Duplikate anzulegen. Die Regel steht schon oben unter "Material":
+Eine `.xlsx`-Liste einlesen und den Katalog nachführen, ohne Duplikate.
 
-- Abgleich in dieser Reihenfolge: erst über die Artikelnummer (`sku`),
-  dann über Kategorie plus Name, dann über den Namen allein.
-- **Nie ein neues Material anlegen, wenn eine der drei Regeln trifft,
-  nur aktualisieren.** Nur wenn keine trifft, entsteht ein neuer Artikel.
-- Betrifft vor allem `price`, ggf. `unit` und `fireClass`. `stock` und
-  `minStock` gehören nicht in den Import, die sind Handarbeit im Betrieb.
-- Noch offen und zu klären, bevor mit dem Code begonnen wird: welche
-  Bibliothek liest die `.xlsx`-Datei ein (im Projekt bisher keine
-  vorhanden), wie die Datei hochgeladen wird (Formular mit
-  Datei-Upload gibt es in IsoPilot bisher nicht), und ob ein
-  Vorschau-Schritt vor dem eigentlichen Import gezeigt wird, damit ein
-  falscher Spaltenaufbau nicht den ganzen Katalog verändert.
-- Wie bei M3c: Schreiben und Audit-Log in einer Transaktion, nur ein
-  Vorgesetzter darf importieren (wie bei `saveMaterial`).
+**Entscheide, die getroffen wurden**
+
+- **`exceljs`** liest die Datei. `xlsx` (SheetJS) wird auf npm seit Jahren
+  nicht gepflegt.
+- **Upload über eine Server Action**, die Datei wird nur im Speicher
+  gelesen und nie auf die Platte geschrieben. `next.config.ts` hebt
+  `serverActions.bodySizeLimit` auf 4 MB: die Vorgabe von 1 MB reicht für
+  eine Materialliste, eine exportierte Mappe mit Formatierung liegt aber
+  schnell darüber und die Fehlermeldung wäre nichtssagend.
+- **Der Vorschau-Schritt ist verbindlich.** Erst zeigen, was geschähe,
+  dann ein zweiter Klick. Die Datei wird dabei **zweimal** hochgeladen und
+  auf dem Server beide Male neu gelesen und abgeglichen. Das ist ein
+  zweites Hochladen wert: käme der Abgleich aus dem Browser zurück, liesse
+  sich über das Formular jeder beliebige Artikel überschreiben. Die
+  Vorschau ist damit Auskunft, nie Vorgabe.
+
+**Was der Import anfasst:** `price`, `unit` und `fireClass`, und auch die
+nur, wenn in der Datei etwas steht. `stock` und `minStock` nie, die sind
+Handarbeit im Betrieb. Ein leeres Preisfeld heisst "unverändert" und
+nicht "null", sonst setzte eine halb gefüllte Spalte den halben Katalog
+auf null.
+
+**Abgleich** in `src/lib/materialimport.ts`, ohne Prisma und ohne React,
+geprüft in `tests/einheit/materialimport.test.ts`. Drei Dinge, die dort
+festgenagelt sind und beim Bauen erst durch die Tests auffielen:
+
+- **Kategorie plus Name greift nur, wenn in der Datei wirklich eine
+  Kategorie steht.** Sonst ist die Regel eine versteckte Sonderregel für
+  Artikel ohne Kategorie und erwischt unter zwei gleichnamigen lautlos
+  den einen. Fehlt die Kategorie, läuft die Zeile über den Namen und
+  fällt dort als uneindeutig auf.
+- **Uneindeutige Zeilen werden übersprungen, nie geraten.** Passen zwei
+  Artikel auf eine Zeile, bekäme sonst der falsche stillschweigend einen
+  neuen Preis, und niemand würde es merken.
+- **Bei der Spaltenerkennung zählt ein Präfix nur, wenn danach kein
+  Buchstabe folgt.** Sonst schnappt sich das Kürzel "EI" für Brandschutz
+  die Spalte "Einheit". "Preis CHF exkl. MwSt." trifft weiterhin, dort
+  folgt ein Leerzeichen.
 
 ## Offene Punkte
 
