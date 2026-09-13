@@ -4,6 +4,8 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { saveSite, setSiteStatus } from "@/server/sites";
 import { ZahlFeld } from "@/components/ui/eingabefelder";
+import { MaterialBuchung, type ArtikelWahl } from "@/components/baustellen/material-buchung";
+import type { BuchungZeile } from "@/server/bookings-read";
 
 export type Zeile = {
   id: string;
@@ -23,6 +25,7 @@ export type Zeile = {
 };
 
 type Partner = { id: string; name: string };
+type Person = { id: string; name: string };
 
 const STATUS: Record<Zeile["status"], string> = {
   OPEN: "offen",
@@ -40,10 +43,18 @@ export function BaustellenAnsicht({
   zeilen,
   partner,
   istAdmin,
+  buchungen,
+  artikel,
+  personen,
+  userId,
 }: {
   zeilen: Zeile[];
   partner: Partner[];
   istAdmin: boolean;
+  buchungen: BuchungZeile[];
+  artikel: ArtikelWahl[];
+  personen: Person[];
+  userId: string;
 }) {
   const [neu, setNeu] = useState(false);
 
@@ -70,7 +81,16 @@ export function BaustellenAnsicht({
       ) : (
         <ul className="space-y-3">
           {zeilen.map((z) => (
-            <Karte key={z.id} z={z} partner={partner} istAdmin={istAdmin} />
+            <Karte
+              key={z.id}
+              z={z}
+              partner={partner}
+              istAdmin={istAdmin}
+              buchungen={buchungen.filter((b) => b.siteId === z.id)}
+              artikel={artikel}
+              personen={personen}
+              userId={userId}
+            />
           ))}
         </ul>
       )}
@@ -82,15 +102,24 @@ function Karte({
   z,
   partner,
   istAdmin,
+  buchungen,
+  artikel,
+  personen,
+  userId,
 }: {
   z: Zeile;
   partner: Partner[];
   istAdmin: boolean;
+  buchungen: BuchungZeile[];
+  artikel: ArtikelWahl[];
+  personen: Person[];
+  userId: string;
 }) {
   const router = useRouter();
   const [laeuft, start] = useTransition();
   const [fehler, setFehler] = useState("");
   const [offen, setOffen] = useState(false);
+  const [materialOffen, setMaterialOffen] = useState(false);
 
   const differenz = z.ist - z.soll;
   const anteil = z.soll > 0 ? Math.min(100, (z.ist / z.soll) * 100) : 0;
@@ -236,6 +265,20 @@ function Karte({
         </div>
       )}
 
+      <div className="mt-3 flex flex-wrap gap-3 text-sm">
+        <button
+          type="button"
+          onClick={() => setMaterialOffen(!materialOffen)}
+          className="h-9 px-1 underline text-black/60 dark:text-white/60"
+        >
+          {materialOffen
+            ? "Material schliessen"
+            : buchungen.length > 0
+              ? `Material (${buchungen.length})`
+              : "Material buchen"}
+        </button>
+      </div>
+
       {offen && (
         <div className="mt-4 border-t border-black/10 pt-4 dark:border-white/15">
           <Formular
@@ -243,6 +286,19 @@ function Karte({
             zeile={z}
             onFertig={() => setOffen(false)}
             onAbbrechen={() => setOffen(false)}
+          />
+        </div>
+      )}
+
+      {materialOffen && (
+        <div className="mt-4 border-t border-black/10 pt-4 dark:border-white/15">
+          <MaterialBuchung
+            siteId={z.id}
+            buchungen={buchungen}
+            artikel={artikel}
+            personen={personen}
+            userId={userId}
+            istAdmin={istAdmin}
           />
         </div>
       )}

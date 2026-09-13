@@ -2,6 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { baustellen, partnerwahl } from "@/server/sites-read";
+import { buchungen, materialAuswahl } from "@/server/bookings-read";
+import { auswaehlbarePersonen } from "@/server/time-entries-read";
 import { BaustellenAnsicht } from "@/components/baustellen/baustellen-ansicht";
 
 export default async function BaustellenPage({
@@ -13,9 +15,12 @@ export default async function BaustellenPage({
   const q = await searchParams;
   const mitAbgeschlossenen = q.alle === "1";
 
-  const [zeilen, partner] = await Promise.all([
+  const [zeilen, partner, materialBuchungen, artikel, personen] = await Promise.all([
     baustellen(user, mitAbgeschlossenen),
     partnerwahl(user),
+    buchungen(user),
+    materialAuswahl(user),
+    auswaehlbarePersonen(user),
   ]);
 
   const istAdmin = user.role === "ADMIN";
@@ -53,7 +58,15 @@ export default async function BaustellenPage({
         </Link>
       </p>
 
-      <BaustellenAnsicht zeilen={zeilen} partner={partner} istAdmin={istAdmin} />
+      <BaustellenAnsicht
+        zeilen={zeilen}
+        partner={partner}
+        istAdmin={istAdmin}
+        buchungen={materialBuchungen}
+        artikel={artikel}
+        personen={personen}
+        userId={user.id}
+      />
     </main>
   );
 }

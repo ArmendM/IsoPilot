@@ -235,6 +235,13 @@ Stand 13.09.2026. Dieser Abschnitt ist die Antwort auf "wo stehen wir und
 was kommt als Nächstes". Er wird bei jedem abgeschlossenen Stück
 nachgeführt.
 
+**Klicktest steht noch aus:** Der Code für M3c ist geschrieben, typecheck
+und lint sind sauber, und der Schreibpfad wurde per Browser-Automation
+gegen die lokale Datenbank durchgespielt (Buchen, Lagerbestand prüfen,
+Rückgängig machen, Lagerbestand wieder prüfen — alles korrekt). Was noch
+fehlt: Armends eigener Klicktest über die echte Anmeldung mit den
+richtigen Rollen.
+
 **M1 Fundament — fertig**
 Next.js 16, Prisma 7, Schema, Anmeldung über Infomaniak mit Warteraum,
 Sitzung und Rollenprüfung, Audit-Log, Benutzerverwaltung unter
@@ -251,7 +258,7 @@ Rückfall, `/abschluss` Monatsabschluss.
 
 - M3a `/baustellen` mit Soll-Ist, Status und Auftraggeber: **fertig**
 - M3b `/material` Katalog mit Lager, Mindestbestand, Kategorien: **fertig**
-- M3c Materialbuchung auf eine Baustelle: **als Nächstes**
+- M3c Materialbuchung auf eine Baustelle: **Code steht, Klicktest offen**
 - M3d Excel-Import in den Katalog: offen
 - M3e VSI-Tarifmatrix: offen
 
@@ -263,10 +270,10 @@ Firmeneinstellungen mit Logo-Upload, Aufbewahrungsjob
 Seed mit echten Stammdaten, ein Monat Parallelbetrieb neben dem alten
 Vorgehen, Backup-Wiederherstellung geübt, Schulung
 
-### Als Nächstes: M3c, Materialbuchung
+### M3c, Materialbuchung
 
 Material aus dem Katalog auf eine Baustelle buchen. Das Schema steht
-bereits vollständig, es braucht **keine Migration**:
+bereits vollständig, es brauchte **keine Migration**:
 
 - `MaterialBooking` hat `unitPrice` mit dem Kommentar "Preis zum
   Buchungszeitpunkt, eingefroren". Genau das ist die Regel aus diesem
@@ -277,9 +284,19 @@ bereits vollständig, es braucht **keine Migration**:
   (berührt das Lager nicht). Für M3c zählt nur `CATALOG`.
 - `StockMovement` mit `StockReason` nimmt die Lagerbewegung auf.
 
-Zu beachten: Buchung, Lagerbewegung und Protokolleintrag gehören in
-dieselbe Transaktion, und der Monatsabschluss muss über `assertMonthOpen`
-geprüft werden wie bei Zeiten und Absenzen.
+Buchung, Lagerbewegung und Protokolleintrag laufen in `saveMaterialBooking`
+(`src/server/bookings.ts`) in einer Transaktion, geprüft über
+`assertMonthOpen` wie bei Zeiten und Absenzen. `deleteMaterialBooking` ist
+ein Soft Delete, der die Menge zurück ins Lager bucht (`StockReason.RETURN`)
+statt eine Korrektur der ursprünglichen Menge zuzulassen: das hält den
+Schreibpfad klein und bleibt im Protokoll nachvollziehbar.
+
+UI: ein Abschnitt "Material buchen" je Baustellen-Karte in
+`/baustellen` (`src/components/baustellen/material-buchung.tsx`), sichtbar
+für alle, nicht nur Vorgesetzte. Mitarbeitende sehen und buchen nur eigene
+Buchungen, Vorgesetzte alle und können auch für eine andere Person buchen,
+wie bei der Zeiterfassung. Absichtlich kein Hardstop bei negativem Lager,
+nur der bestehende Mindestbestand-Hinweis im Materialkatalog.
 
 ## Offene Punkte
 
