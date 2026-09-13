@@ -263,6 +263,31 @@ Firmeneinstellungen mit Logo-Upload, Aufbewahrungsjob
 Seed mit echten Stammdaten, ein Monat Parallelbetrieb neben dem alten
 Vorgehen, Backup-Wiederherstellung geübt, Schulung
 
+**M6 und M7** stehen in `docs/lifecycle.md`, von der Offerte bis zur
+bezahlten Rechnung, mit der Reihenfolge M6a bis M7c. Bewusst nach dem
+Parallelbetrieb, nicht davor.
+
+### Kein toter Code: die Übergangstabelle in `guards.ts`
+
+`NEXT_STATUS`, `needsReason`, `assertTransition`, `canBookTime` und
+`canBookMaterial` in `src/server/guards.ts` werden heute nirgends
+aufgerufen, sind aber **kein Überbleibsel und nicht zu löschen.** Sie sind
+die vorgezogene Umsetzung des Statusmodells aus `docs/lifecycle.md`, das
+dort mit "Erlaubte Übergänge stehen in einer Tabelle im Code" genau diese
+Tabelle meint. `docs/CLAUDE-CODE-TASKS.md` führt das als P0 "Baustellenstatus
+auf das definierte Lifecycle-Modell heben" und nennt dieselben Funktionen
+als vorhandene Grundlage.
+
+Ungenutzt sind sie, weil das `SiteStatus`-Enum in `prisma/schema.prisma`
+erst OPEN, PAUSED und DONE kennt und `setSiteStatus` in
+`src/server/sites.ts` jeden Wechsel frei erlaubt. Das aufzulösen ist M6b
+und braucht Migration, `SiteStatusEvent` und Oberfläche, also mehr als ein
+Aufräumen.
+
+Wer hier aufräumen will, prüft bitte zuerst `docs/lifecycle.md`. Ein
+früherer Anlauf hat die Funktionen als toten Code eingestuft, allein weil
+`grep` keine Verwendung fand.
+
 ### M3c, Materialbuchung (fertig, PR #20)
 
 Material aus dem Katalog auf eine Baustelle buchen. Das Schema stand
@@ -331,13 +356,6 @@ Fachliche Entscheide, die niemand aus dem Code ableiten kann:
 - Preisunterschiede Brandschutz zwischen der Liste von 2018 und 2022.
   Aktuell gelten die Werte von 2022. Kundenspezifische Preislisten wären
   ein späterer Ausbauschritt.
-- **Toter Code in `src/server/guards.ts` zu prüfen und wohl zu entfernen:**
-  `NEXT_STATUS`, `needsReason`, `assertTransition`, `canBookTime`,
-  `canBookMaterial` beschreiben einen Baustellen-Workflow mit Status wie
-  OFFERTE, AUFTRAG, VERRECHNET. Das aktuelle `SiteStatus`-Enum kennt aber
-  nur OPEN, PAUSED, DONE, und eine Suche zeigte keine Verwendung dieser
-  Exporte ausserhalb der Datei selbst. Vor dem Löschen mit frischem
-  `grep` bestätigen, dass wirklich nichts mehr darauf zugreift.
 
 ## Was nicht gebaut wird
 
