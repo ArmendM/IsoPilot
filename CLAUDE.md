@@ -309,6 +309,12 @@ Mailpit-Oberfläche: http://localhost:8025
 - Vor jeder Migration auf dem Server ein Backup, im Skript verankert
 - **Vor der Arbeit abzweigen, nicht danach.** Nach einem Merge steht man
   auf `main`, und dort gehört kein Commit hin.
+- **Nach `npm ci` `npm run db:generate` nachziehen.** `npm ci` wirft
+  `node_modules` weg, und es gibt kein `postinstall`, das den Prisma-Client
+  neu erzeugt. Ohne diesen Schritt meldet `npm run typecheck` lauter
+  `implicitly has an 'any' type` in Dateien, an denen niemand etwas
+  geändert hat. Die CI ist nicht betroffen, sie ruft `prisma generate`
+  ausdrücklich auf.
 - **Nach `npm run db:migrate` den Dev-Server neu starten.** Er hält den
   erzeugten Prisma-Client im Speicher. Sonst ist ein neues Feld still
   `undefined`, ohne Fehlermeldung, und die Anzeige zeigt es einfach nicht.
@@ -407,30 +413,29 @@ Buchungen, Vorgesetzte alle und können auch für eine andere Person buchen,
 wie bei der Zeiterfassung. Absichtlich kein Hardstop bei negativem Lager,
 nur der bestehende Mindestbestand-Hinweis im Materialkatalog.
 
-### Nachträglich an M3c gefunden
+### Nachträglich an M3c gefunden und behoben
 
-Aus einer späteren Durchsicht, nach Gewicht. Nichts davon ist heute
-kaputt, alles wird es mit mehr Daten oder mehr Nebenläufigkeit:
+Aus einer späteren Durchsicht, alle vier in einem Zug behoben:
 
-- **Abgeschlossene und pausierte Baustellen nehmen Material an.**
-  `saveMaterialBooking` prüft Existenz und Firma, nie `site.status`, und
-  die Oberfläche zeigt den Abschnitt auch bei `DONE`. Damit lassen sich
+- **Abgeschlossene und pausierte Baustellen nahmen Material an.**
+  `saveMaterialBooking` prüfte Existenz und Firma, nie `site.status`, und
+  die Oberfläche zeigte den Abschnitt auch bei `DONE`. Damit liessen sich
   Materialkosten einer abgeschlossenen Baustelle nachträglich verändern,
-  genau gegen die Einfrier-Regel. `canBookMaterial` aus
-  `site-lifecycle.ts` ist die Funktion, die das mit M6b abfängt.
-- **Doppeltes Rückgängigmachen kann das Lager zweimal gutschreiben.**
-  `deleteMaterialBooking` liest, prüft `deletedAt` und schreibt dann über
-  `update({ where: { id } })`. Zwei parallele Klicks buchen die Menge
-  zweimal zurück. Die Bedingung gehört ins `WHERE`:
-  `updateMany({ where: { id, deletedAt: null } })` und Abbruch bei
+  genau gegen die Einfrier-Regel. Jetzt nimmt nur `OPEN` neue Buchungen
+  an. **Rückgängig machen bleibt erlaubt**, auch auf einer
+  abgeschlossenen Baustelle: das korrigiert einen Fehler, statt einen
+  neuen anzulegen, und der Monatsabschluss begrenzt es ohnehin.
+- **Doppeltes Rückgängigmachen konnte das Lager zweimal gutschreiben.**
+  Die Bedingung stand im Code statt im `WHERE`. Jetzt
+  `updateMany({ where: { id, deletedAt: null } })` mit Abbruch bei
   `count === 0`.
-- **Artikel und Preis werden vor der Transaktion gelesen.** Der
-  eingefrorene `unitPrice` stammt aus einem Lesevorgang ausserhalb. Mit
-  dem Preisimport aus M3d wird dieses Fenster real statt theoretisch.
-- **`isoUtc` in `bookings-read.ts` dupliziert `isoDate` aus `lib/dates.ts`**
-  mit anderer Logik, rohes UTC statt Zürich. Heute gleich, weil `bookedOn`
-  immer UTC-Mitternacht ist. Sobald ein `bookedOn` eine Uhrzeit trägt,
-  laufen die beiden still auseinander.
+- **Artikel und Preis wurden vor der Transaktion gelesen.** Jetzt
+  innerhalb, damit der Preisimport aus M3d nicht dazwischenkommt.
+- **`isoUtc` in `bookings-read.ts` duplizierte `isoDate`** mit anderer
+  Logik. Ersetzt durch `isoDate` aus `lib/dates.ts`.
+
+Getestet ist davon noch nichts: das gehört in `tests/server`, die Schicht
+gegen ein echtes Postgres, und die steht noch aus.
 
 ### Offen: Sollstunden und Zeitsaldo
 

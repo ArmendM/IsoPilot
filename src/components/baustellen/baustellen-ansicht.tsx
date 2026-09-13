@@ -299,6 +299,7 @@ function Karte({
             personen={personen}
             userId={userId}
             istAdmin={istAdmin}
+            offen={z.status === "OPEN"}
           />
         </div>
       )}

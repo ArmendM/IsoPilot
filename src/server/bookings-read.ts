@@ -1,6 +1,7 @@
 // Lesezugriffe auf Materialbuchungen.
 import { db } from "@/lib/db";
 import type { SessionUser } from "@/lib/session";
+import { isoDate } from "@/lib/dates";
 
 export type BuchungZeile = {
   id: string;
@@ -16,8 +17,6 @@ export type BuchungZeile = {
   userId: string;
   userName: string;
 };
-
-const isoUtc = (d: Date) => d.toISOString().slice(0, 10);
 
 /**
  * Materialbuchungen der Firma, neueste zuerst. Mitarbeitende sehen nur
@@ -52,7 +51,7 @@ export async function buchungen(user: SessionUser): Promise<BuchungZeile[]> {
       menge,
       einzelpreis,
       summe: menge * einzelpreis,
-      bookedOn: isoUtc(b.bookedOn),
+      bookedOn: isoDate(b.bookedOn),
       userId: b.userId,
       userName: b.user.name,
     };

@@ -35,15 +35,20 @@ export async function saveMaterialBooking(raw: unknown): Promise<ActionResult> {
     const bookedOn = new Date(`${i.bookedOn}T00:00:00Z`);
     await assertMonthOpen(user.companyId, bookedOn);
 
-    const site = await db.site.findUnique({ where: { id: i.siteId } });
-    if (!site || site.companyId !== user.companyId)
-      return { ok: false, error: "Baustelle nicht gefunden." };
-
-    const material = await db.material.findUnique({ where: { id: i.materialId } });
-    if (!material || material.companyId !== user.companyId || !material.isActive)
-      return { ok: false, error: "Artikel nicht gefunden." };
-
     await db.$transaction(async (tx) => {
+      // Artikel und Baustelle werden hier gelesen, nicht davor: der Preis
+      // wird gleich als eigener Wert eingefroren, und ein Preisimport
+      // darf nicht dazwischenkommen. Mit M3d wird das real.
+      const site = await tx.site.findUnique({ where: { id: i.siteId } });
+      if (!site || site.companyId !== user.companyId) throw new Error("SITE_NOT_FOUND");
+      // Auf eine pausierte oder abgeschlossene Baustelle wird nicht mehr
+      // gebucht, sonst ändern sich ihre Materialkosten nachträglich.
+      if (site.status !== "OPEN") throw new Error("SITE_CLOSED");
+
+      const material = await tx.material.findUnique({ where: { id: i.materialId } });
+      if (!material || material.companyId !== user.companyId || !material.isActive)
+        throw new Error("MATERIAL_NOT_FOUND");
+
       const booking = await tx.materialBooking.create({
         data: {
           siteId: site.id,
@@ -113,10 +118,14 @@ export async function deleteMaterialBooking(id: string): Promise<ActionResult> {
     await assertMonthOpen(user.companyId, before.bookedOn);
 
     await db.$transaction(async (tx) => {
-      const after = await tx.materialBooking.update({
-        where: { id },
+      // Die Bedingung gehört ins WHERE, nicht in den Code darüber: zwei
+      // gleichzeitige Klicks würden die Menge sonst zweimal zurückbuchen.
+      const treffer = await tx.materialBooking.updateMany({
+        where: { id, deletedAt: null },
         data: { deletedAt: new Date() },
       });
+      if (treffer.count === 0) throw new Error("BEREITS_ERLEDIGT");
+      const after = await tx.materialBooking.findUniqueOrThrow({ where: { id } });
 
       if (before.kind === "CATALOG" && before.materialId) {
         await tx.material.update({
@@ -164,6 +173,15 @@ function fehler(e: unknown): ActionResult {
       error: "Dieser Monat ist abgeschlossen und kann nicht mehr geändert werden.",
     };
   if (m === "FORBIDDEN") return { ok: false, error: "Dafür fehlt dir die Berechtigung." };
+  if (m === "SITE_CLOSED")
+    return {
+      ok: false,
+      error: "Diese Baustelle ist pausiert oder abgeschlossen. Zuerst wieder öffnen.",
+    };
+  if (m === "SITE_NOT_FOUND") return { ok: false, error: "Baustelle nicht gefunden." };
+  if (m === "MATERIAL_NOT_FOUND") return { ok: false, error: "Artikel nicht gefunden." };
+  if (m === "BEREITS_ERLEDIGT")
+    return { ok: false, error: "Diese Buchung wurde bereits rückgängig gemacht." };
   console.error(e);
   return { ok: false, error: "Speichern fehlgeschlagen." };
 }
