@@ -15,6 +15,8 @@ export type Artikel = {
   preis: number;
   lager: number;
   mindestbestand: number;
+  fehlmenge: number;
+  bestellbedarf: number;
   fireClass: string | null;
   istAktiv: boolean;
   unterMindestbestand: boolean;
@@ -49,17 +51,36 @@ export function MaterialAnsicht({
 }) {
   const [neu, setNeu] = useState(false);
   const [kategorienOffen, setKategorienOffen] = useState(false);
-  const knapp = artikel.filter((a) => a.unterMindestbestand);
+  /* Was bestellt werden muss, damit die Baustellen gedeckt sind und der
+   * Mindestbestand wieder steht. */
+  const zuBestellen = artikel.filter((a) => a.bestellbedarf > 0);
 
   return (
     <div className="mt-6 space-y-6">
-      {knapp.length > 0 && (
-        <p className="rounded-md border border-amber-400 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200">
-          {knapp.length === 1
-            ? "Ein Artikel liegt unter dem Mindestbestand: "
-            : `${knapp.length} Artikel liegen unter dem Mindestbestand: `}
-          {knapp.map((a) => a.name).join(", ")}
-        </p>
+      {zuBestellen.length > 0 && (
+        <div className="rounded-md border border-amber-400 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200">
+          <p className="font-medium">
+            {zuBestellen.length === 1
+              ? "Ein Artikel muss bestellt werden"
+              : `${zuBestellen.length} Artikel müssen bestellt werden`}
+          </p>
+          <ul className="mt-1 space-y-0.5">
+            {zuBestellen.map((a) => (
+              <li key={a.id} className="tabular-nums">
+                {a.name}: <strong>{menge(a.bestellbedarf)} {EINHEIT[a.unit]}</strong>
+                {a.fehlmenge > 0 && (
+                  <span className="text-amber-800/80 dark:text-amber-200/70">
+                    {" "}
+                    ({menge(a.fehlmenge)} auf Baustellen gebucht und nicht gedeckt
+                    {a.mindestbestand > a.lager &&
+                      `, ${menge(a.mindestbestand - a.lager)} bis zum Mindestbestand`}
+                    )
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
 
       {istAdmin && (
@@ -165,6 +186,11 @@ function ArtikelKarte({
         <span className="tabular-nums">
           Lager {menge(a.lager)} {EINHEIT[a.unit]}
         </span>
+        {a.fehlmenge > 0 && (
+          <span className="tabular-nums font-medium text-amber-800 dark:text-amber-300">
+            Fehlmenge {menge(a.fehlmenge)} {EINHEIT[a.unit]}
+          </span>
+        )}
         {a.mindestbestand > 0 && (
           <span
             className={[
@@ -248,6 +274,7 @@ function ArtikelFormular({
     unit: artikel?.unit ?? ("M2" as Artikel["unit"]),
     preis: artikel?.preis ?? 0,
     lager: artikel?.lager ?? 0,
+    fehlmenge: artikel?.fehlmenge ?? 0,
     mindestbestand: artikel?.mindestbestand ?? 0,
     fireClass: artikel?.fireClass ?? "",
   });
@@ -270,6 +297,7 @@ function ArtikelFormular({
             unit: f.unit,
             preis: Number(f.preis) || 0,
             lager: Number(f.lager) || 0,
+            fehlmenge: Number(f.fehlmenge) || 0,
             mindestbestand: Number(f.mindestbestand) || 0,
             fireClass: f.fireClass.trim() || null,
           });
@@ -368,6 +396,21 @@ function ArtikelFormular({
             step={1}
             wert={f.lager}
             onWert={(n) => setF({ ...f, lager: n })}
+            className={feld}
+          />
+        </label>
+
+        {/* Wird durch Buchungen gefüllt, die das Lager nicht decken konnte.
+            Von Hand auf 0 setzen, sobald die Ware geliefert und der
+            Lagerbestand gezählt ist. Ein eigener Wareneingang würde das
+            später selbst erledigen. */}
+        <label className="space-y-1">
+          <span className={bez}>Fehlmenge, offen zu bestellen</span>
+          <ZahlFeld
+            min={0}
+            step={1}
+            wert={f.fehlmenge}
+            onWert={(n) => setF({ ...f, fehlmenge: n })}
             className={feld}
           />
         </label>

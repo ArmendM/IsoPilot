@@ -15,6 +15,7 @@ const Artikel = z.object({
   unit: z.enum(["M2", "LFM", "STK", "KG", "ROLLE"]),
   preis: z.number().min(0).max(1000000),
   lager: z.number().min(0).max(1000000),
+  fehlmenge: z.number().min(0).max(1000000),
   mindestbestand: z.number().min(0).max(1000000),
   fireClass: z.string().max(20).nullable(),
 });
@@ -53,6 +54,7 @@ export async function saveMaterial(raw: unknown): Promise<ActionResult> {
       unit: i.unit,
       price: i.preis,
       stock: i.lager,
+      shortfall: i.fehlmenge,
       minStock: i.mindestbestand,
       fireClass: i.fireClass?.trim() || null,
     };

@@ -6,8 +6,25 @@ import { db } from "@/lib/db";
 import { requireUser } from "@/lib/session";
 import { assertMonthOpen, assertOwnerOrAdmin, assertSameCompany } from "./guards";
 import { planeAenderung } from "@/lib/buchungsaenderung";
+import { type Deckung, gibZurueck, verbrauche } from "@/lib/lagerdeckung";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
+
+/* Der Lagerbestand geht nie ins Minus, gebucht wird trotzdem: wer auf der
+ * Baustelle Material verbaut hat, muss das erfassen können, auch wenn das
+ * Lager im System nicht nachgeführt war. Was nicht gedeckt ist, landet in
+ * `shortfall` und erscheint im Katalog als Bestellbedarf.
+ *
+ * Die Lagerbewegung hält die tatsächliche Bestandsänderung fest, nicht
+ * die gebuchte Menge. Sonst ginge die Summe der Bewegungen nicht mehr mit
+ * dem Bestand auf. Deckt das Lager gar nichts, entsteht folgerichtig auch
+ * keine Bewegung, nur die Fehlmenge wächst. */
+const deckungVon = (m: { stock: unknown; shortfall: unknown }): Deckung => ({
+  bestand: Number(m.stock),
+  fehlmenge: Number(m.shortfall),
+});
+
+const alsDaten = (d: Deckung) => ({ stock: d.bestand, shortfall: d.fehlmenge });
 
 const Input = z.object({
   siteId: z.string().min(1),
@@ -50,6 +67,9 @@ export async function saveMaterialBooking(raw: unknown): Promise<ActionResult> {
       if (!material || material.companyId !== user.companyId || !material.isActive)
         throw new Error("MATERIAL_NOT_FOUND");
 
+      const vorher = deckungVon(material);
+      const nachher = verbrauche(vorher, i.menge);
+
       const booking = await tx.materialBooking.create({
         data: {
           siteId: site.id,
@@ -63,20 +83,19 @@ export async function saveMaterialBooking(raw: unknown): Promise<ActionResult> {
         },
       });
 
-      await tx.material.update({
-        where: { id: material.id },
-        data: { stock: { decrement: i.menge } },
-      });
+      await tx.material.update({ where: { id: material.id }, data: alsDaten(nachher) });
 
-      await tx.stockMovement.create({
-        data: {
-          materialId: material.id,
-          userId: user.id,
-          delta: -i.menge,
-          reason: "BOOKING",
-          note: `Buchung auf ${site.name ?? site.street}`,
-        },
-      });
+      const abgang = nachher.bestand - vorher.bestand;
+      if (abgang !== 0)
+        await tx.stockMovement.create({
+          data: {
+            materialId: material.id,
+            userId: user.id,
+            delta: abgang,
+            reason: "BOOKING",
+            note: `Buchung auf ${site.name ?? site.street}`,
+          },
+        });
 
       await tx.auditLog.create({
         data: {
@@ -129,20 +148,23 @@ export async function deleteMaterialBooking(id: string): Promise<ActionResult> {
       const after = await tx.materialBooking.findUniqueOrThrow({ where: { id } });
 
       if (before.kind === "CATALOG" && before.materialId) {
-        await tx.material.update({
-          where: { id: before.materialId },
-          data: { stock: { increment: before.quantity } },
-        });
+        const m = await tx.material.findUniqueOrThrow({ where: { id: before.materialId } });
+        const vorher = deckungVon(m);
+        // Tilgt zuerst eine offene Fehlmenge, erst dann wächst der Bestand.
+        const nachher = gibZurueck(vorher, Number(before.quantity));
+        await tx.material.update({ where: { id: m.id }, data: alsDaten(nachher) });
 
-        await tx.stockMovement.create({
-          data: {
-            materialId: before.materialId,
-            userId: user.id,
-            delta: before.quantity,
-            reason: "RETURN",
-            note: "Buchung rückgängig gemacht",
-          },
-        });
+        const zugang = nachher.bestand - vorher.bestand;
+        if (zugang !== 0)
+          await tx.stockMovement.create({
+            data: {
+              materialId: m.id,
+              userId: user.id,
+              delta: zugang,
+              reason: "RETURN",
+              note: "Buchung rückgängig gemacht",
+            },
+          });
       }
 
       await tx.auditLog.create({
@@ -239,21 +261,25 @@ export async function updateMaterialBooking(raw: unknown): Promise<ActionResult>
       });
 
       for (const b of plan.bewegungen) {
-        await tx.material.update({
-          where: { id: b.materialId },
-          data: { stock: { increment: b.delta } },
-        });
-        await tx.stockMovement.create({
-          data: {
-            materialId: b.materialId,
-            userId: user.id,
-            delta: b.delta,
-            reason: "BOOKING_CHANGE",
-            note: plan.artikelGewechselt
-              ? `Buchung auf ${before.site.name ?? before.site.street}, Artikel gewechselt`
-              : `Buchung auf ${before.site.name ?? before.site.street}, Menge berichtigt`,
-          },
-        });
+        const m = await tx.material.findUniqueOrThrow({ where: { id: b.materialId } });
+        const vorher = deckungVon(m);
+        const nachher =
+          b.delta > 0 ? gibZurueck(vorher, b.delta) : verbrauche(vorher, -b.delta);
+        await tx.material.update({ where: { id: m.id }, data: alsDaten(nachher) });
+
+        const echt = nachher.bestand - vorher.bestand;
+        if (echt !== 0)
+          await tx.stockMovement.create({
+            data: {
+              materialId: m.id,
+              userId: user.id,
+              delta: echt,
+              reason: "BOOKING_CHANGE",
+              note: plan.artikelGewechselt
+                ? `Buchung auf ${before.site.name ?? before.site.street}, Artikel gewechselt`
+                : `Buchung auf ${before.site.name ?? before.site.street}, Menge berichtigt`,
+            },
+          });
       }
 
       await tx.auditLog.create({
