@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
+import { darfLager } from "@/lib/berechtigung";
 import { katalog, kategorien } from "@/server/materials-read";
 import { MaterialAnsicht } from "@/components/material/material-ansicht";
 import { MaterialImport } from "@/components/material/material-import";
@@ -16,13 +17,17 @@ export default async function MaterialPage({ searchParams }: PageProps<"/materia
   const kategorieId = typeof q.kategorie === "string" ? q.kategorie : "";
   const mitStillgelegten = q.alle === "1";
 
+  const istAdmin = user.role === "ADMIN";
+  /* Den Katalog pflegt und importiert weiterhin nur ein Vorgesetzter.
+   * Wareneingang und Lagerverlauf hängen dagegen an der
+   * Lagerberechtigung: eine Lieferung nimmt an, wer gerade da ist. */
+  const istLager = darfLager(user);
+
   const [liste, kats, eingangsArtikel] = await Promise.all([
     katalog(user, { suche, kategorieId: kategorieId || undefined, mitStillgelegten }),
     kategorien(user),
-    artikelFuerEingang(user),
+    istLager ? artikelFuerEingang(user) : [],
   ]);
-
-  const istAdmin = user.role === "ADMIN";
 
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 p-6">
@@ -36,7 +41,7 @@ export default async function MaterialPage({ searchParams }: PageProps<"/materia
         <Link href="/zeiten" className="text-black/60 underline dark:text-white/60">
           Tagesansicht
         </Link>
-        {user.role === "ADMIN" && (
+        {istLager && (
           <Link href="/lager" className="text-black/60 underline dark:text-white/60">
             Lagerverlauf
           </Link>
@@ -104,7 +109,7 @@ export default async function MaterialPage({ searchParams }: PageProps<"/materia
 
       <MaterialAnsicht artikel={liste} kategorien={kats} istAdmin={istAdmin} />
 
-      {istAdmin && (
+      {istLager && (
         <section className="mt-8 border-t border-black/10 pt-6 dark:border-white/15">
           <h2 className="text-lg font-semibold tracking-tight">Wareneingang</h2>
           <div className="mt-3">

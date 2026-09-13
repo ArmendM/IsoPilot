@@ -4,6 +4,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/session";
+import { darfLager } from "@/lib/berechtigung";
 import { gibZurueck } from "@/lib/lagerdeckung";
 
 /* Wareneingang. Bisher wurde ein Bestand über "Bearbeiten" am Artikel
@@ -24,10 +25,13 @@ const Eingang = z.object({
 
 export async function bucheWareneingang(raw: unknown): Promise<ActionResult> {
   const user = await requireUser();
-  // Vorerst nur Vorgesetzte. Eine eigene Lagerberechtigung, die sich einer
-  // Person zuweisen lässt, kommt als nächstes Stück.
-  if (user.role !== "ADMIN")
-    return { ok: false, error: "Einen Wareneingang erfasst ein Vorgesetzter." };
+  // Vorgesetzte, und wer die Lagerberechtigung hat: eine Lieferung soll
+  // annehmen können, wer gerade da ist.
+  if (!darfLager(user))
+    return {
+      ok: false,
+      error: "Dafür braucht es die Lagerberechtigung. Ein Vorgesetzter gibt sie unter „Personen“ frei.",
+    };
 
   const parsed = Eingang.safeParse(raw);
   if (!parsed.success) return { ok: false, error: "Artikel und Menge werden gebraucht." };

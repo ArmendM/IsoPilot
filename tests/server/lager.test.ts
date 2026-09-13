@@ -102,6 +102,18 @@ describe("Berechtigung beim Wareneingang", () => {
     expect(await db.stockMovement.count()).toBe(0);
   });
 
+  /* Der Kern der Lagerberechtigung: annehmen kann die Lieferung, wer
+   * gerade da ist, ohne dafür Vorgesetzter zu werden. */
+  it("lässt eine Person mit Lagerberechtigung einen Wareneingang erfassen", async () => {
+    const { c, material } = await aufbau();
+    const islom = await person(c.id, "Islom", "EMPLOYEE", true);
+    sitzung.user = islom.alsSitzung();
+
+    expect(await bucheWareneingang({ materialId: material.id, menge: 50, note: "LS 12" })).toEqual({ ok: true });
+    expect(await lager(material.id)).toBe(150);
+    expect((await db.stockMovement.findFirstOrThrow()).userId).toBe(islom.id);
+  });
+
   it("greift nicht auf einen Artikel einer anderen Firma", async () => {
     await aufbau();
     const fremd = await firma("Flüma Klima AG");

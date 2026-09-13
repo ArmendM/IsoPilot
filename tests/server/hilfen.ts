@@ -15,14 +15,18 @@ export async function person(
   companyId: string,
   name: string,
   role: "EMPLOYEE" | "ADMIN" = "EMPLOYEE",
+  canManageStock = false,
 ) {
-  const u = await db.user.create({ data: { companyId, name, role, isActive: true } });
+  const u = await db.user.create({
+    data: { companyId, name, role, isActive: true, canManageStock },
+  });
   return { ...u, alsSitzung: (): SessionUser => ({
     id: u.id,
     companyId: u.companyId,
     name: u.name,
     role: u.role as "EMPLOYEE" | "ADMIN",
     vacationDays: u.vacationDays,
+    canManageStock: u.canManageStock,
   }) };
 }
 

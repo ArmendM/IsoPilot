@@ -9,6 +9,8 @@ export type SessionUser = {
   name: string;
   role: "EMPLOYEE" | "ADMIN";
   vacationDays: number;
+  /** Lagerberechtigung neben der Rolle, siehe lib/berechtigung.ts. */
+  canManageStock: boolean;
 };
 
 export const SESSION_HOURS = 12;
@@ -33,6 +35,7 @@ export const getSession = cache(async (): Promise<SessionUser | null> => {
     name: s.user.name,
     role: s.user.role,
     vacationDays: s.user.vacationDays,
+    canManageStock: s.user.canManageStock,
   };
 });
 
