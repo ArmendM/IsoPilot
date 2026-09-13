@@ -159,6 +159,12 @@ Zwei getrennte Bereiche, nicht vermischen:
 - **Zeitzonen:** immer `date-fns-tz` mit `Europe/Zurich`, nie blankes `new Date()`
 - **Geld:** `Decimal`, niemals `Float`
 - **Schreiben und Audit-Log** immer in derselben Transaktion
+- **Datumsfelder:** immer `DatumFeld` aus `components/ui/datum-feld`, nie
+  ein rohes `<input type="date">`. Der Kalender öffnet beim Klick ins Feld
+  und nicht erst über das kleine Symbol am Rand, das Tippen bleibt
+  unverändert möglich. Gilt auch für Monatsfelder, dort mit `typ="month"`.
+  Auf der Baustelle wird ein Datum eher angetippt als eingetippt, im Büro
+  eher eingetippt. Beides muss gehen.
 - **Soft Delete** für Zeiteinträge, Absenzen und Buchungen (`deletedAt`)
 - `components/` kennt kein Prisma, `server/` kennt kein React
 - Keine Selbstregistrierung, keine impliziten Rechte

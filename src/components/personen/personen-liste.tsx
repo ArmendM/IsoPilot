@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { setZugang, setStammdaten } from "@/server/users";
+import { DatumFeld } from "@/components/ui/datum-feld";
 
 export type Zeile = {
   id: string;
@@ -228,8 +229,7 @@ function Karte({ z }: { z: Zeile }) {
             </label>
             <label className="space-y-1">
               <span className={bez}>Eintritt</span>
-              <input
-                type="date"
+              <DatumFeld
                 value={f.employedFrom}
                 onChange={(e) => setF({ ...f, employedFrom: e.target.value })}
                 className={feld}
@@ -237,8 +237,7 @@ function Karte({ z }: { z: Zeile }) {
             </label>
             <label className="space-y-1">
               <span className={bez}>Austritt</span>
-              <input
-                type="date"
+              <DatumFeld
                 value={f.employedUntil}
                 onChange={(e) => setF({ ...f, employedUntil: e.target.value })}
                 className={feld}

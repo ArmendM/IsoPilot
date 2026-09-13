@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DatumFeld } from "@/components/ui/datum-feld";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { formatHours, monthKey, todayISO } from "@/lib/dates";
@@ -56,8 +57,8 @@ export default async function AbschlussPage({ searchParams }: PageProps<"/abschl
           <span className="block text-xs font-medium text-black/60 dark:text-white/60">
             Monat
           </span>
-          <input
-            type="month"
+          <DatumFeld
+            typ="month"
             name="monat"
             defaultValue={monat}
             className="h-10 rounded-md border border-black/15 bg-transparent px-3 text-sm dark:border-white/20"
