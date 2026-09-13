@@ -8,6 +8,8 @@ dist/
 .env
 .env.*
 !.env.example
+# Zeigt, wie .env.test auszusehen hat. Die echte .env.test bleibt lokal.
+!.env.test.example
 secrets/
 uploads/
 backup/

@@ -8,13 +8,14 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "test:watch": "vitest",
+    "test": "vitest run --project einheit",
+    "test:watch": "vitest --project einheit",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
     "db:seed": "prisma db seed",
     "db:generate": "prisma generate",
-    "postdb:migrate": "prisma generate"
+    "postdb:migrate": "prisma generate",
+    "test:server": "vitest run --project server"
   },
   "dependencies": {
     "@node-rs/argon2": "^2.2.1",
