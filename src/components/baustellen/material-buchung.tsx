@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { saveMaterialBooking, deleteMaterialBooking } from "@/server/bookings";
 import { ZahlFeld, DatumFeld } from "@/components/ui/eingabefelder";
 import { todayISO } from "@/lib/dates";
+import { ALLE_KATEGORIEN, kategorienAus, nachKategorie } from "@/lib/materialwahl";
 
 export type Buchung = {
   id: string;
@@ -27,6 +28,8 @@ export type ArtikelWahl = {
   unit: "M2" | "LFM" | "STK" | "KG" | "ROLLE";
   preis: number;
   lager: number;
+  kategorieId: string | null;
+  kategorie: string | null;
 };
 
 type Person = { id: string; name: string };
@@ -69,6 +72,14 @@ export function MaterialBuchung({
   const router = useRouter();
   const [laeuft, start] = useTransition();
   const [fehler, setFehler] = useState("");
+
+  /* Zuerst die Kategorie, dann der Artikel: der ganze Katalog in einem
+   * Dropdown ist auf dem Telefon nicht mehr zu bedienen. Vorbelegt ist
+   * die erste Kategorie, nicht "Alle", sonst ist nichts gewonnen. */
+  const kategorien = kategorienAus(artikel);
+  const [kategorieId, setKategorieId] = useState(kategorien[0]?.id ?? ALLE_KATEGORIEN);
+  const sichtbar = nachKategorie(artikel, kategorieId);
+
   const [f, setF] = useState({
     materialId: artikel[0]?.id ?? "",
     userId,
@@ -76,7 +87,14 @@ export function MaterialBuchung({
     bookedOn: todayISO(),
   });
 
-  const gewaehlt = artikel.find((a) => a.id === f.materialId);
+  /* Nach einem Kategoriewechsel zeigt f.materialId noch auf einen Artikel
+   * der alten Kategorie. Sichtbar ist dann der erste der neuen, und genau
+   * der wird gebucht: sonst bucht das Formular etwas anderes, als im
+   * Dropdown steht. */
+  const materialId = sichtbar.some((a) => a.id === f.materialId)
+    ? f.materialId
+    : (sichtbar[0]?.id ?? "");
+  const gewaehlt = sichtbar.find((a) => a.id === materialId);
   const summe = gewaehlt ? gewaehlt.preis * f.menge : 0;
 
   function loeschen(id: string) {
@@ -148,13 +166,13 @@ export function MaterialBuchung({
           className="flex flex-wrap items-end gap-3"
           onSubmit={(e) => {
             e.preventDefault();
-            if (!f.materialId) return;
+            if (!materialId) return;
             setFehler("");
             start(async () => {
               const r = await saveMaterialBooking({
                 siteId,
                 userId: f.userId,
-                materialId: f.materialId,
+                materialId,
                 menge: Number(f.menge) || 0,
                 bookedOn: f.bookedOn,
               });
@@ -167,14 +185,32 @@ export function MaterialBuchung({
             });
           }}
         >
+          {kategorien.length > 1 && (
+            <label className="space-y-1">
+              <span className={bez}>Kategorie</span>
+              <select
+                value={kategorieId}
+                onChange={(e) => setKategorieId(e.target.value)}
+                className={feld}
+              >
+                {kategorien.map((k) => (
+                  <option key={k.id} value={k.id}>
+                    {k.name}
+                  </option>
+                ))}
+                <option value={ALLE_KATEGORIEN}>Alle Kategorien</option>
+              </select>
+            </label>
+          )}
+
           <label className="space-y-1">
             <span className={bez}>Artikel</span>
             <select
-              value={f.materialId}
+              value={materialId}
               onChange={(e) => setF({ ...f, materialId: e.target.value })}
               className={feld}
             >
-              {artikel.map((a) => (
+              {sichtbar.map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.sku ? `${a.sku} · ` : ""}
                   {a.name}
@@ -229,7 +265,7 @@ export function MaterialBuchung({
 
           <button
             type="submit"
-            disabled={laeuft || f.menge <= 0}
+            disabled={laeuft || f.menge <= 0 || !materialId}
             className="h-10 rounded-md bg-foreground px-4 text-sm font-medium text-background disabled:opacity-50"
           >
             {laeuft ? "Bucht" : "Buchen"}
