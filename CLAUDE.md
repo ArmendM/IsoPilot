@@ -331,6 +331,13 @@ Fachliche Entscheide, die niemand aus dem Code ableiten kann:
 - Preisunterschiede Brandschutz zwischen der Liste von 2018 und 2022.
   Aktuell gelten die Werte von 2022. Kundenspezifische Preislisten wären
   ein späterer Ausbauschritt.
+- **Toter Code in `src/server/guards.ts` zu prüfen und wohl zu entfernen:**
+  `NEXT_STATUS`, `needsReason`, `assertTransition`, `canBookTime`,
+  `canBookMaterial` beschreiben einen Baustellen-Workflow mit Status wie
+  OFFERTE, AUFTRAG, VERRECHNET. Das aktuelle `SiteStatus`-Enum kennt aber
+  nur OPEN, PAUSED, DONE, und eine Suche zeigte keine Verwendung dieser
+  Exporte ausserhalb der Datei selbst. Vor dem Löschen mit frischem
+  `grep` bestätigen, dass wirklich nichts mehr darauf zugreift.
 
 ## Was nicht gebaut wird
 
