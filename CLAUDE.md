@@ -161,7 +161,14 @@ Reihenfolge:
 - Zwei Listen: Synthetischer Kautschuk (6, 9, 13, 19, 25, 32 mm) und
   PIR-Hartschaum mit Hart-PVC (20, 30, 40, 50, 60, 80 mm)
 - Preis je Nennweite DN 10 bis DN 300 und Position
-- **Objektrabatt standardmässig 0 %**, pro Baustelle und pro Erfassung anpassbar
+- **Objektrabatt standardmässig 0 %**, pro Baustelle und pro Erfassung
+  anpassbar. Gilt auch im Schema: `VsiList.defaultDiscount` steht auf 0.
+  Die dort früher stehenden 50 waren eine Altlast aus einer alten Liste
+  und sind entfernt.
+- **Gilt immer die neuste Fassung einer Liste.** Die Listen tragen ein
+  `validFrom`, und gelesen wird die jüngste, deren Datum nicht in der
+  Zukunft liegt. Für Brandschutz heisst das: die Werte von 2022, nicht die
+  von 2018.
 - VSI-Buchungen berühren den Lagerbestand nicht
 - Offen: Bei 80 mm PIR sind nur neun Werte vorhanden, aktuell rechtsbündig
   ab DN 50 zugeordnet. Gegen das Original prüfen.
@@ -625,10 +632,8 @@ Fachliche Entscheide, die niemand aus dem Code ableiten kann:
   kostenloses Nutzungsrecht
 - SPF, DKIM und DMARC für isoteam-suljejmani.ch setzen, bevor Rechnungen
   versendet werden
-- Objektrabatt PIR: Titel nennt 50 %, handschriftlich steht 40 %. Klären.
-- Preisunterschiede Brandschutz zwischen der Liste von 2018 und 2022.
-  Aktuell gelten die Werte von 2022. Kundenspezifische Preislisten wären
-  ein späterer Ausbauschritt.
+- Kundenspezifische Preislisten wären ein späterer Ausbauschritt. Heute
+  gilt je Liste eine Fassung für alle Auftraggeber.
 
 ## Was nicht gebaut wird
 
