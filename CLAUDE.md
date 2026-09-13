@@ -227,8 +227,8 @@ eine reine Rechenregel auf eine Datenbank:
 
 | Ordner | Prüft | Braucht | Stand |
 |---|---|---|---|
-| `tests/einheit` | `lib/dates.ts`, Statusmodell, später Import-Abgleich und Ausmassrechnung | nichts als Node, läuft in Millisekunden | **da** |
-| `tests/server` | Transaktion, Lagerbewegung, Berechtigung, Monatsabschluss, Soft Delete | echtes Postgres mit eigener Testdatenbank | offen |
+| `tests/einheit` | `lib/dates.ts`, Statusmodell, später Import-Abgleich und Ausmassrechnung | nichts als Node, läuft in Millisekunden | **da**, `npm test` |
+| `tests/server` | Transaktion, Lagerbewegung, Berechtigung, Monatsabschluss, Soft Delete | echtes Postgres, eigene Datenbank | **da**, `npm run test:server` |
 | `tests/oberflaeche` | Formulare, Anzeige, Wechsel zwischen Datensätzen | Browser und laufende App, Playwright | offen |
 
 Die dritte Art ist die teuerste und zugleich die, die bisher die echten
@@ -236,6 +236,28 @@ Fehler gefunden hat: ein Zahlenfeld zeigte `0500` statt 500, und der
 Auftraggeber kippte beim Bearbeiten lautlos auf eine andere Firma. Beides
 war im Datenpfad nicht sichtbar. Sie ersetzt die ersten beiden nicht, und
 umgekehrt genauso wenig.
+
+`tests/server` braucht einmalig eine eigene Datenbank. Sie wird zwischen
+den Tests **vollständig geleert**, deshalb steht in `tests/server/env.ts`
+eine Bremse: enthält der Datenbankname nicht "test", bricht der Lauf ab,
+bevor ein `TRUNCATE` läuft. Einmal einrichten:
+
+```bash
+createdb -O isopilot isopilot_test
+cp .env.test.example .env.test
+DATABASE_URL="postgresql://isopilot:devpassword@localhost:5432/isopilot_test?schema=public" \
+  npx prisma migrate deploy
+```
+
+`dotenv` muss dort **vor** dem Import von `@/lib/db` laufen, sonst baut
+Prisma den Client schon mit der falschen Verbindung. Genau deshalb ist
+`tests/server/env.ts` eine eigene Datei und der Aufruf steht nicht im
+Rumpf von `setup.ts`.
+
+Die Server Actions ziehen `requireUser` aus `@/lib/session`, das über
+`cookies()` geht und ausserhalb eines Requests nicht funktioniert. Die
+Tests ersetzen deshalb `@/lib/session` und `next/cache` per `vi.mock`
+und setzen die angemeldete Person über `tests/server/hilfen.ts`.
 
 **Die Zeitzone wird in `vitest.config.mts` bewusst nicht festgenagelt.**
 Produktion läuft laut Dockerfile auf `Europe/Zurich`, die CI auf UTC. Wer
@@ -291,8 +313,9 @@ npm run db:studio    # Daten ansehen
 npm run db:seed      # Stammdaten
 npm run typecheck    # tsc --noEmit
 npm run lint
-npm test             # Vitest einmal, tests/einheit
-npm run test:watch   # Vitest beim Entwickeln
+npm test             # reine Logik, tests/einheit, ohne Datenbank
+npm run test:watch   # dasselbe beim Entwickeln
+npm run test:server  # Server Actions gegen isopilot_test
 TZ=UTC npm test      # gegenprüfen wie in der CI
 ```
 
@@ -434,8 +457,9 @@ Aus einer späteren Durchsicht, alle vier in einem Zug behoben:
 - **`isoUtc` in `bookings-read.ts` duplizierte `isoDate`** mit anderer
   Logik. Ersetzt durch `isoDate` aus `lib/dates.ts`.
 
-Getestet ist davon noch nichts: das gehört in `tests/server`, die Schicht
-gegen ein echtes Postgres, und die steht noch aus.
+Alle vier sind inzwischen in `tests/server/bookings.test.ts` abgedeckt.
+Gegengeprüft, indem jede Behebung einzeln zurückgenommen wurde: ohne die
+Statusprüfung fallen zwei Tests, ohne die `WHERE`-Bedingung einer.
 
 ### Offen: Sollstunden und Zeitsaldo
 
