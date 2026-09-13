@@ -235,13 +235,6 @@ Stand 13.09.2026. Dieser Abschnitt ist die Antwort auf "wo stehen wir und
 was kommt als Nächstes". Er wird bei jedem abgeschlossenen Stück
 nachgeführt.
 
-**Klicktest steht noch aus:** Der Code für M3c ist geschrieben, typecheck
-und lint sind sauber, und der Schreibpfad wurde per Browser-Automation
-gegen die lokale Datenbank durchgespielt (Buchen, Lagerbestand prüfen,
-Rückgängig machen, Lagerbestand wieder prüfen — alles korrekt). Was noch
-fehlt: Armends eigener Klicktest über die echte Anmeldung mit den
-richtigen Rollen.
-
 **M1 Fundament — fertig**
 Next.js 16, Prisma 7, Schema, Anmeldung über Infomaniak mit Warteraum,
 Sitzung und Rollenprüfung, Audit-Log, Benutzerverwaltung unter
@@ -258,8 +251,8 @@ Rückfall, `/abschluss` Monatsabschluss.
 
 - M3a `/baustellen` mit Soll-Ist, Status und Auftraggeber: **fertig**
 - M3b `/material` Katalog mit Lager, Mindestbestand, Kategorien: **fertig**
-- M3c Materialbuchung auf eine Baustelle: **Code steht, Klicktest offen**
-- M3d Excel-Import in den Katalog: offen
+- M3c Materialbuchung auf eine Baustelle: **fertig**
+- M3d Excel-Import in den Katalog: **als Nächstes**
 - M3e VSI-Tarifmatrix: offen
 
 **M4 Auswertung**
@@ -270,9 +263,9 @@ Firmeneinstellungen mit Logo-Upload, Aufbewahrungsjob
 Seed mit echten Stammdaten, ein Monat Parallelbetrieb neben dem alten
 Vorgehen, Backup-Wiederherstellung geübt, Schulung
 
-### M3c, Materialbuchung
+### M3c, Materialbuchung (fertig, PR #20)
 
-Material aus dem Katalog auf eine Baustelle buchen. Das Schema steht
+Material aus dem Katalog auf eine Baustelle buchen. Das Schema stand
 bereits vollständig, es brauchte **keine Migration**:
 
 - `MaterialBooking` hat `unitPrice` mit dem Kommentar "Preis zum
@@ -297,6 +290,26 @@ für alle, nicht nur Vorgesetzte. Mitarbeitende sehen und buchen nur eigene
 Buchungen, Vorgesetzte alle und können auch für eine andere Person buchen,
 wie bei der Zeiterfassung. Absichtlich kein Hardstop bei negativem Lager,
 nur der bestehende Mindestbestand-Hinweis im Materialkatalog.
+
+### Als Nächstes: M3d, Excel-Import in den Katalog
+
+Eine Excel-Liste einlesen und den Materialkatalog aktualisieren, ohne
+Duplikate anzulegen. Die Regel steht schon oben unter "Material":
+
+- Abgleich in dieser Reihenfolge: erst über die Artikelnummer (`sku`),
+  dann über Kategorie plus Name, dann über den Namen allein.
+- **Nie ein neues Material anlegen, wenn eine der drei Regeln trifft,
+  nur aktualisieren.** Nur wenn keine trifft, entsteht ein neuer Artikel.
+- Betrifft vor allem `price`, ggf. `unit` und `fireClass`. `stock` und
+  `minStock` gehören nicht in den Import, die sind Handarbeit im Betrieb.
+- Noch offen und zu klären, bevor mit dem Code begonnen wird: welche
+  Bibliothek liest die `.xlsx`-Datei ein (im Projekt bisher keine
+  vorhanden), wie die Datei hochgeladen wird (Formular mit
+  Datei-Upload gibt es in IsoPilot bisher nicht), und ob ein
+  Vorschau-Schritt vor dem eigentlichen Import gezeigt wird, damit ein
+  falscher Spaltenaufbau nicht den ganzen Katalog verändert.
+- Wie bei M3c: Schreiben und Audit-Log in einer Transaktion, nur ein
+  Vorgesetzter darf importieren (wie bei `saveMaterial`).
 
 ## Offene Punkte
 
