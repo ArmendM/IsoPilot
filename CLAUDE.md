@@ -161,7 +161,14 @@ Reihenfolge:
 - Zwei Listen: Synthetischer Kautschuk (6, 9, 13, 19, 25, 32 mm) und
   PIR-Hartschaum mit Hart-PVC (20, 30, 40, 50, 60, 80 mm)
 - Preis je Nennweite DN 10 bis DN 300 und Position
-- **Objektrabatt standardmässig 0 %**, pro Baustelle und pro Erfassung anpassbar
+- **Objektrabatt standardmässig 0 %**, pro Baustelle und pro Erfassung
+  anpassbar. Gilt auch im Schema: `VsiList.defaultDiscount` steht auf 0.
+  Die dort früher stehenden 50 waren eine Altlast aus einer alten Liste
+  und sind entfernt.
+- **Gilt immer die neuste Fassung einer Liste.** Die Listen tragen ein
+  `validFrom`, und gelesen wird die jüngste, deren Datum nicht in der
+  Zukunft liegt. Für Brandschutz heisst das: die Werte von 2022, nicht die
+  von 2018.
 - VSI-Buchungen berühren den Lagerbestand nicht
 - Offen: Bei 80 mm PIR sind nur neun Werte vorhanden, aktuell rechtsbündig
   ab DN 50 zugeordnet. Gegen das Original prüfen.
@@ -381,8 +388,8 @@ Rückfall, `/abschluss` Monatsabschluss.
 - M3a `/baustellen` mit Soll-Ist, Status und Auftraggeber: **fertig**
 - M3b `/material` Katalog mit Lager, Mindestbestand, Kategorien: **fertig**
 - M3c Materialbuchung auf eine Baustelle: **fertig**
-- M3d Excel-Import in den Katalog: **als Nächstes**
-- M3e VSI-Tarifmatrix: offen
+- M3d Excel-Import in den Katalog: **fertig**
+- M3e VSI-Tarifmatrix: **als Nächstes**
 - M3f Materialbuchung verbessern: Kategoriefilter **fertig**, Ändern offen
 
 **M4 Auswertung**
@@ -566,25 +573,48 @@ sind:
 Wie bei M3c: Schreiben und Audit-Log in einer Transaktion, `assertMonthOpen`,
 und Mitarbeitende ändern nur eigene Buchungen.
 
-### Als Nächstes: M3d, Excel-Import in den Katalog
+### M3d, Excel-Import in den Katalog (fertig)
 
-Eine Excel-Liste einlesen und den Materialkatalog aktualisieren, ohne
-Duplikate anzulegen. Die Regel steht schon oben unter "Material":
+Eine `.xlsx`-Liste einlesen und den Katalog nachführen, ohne Duplikate.
 
-- Abgleich in dieser Reihenfolge: erst über die Artikelnummer (`sku`),
-  dann über Kategorie plus Name, dann über den Namen allein.
-- **Nie ein neues Material anlegen, wenn eine der drei Regeln trifft,
-  nur aktualisieren.** Nur wenn keine trifft, entsteht ein neuer Artikel.
-- Betrifft vor allem `price`, ggf. `unit` und `fireClass`. `stock` und
-  `minStock` gehören nicht in den Import, die sind Handarbeit im Betrieb.
-- Noch offen und zu klären, bevor mit dem Code begonnen wird: welche
-  Bibliothek liest die `.xlsx`-Datei ein (im Projekt bisher keine
-  vorhanden), wie die Datei hochgeladen wird (Formular mit
-  Datei-Upload gibt es in IsoPilot bisher nicht), und ob ein
-  Vorschau-Schritt vor dem eigentlichen Import gezeigt wird, damit ein
-  falscher Spaltenaufbau nicht den ganzen Katalog verändert.
-- Wie bei M3c: Schreiben und Audit-Log in einer Transaktion, nur ein
-  Vorgesetzter darf importieren (wie bei `saveMaterial`).
+**Entscheide, die getroffen wurden**
+
+- **`exceljs`** liest die Datei. `xlsx` (SheetJS) wird auf npm seit Jahren
+  nicht gepflegt.
+- **Upload über eine Server Action**, die Datei wird nur im Speicher
+  gelesen und nie auf die Platte geschrieben. `next.config.ts` hebt
+  `serverActions.bodySizeLimit` auf 4 MB: die Vorgabe von 1 MB reicht für
+  eine Materialliste, eine exportierte Mappe mit Formatierung liegt aber
+  schnell darüber und die Fehlermeldung wäre nichtssagend.
+- **Der Vorschau-Schritt ist verbindlich.** Erst zeigen, was geschähe,
+  dann ein zweiter Klick. Die Datei wird dabei **zweimal** hochgeladen und
+  auf dem Server beide Male neu gelesen und abgeglichen. Das ist ein
+  zweites Hochladen wert: käme der Abgleich aus dem Browser zurück, liesse
+  sich über das Formular jeder beliebige Artikel überschreiben. Die
+  Vorschau ist damit Auskunft, nie Vorgabe.
+
+**Was der Import anfasst:** `price`, `unit` und `fireClass`, und auch die
+nur, wenn in der Datei etwas steht. `stock` und `minStock` nie, die sind
+Handarbeit im Betrieb. Ein leeres Preisfeld heisst "unverändert" und
+nicht "null", sonst setzte eine halb gefüllte Spalte den halben Katalog
+auf null.
+
+**Abgleich** in `src/lib/materialimport.ts`, ohne Prisma und ohne React,
+geprüft in `tests/einheit/materialimport.test.ts`. Drei Dinge, die dort
+festgenagelt sind und beim Bauen erst durch die Tests auffielen:
+
+- **Kategorie plus Name greift nur, wenn in der Datei wirklich eine
+  Kategorie steht.** Sonst ist die Regel eine versteckte Sonderregel für
+  Artikel ohne Kategorie und erwischt unter zwei gleichnamigen lautlos
+  den einen. Fehlt die Kategorie, läuft die Zeile über den Namen und
+  fällt dort als uneindeutig auf.
+- **Uneindeutige Zeilen werden übersprungen, nie geraten.** Passen zwei
+  Artikel auf eine Zeile, bekäme sonst der falsche stillschweigend einen
+  neuen Preis, und niemand würde es merken.
+- **Bei der Spaltenerkennung zählt ein Präfix nur, wenn danach kein
+  Buchstabe folgt.** Sonst schnappt sich das Kürzel "EI" für Brandschutz
+  die Spalte "Einheit". "Preis CHF exkl. MwSt." trifft weiterhin, dort
+  folgt ein Leerzeichen.
 
 ## Offene Punkte
 
@@ -602,10 +632,8 @@ Fachliche Entscheide, die niemand aus dem Code ableiten kann:
   kostenloses Nutzungsrecht
 - SPF, DKIM und DMARC für isoteam-suljejmani.ch setzen, bevor Rechnungen
   versendet werden
-- Objektrabatt PIR: Titel nennt 50 %, handschriftlich steht 40 %. Klären.
-- Preisunterschiede Brandschutz zwischen der Liste von 2018 und 2022.
-  Aktuell gelten die Werte von 2022. Kundenspezifische Preislisten wären
-  ein späterer Ausbauschritt.
+- Kundenspezifische Preislisten wären ein späterer Ausbauschritt. Heute
+  gilt je Liste eine Fassung für alle Auftraggeber.
 
 ## Was nicht gebaut wird
 

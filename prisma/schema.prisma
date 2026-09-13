@@ -321,7 +321,10 @@ model VsiList {
   key             String // "kautschuk", "pir"
   name            String
   description     String?
-  defaultDiscount Int      @default(50)
+  // Objektrabatt in Prozent. Standard 0: die Preisliste gilt wie gedruckt,
+  // ein Rabatt wird bewusst je Baustelle oder je Erfassung gesetzt. Die
+  // früher hier stehenden 50 waren eine Altlast aus einer alten Liste.
+  defaultDiscount Int      @default(0)
   validFrom       DateTime @db.Date
   createdAt       DateTime @default(now())
 
