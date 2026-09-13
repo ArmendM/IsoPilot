@@ -4,6 +4,8 @@ import { getSession } from "@/lib/session";
 import { katalog, kategorien } from "@/server/materials-read";
 import { MaterialAnsicht } from "@/components/material/material-ansicht";
 import { MaterialImport } from "@/components/material/material-import";
+import { Wareneingang } from "@/components/material/wareneingang";
+import { artikelFuerEingang } from "@/server/lager-read";
 
 export default async function MaterialPage({ searchParams }: PageProps<"/material">) {
   const user = await getSession();
@@ -14,9 +16,10 @@ export default async function MaterialPage({ searchParams }: PageProps<"/materia
   const kategorieId = typeof q.kategorie === "string" ? q.kategorie : "";
   const mitStillgelegten = q.alle === "1";
 
-  const [liste, kats] = await Promise.all([
+  const [liste, kats, eingangsArtikel] = await Promise.all([
     katalog(user, { suche, kategorieId: kategorieId || undefined, mitStillgelegten }),
     kategorien(user),
+    artikelFuerEingang(user),
   ]);
 
   const istAdmin = user.role === "ADMIN";
@@ -33,6 +36,11 @@ export default async function MaterialPage({ searchParams }: PageProps<"/materia
         <Link href="/zeiten" className="text-black/60 underline dark:text-white/60">
           Tagesansicht
         </Link>
+        {user.role === "ADMIN" && (
+          <Link href="/lager" className="text-black/60 underline dark:text-white/60">
+            Lagerverlauf
+          </Link>
+        )}
       </nav>
 
       <h1 className="mt-4 text-2xl font-semibold tracking-tight">Material</h1>
@@ -95,6 +103,15 @@ export default async function MaterialPage({ searchParams }: PageProps<"/materia
       </p>
 
       <MaterialAnsicht artikel={liste} kategorien={kats} istAdmin={istAdmin} />
+
+      {istAdmin && (
+        <section className="mt-8 border-t border-black/10 pt-6 dark:border-white/15">
+          <h2 className="text-lg font-semibold tracking-tight">Wareneingang</h2>
+          <div className="mt-3">
+            <Wareneingang artikel={eingangsArtikel} />
+          </div>
+        </section>
+      )}
 
       {istAdmin && (
         <section className="mt-8 border-t border-black/10 pt-6 dark:border-white/15">

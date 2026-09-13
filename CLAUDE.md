@@ -169,11 +169,19 @@ Reihenfolge:
   die gebuchte Menge. Sonst ginge die Summe der Bewegungen nicht mehr mit
   dem Bestand auf. Deckt das Lager gar nichts, entsteht folgerichtig auch
   keine Bewegung, nur die Fehlmenge wächst.
-- Offen: **einen Wareneingang gibt es noch nicht.** `StockReason.DELIVERY`
-  steht im Schema und wird nirgends benutzt. Bis dahin wird die Fehlmenge
-  nach einer Lieferung von Hand im Artikelformular auf 0 gesetzt, neben
-  dem gezählten Lagerbestand. Ein echter Wareneingang würde beides
-  zusammen erledigen und im Lagerverlauf festhalten.
+- **Wareneingang** unter `/material`: gelieferte Ware einbuchen, mit
+  `StockReason.DELIVERY` und optionaler Lieferscheinnummer. Tilgt zuerst
+  eine offene Fehlmenge, erst dann wächst der Bestand.
+- **Die Fehlmenge wird nur über Buchungen und den Wareneingang bewegt**,
+  nicht mehr von Hand. Zwei Wege zur selben Zahl laufen auseinander.
+  Ausnahme: wird der Bestand im Artikelformular **geändert**, ist das eine
+  Zählung, und eine offene Fehlmenge gilt damit als erledigt. Bleibt die
+  Zahl gleich, etwa weil nur der Preis geändert wurde, bleibt sie stehen.
+- **Lagerverlauf** unter `/lager`, eine eigene Seite: jede Bewegung mit
+  Datum, Menge, Vorgang, Ziel und Person, filterbar nach Artikel und
+  Baustelle. Die Baustelle hängt als Verknüpfung an `StockMovement`, nicht
+  als Satzteil in `note`: der Verlauf soll auch dann sagen können, wohin
+  die Ware ging, wenn die Baustelle später umbenannt wird.
 - Anfangsbestände stehen im Seed, damit nicht jede erste Buchung ins Minus
   läuft. Sie stehen nur im `create`-Zweig: ein erneuter Seed darf einen
   gewachsenen Bestand niemals zurücksetzen.
@@ -204,6 +212,11 @@ Reihenfolge:
 - Der Kalender mit Ferien und Feiertagen ist für alle sichtbar,
   das ist Planungsgrundlage
 - Jede Berechtigungsprüfung gehört serverseitig in die Server Action
+- Wareneingang und Lagerverlauf sehen vorerst nur Vorgesetzte. **Offen:
+  eine eigene Lagerberechtigung**, die sich einer Person zuweisen lässt,
+  damit ein Mitarbeitender eine Lieferung annehmen kann, ohne Vorgesetzter
+  zu werden. Als Berechtigung neben der Rolle, nicht als dritte Rolle: ein
+  Lagerist soll deswegen nicht die Zeiten der anderen sehen.
 
 ## Auswertungen
 
