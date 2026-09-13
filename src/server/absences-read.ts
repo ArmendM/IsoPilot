@@ -19,15 +19,6 @@ export type AbsenzZeile = {
   entschiedenVon: string | null;
 };
 
-export type Jahresstand = {
-  anspruch: number;
-  genehmigt: number;
-  beantragt: number;
-  rest: number;
-  krankheitstage: number;
-  uebrigeTage: number;
-};
-
 /**
  * Absenzen eines Jahres. personId "alle" ist nur für Vorgesetzte,
  * Mitarbeitende bekommen ausschliesslich ihre eigenen.
@@ -71,50 +62,4 @@ export async function absenzen(
     note: r.note,
     entschiedenVon: r.decidedBy?.name ?? null,
   }));
-}
-
-/**
- * Ferienstand einer Person in einem Jahr. Der Anspruch ist vorerst das
- * Feld an der Person. Anteilige Kürzung bei Ein- und Austritt sowie der
- * Übertrag aus dem Vorjahr kommen in M2c-2 dazu.
- */
-export async function jahresstand(
-  user: SessionUser,
-  personId: string,
-  jahr: number,
-): Promise<Jahresstand> {
-  assertOwnerOrAdmin(user, personId);
-
-  const person = await db.user.findUnique({
-    where: { id: personId },
-    select: { vacationDays: true, companyId: true },
-  });
-  if (!person || person.companyId !== user.companyId) throw new Error("FORBIDDEN");
-
-  const rows = await db.absence.findMany({
-    where: {
-      userId: personId,
-      deletedAt: null,
-      startDate: { lte: new Date(Date.UTC(jahr, 11, 31)) },
-      endDate: { gte: new Date(Date.UTC(jahr, 0, 1)) },
-    },
-    select: { type: true, status: true, workingDays: true },
-  });
-
-  const summe = (typ: string, status: string) =>
-    rows
-      .filter((r) => r.type === typ && r.status === status)
-      .reduce((s, r) => s + Number(r.workingDays), 0);
-
-  const genehmigt = summe("VACATION", "APPROVED");
-  const beantragt = summe("VACATION", "PENDING");
-
-  return {
-    anspruch: person.vacationDays,
-    genehmigt,
-    beantragt,
-    rest: person.vacationDays - genehmigt - beantragt,
-    krankheitstage: summe("SICK", "APPROVED"),
-    uebrigeTage: summe("OTHER", "APPROVED"),
-  };
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { syncHolidays } from "@/lib/holidays";
+import { rolloverVacation } from "@/server/vacation";
 
 export async function POST(
   req: Request,
@@ -14,6 +15,8 @@ export async function POST(
   switch (job) {
     case "holidays":
       return NextResponse.json(await syncHolidays());
+    case "vacation":
+      return NextResponse.json(await rolloverVacation());
     case "retention":
       return NextResponse.json(await applyRetention());
     case "sessions":

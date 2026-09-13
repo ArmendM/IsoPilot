@@ -131,6 +131,7 @@ model User {
   stockMovements    StockMovement[]
   monthLockActions  MonthLockEvent[]
   auditLogs         AuditLog[]
+  vacationBalances  VacationBalance[]
 
   @@index([companyId, isActive])
 }
@@ -578,4 +579,34 @@ model EmailLog {
 
   @@index([companyId, createdAt])
   @@index([status])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Ferienanspruch pro Person und Jahr
+// ─────────────────────────────────────────────────────────────
+
+model VacationBalance {
+  id     String @id @default(cuid())
+  userId String
+  year   Int
+
+  // Grundanspruch des Jahres, bei Ein- oder Austritt anteilig gekürzt.
+  entitled Decimal @db.Decimal(5, 2)
+
+  // Rest aus dem Vorjahr und der Tag, an dem er verfällt.
+  carriedOver        Decimal   @default(0) @db.Decimal(5, 2)
+  carryOverExpiresAt DateTime? @db.Date
+
+  // Von Hand angepasst. Der Jahreslauf lässt eine solche Zeile in Ruhe,
+  // wie der Feiertagsjob einen bestätigten Tag.
+  isManual Boolean @default(false)
+  note     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, year])
+  @@index([year])
 }

@@ -2,8 +2,11 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { auswaehlbarePersonen } from "@/server/time-entries-read";
-import { absenzen, jahresstand } from "@/server/absences-read";
+import { absenzen } from "@/server/absences-read";
+import { ferienstand } from "@/server/vacation";
 import { AbsenzenAnsicht } from "@/components/absenzen/absenzen-ansicht";
+
+const datumDE = (iso: string) => iso.split("-").reverse().join(".");
 
 export default async function AbsenzenPage({ searchParams }: PageProps<"/absenzen">) {
   const user = await getSession();
@@ -33,7 +36,7 @@ export default async function AbsenzenPage({ searchParams }: PageProps<"/absenze
   const zeilen = await absenzen(user, auswahl, jahr);
   // Der Ferienstand gilt immer für eine Person, nicht für die Firma.
   const standFuer = auswahl === "alle" ? user.id : auswahl;
-  const stand = await jahresstand(user, standFuer, jahr);
+  const stand = await ferienstand(user, standFuer, jahr);
   const standName = personen.find((p) => p.id === standFuer)?.name;
 
   return (
@@ -99,18 +102,57 @@ export default async function AbsenzenPage({ searchParams }: PageProps<"/absenze
         <h2 className="text-sm font-medium">
           Ferienstand {standName ? `von ${standName}` : ""}
         </h2>
+
         <dl className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Kennzahl titel="Anspruch" wert={stand.anspruch.toFixed(1)} />
-          <Kennzahl titel="Bewilligt" wert={stand.genehmigt.toFixed(1)} />
+          <Kennzahl titel="Verfügbar" wert={stand.verfuegbar.toFixed(1)} />
+          <Kennzahl titel="Bewilligt" wert={stand.bewilligt.toFixed(1)} />
           <Kennzahl titel="Beantragt" wert={stand.beantragt.toFixed(1)} />
           <Kennzahl titel="Rest" wert={stand.rest.toFixed(1)} betont={stand.rest < 0} />
         </dl>
-        <p className="mt-2 text-xs text-black/50 dark:text-white/50">
-          Krankheitstage {stand.krankheitstage.toFixed(1)}, übrige Absenzen{" "}
-          {stand.uebrigeTage.toFixed(1)}. Gezählt werden Arbeitstage ohne
-          Wochenenden und ohne Feiertage. Anteilige Kürzung bei Ein- oder
-          Austritt und der Übertrag aus dem Vorjahr fehlen noch.
-        </p>
+
+        <ul className="mt-3 space-y-1 text-xs text-black/60 dark:text-white/60">
+          <li>
+            Anspruch {stand.anspruch.toFixed(1)} Tage
+            {stand.anteilig
+              ? ` (anteilig, ${stand.monate} von 12 Monaten bei ${stand.grundanspruch.toFixed(1)} Tagen im ganzen Jahr)`
+              : ""}
+          </li>
+          {stand.uebertrag > 0 && (
+            <li>
+              Übertrag aus {stand.jahr - 1}: {stand.uebertrag.toFixed(1)} Tage
+              {stand.verfallenAm && `, verfällt am ${datumDE(stand.verfallenAm)}`}
+              {stand.uebertragGenutzt > 0 &&
+                `, davon ${stand.uebertragGenutzt.toFixed(1)} bezogen`}
+              {stand.uebertragVerfallen > 0 && (
+                <span className="text-amber-800 dark:text-amber-300">
+                  {" "}
+                  — {stand.uebertragVerfallen.toFixed(1)} Tage sind verfallen
+                </span>
+              )}
+            </li>
+          )}
+          <li>
+            Krankheitstage {stand.krankheitstage.toFixed(1)}, übrige Absenzen{" "}
+            {stand.uebrigeTage.toFixed(1)}
+          </li>
+          <li>
+            Gezählt werden Arbeitstage ohne Wochenenden und ohne Feiertage
+            Luzern. Ferien werden zuerst vom Übertrag genommen, weil der
+            verfällt.
+          </li>
+          {stand.vonHand && (
+            <li className="text-black/80 dark:text-white/80">
+              Diese Zeile wurde von Hand angepasst, der Jahreslauf lässt sie
+              unberührt.
+            </li>
+          )}
+        </ul>
+
+        {stand.hinweis && (
+          <p className="mt-2 rounded-md border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+            {stand.hinweis}
+          </p>
+        )}
       </section>
 
       <AbsenzenAnsicht
