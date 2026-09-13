@@ -410,7 +410,7 @@ Mailpit-Oberfläche: http://localhost:8025
 
 ## Roadmap und Stand
 
-Stand 13.09.2026. Dieser Abschnitt ist die Antwort auf "wo stehen wir und
+Stand 14.09.2026. Dieser Abschnitt ist die Antwort auf "wo stehen wir und
 was kommt als Nächstes". Er wird bei jedem abgeschlossenen Stück
 nachgeführt.
 
@@ -426,14 +426,15 @@ Deployment, dafür steht `docs/BETRIEB.md` bereit.
 anteilig mit Übertrag, Feiertagsjob gegen OpenHolidays mit lokalem
 Rückfall, `/abschluss` Monatsabschluss.
 
-**M3 Baustellen und Material — angefangen**
+**M3 Baustellen und Material — fast fertig, offen ist nur M3e**
 
 - M3a `/baustellen` mit Soll-Ist, Status und Auftraggeber: **fertig**
 - M3b `/material` Katalog mit Lager, Mindestbestand, Kategorien: **fertig**
 - M3c Materialbuchung auf eine Baustelle: **fertig**
 - M3d Excel-Import in den Katalog: **fertig**
-- M3e VSI-Tarifmatrix: **als Nächstes**
+- M3e VSI-Tarifmatrix: **als Nächstes**, blockiert, siehe unten
 - M3f Materialbuchung verbessern, Kategoriefilter und Ändern: **fertig**
+- M3g Lager: Fehlmenge, Bestellbedarf, Wareneingang, Lagerverlauf: **fertig**
 
 **M4 Auswertung**
 Auswertung Mitarbeitende, Auswertung Baustellen, Export Excel und PDF,
@@ -532,6 +533,64 @@ Aus einer späteren Durchsicht, alle vier in einem Zug behoben:
 Alle vier sind inzwischen in `tests/server/bookings.test.ts` abgedeckt.
 Gegengeprüft, indem jede Behebung einzeln zurückgenommen wurde: ohne die
 Statusprüfung fallen zwei Tests, ohne die `WHERE`-Bedingung einer.
+
+### M3e, VSI-Tarifmatrix: blockiert, nicht durch Code
+
+Das Schema steht vollständig (`VsiList`, `VsiRate`), im Seed sind **null
+Tarife**, dort steht nur "Offen: VSI-Tarife importieren". M3e heisst, eine
+Preismatrix von DN 10 bis DN 300 über sechs Dicken und mehrere Positionen
+für zwei Listen zu erfassen, also mehrere hundert Werte.
+
+**Was fehlt, ist keine Software, sondern die geprüften Zahlen.** Offen ist
+genau ein Punkt: bei 80 mm PIR sind nur neun Werte vorhanden, aktuell
+rechtsbündig ab DN 50 zugeordnet. Das gehört gegen das Original geprüft,
+bevor irgendetwas geseedet wird, so verlangt es auch
+`docs/CLAUDE-CODE-TASKS.md`.
+
+Geklärt sind dagegen: der Objektrabatt steht auf 0, und es gilt je Liste
+immer die neuste Fassung, für Brandschutz also 2022.
+
+Nächster Schritt ist deshalb nicht Code, sondern die beiden Papierlisten
+mit Daut oder Qail durchzugehen.
+
+### Offen: Lagerberechtigung als eigenes Merkmal
+
+Wareneingang (`/material`) und Lagerverlauf (`/lager`) sehen heute nur
+Vorgesetzte. Gewollt ist, dass eine Lieferung annehmen kann, wer gerade da
+ist, ohne deswegen Vorgesetzter zu sein.
+
+**Als Berechtigung neben der Rolle, nicht als dritte Rolle.** Ein Lagerist
+soll Lieferungen einbuchen können, aber deswegen nicht die Zeiten der
+anderen sehen. Mit einer dritten Rolle müsste für jede bestehende Prüfung
+neu entschieden werden, wo sie einzuordnen ist. Als eigenes Merkmal an
+`User` ist es eine Zeile je Prüfung und lässt sich einer Person unter
+`/personen` zuweisen, ohne sonst etwas zu ändern.
+
+Betroffen: `prisma/schema.prisma` (Migration), `src/lib/session.ts`
+(`SessionUser` muss das Merkmal mitführen), `src/server/lager.ts`,
+`src/app/lager/page.tsx`, `src/app/material/page.tsx` und die
+Benutzerverwaltung.
+
+### Offen: Bestand ändern hinterlässt keine Spur
+
+Wird der Lagerbestand im Artikelformular geändert, gilt das als Zählung
+und tilgt die Fehlmenge, aber es entsteht **keine Lagerbewegung**. Im
+Verlauf unter `/lager` fehlt dieser Sprung also. `StockReason.CORRECTION`
+steht im Schema für genau das, "Inventurdifferenz", und wird nirgends
+benutzt.
+
+Sauber wäre, den Bestand gar nicht mehr direkt schreibbar zu machen,
+sondern nur noch über Bewegungen: Wareneingang, Buchung, Rückgabe und eine
+Inventurkorrektur. Dann geht die Summe der Bewegungen immer mit dem
+Bestand auf. Das ist der eigentliche Abschluss von M3g.
+
+### Offen: alte Lagerbewegungen kennen ihre Baustelle nicht
+
+`StockMovement.siteId` kam erst mit M3g. Bewegungen von davor tragen die
+Baustelle nur als Text in `note` ("Buchung auf MFH Mattenhof") und
+erscheinen im Verlauf unter "Lager". Rückwirkend zuordnen hiesse über
+einen Namensvergleich raten. Bei den wenigen Testbewegungen lohnt es
+nicht, vor dem Produktivstart ist die Tabelle ohnehin leer.
 
 ### Offen: Sollstunden und Zeitsaldo
 

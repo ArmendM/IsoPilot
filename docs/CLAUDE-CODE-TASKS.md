@@ -1,8 +1,11 @@
 # Claude-Code-Aufgaben
 
-Stand: 2026-09-13. Grundlage: aktueller Branch `fix/auftraggeber-sichtbar`,
-`CLAUDE.md`, `docs/BETRIEB.md`, `docs/lifecycle.md`, Git-Historie und
-`.next/dev/logs/next-development.log`.
+Stand: 2026-09-14. Grundlage: `CLAUDE.md`, `docs/BETRIEB.md`,
+`docs/lifecycle.md`, Git-Historie und `.next/dev/logs/next-development.log`.
+
+**Die Roadmap und der genaue Stand stehen in `CLAUDE.md`, Abschnitt
+"Roadmap und Stand".** Diese Liste ist die Sicht nach Priorität und
+Akzeptanzkriterien, nicht die Chronik.
 
 Diese Liste enthaelt nur belegte Abweichungen. M6/M7 bleiben geplante
 Erweiterungen und werden erst nach dem empfohlenen Parallelbetrieb umgesetzt.
@@ -33,34 +36,37 @@ Akzeptanzkriterien:
 Validierung: Migration deployen, Server-Action-Tests ausfuehren,
 `npm run typecheck`, `npm run lint`.
 
-### P1, Materialkatalog und VSI-Buchungen als M3 fertigstellen
+### Erledigt, Materialkatalog und Materialbuchungen (war P1)
 
-Quelle: M3 in `CLAUDE.md`. Das Prisma-Schema enthaelt `Material`,
-`MaterialBooking`, Lagerbewegungen und VSI-Tarife, aber es gibt keine
-produktive Materialroute, keine Buchungs-Server-Action und keine Oberflaeche.
-Der Seed meldet selbst, dass VSI-Tarife noch fehlen.
+Stand 14.09.2026 umgesetzt und in `CLAUDE.md` beschrieben: Katalog mit
+Kategorien, Lager und Mindestbestand (M3b), Buchung auf eine Baustelle mit
+eingefrorenem Preis (M3c), Excel-Import mit Vorschau und ohne Duplikate
+(M3d), Kategoriefilter und Ändern einer Buchung (M3f), Fehlmenge,
+Bestellbedarf, Wareneingang und Lagerverlauf (M3g). Gedeckt durch Tests in
+`tests/einheit` und `tests/server`.
 
-Betroffen: `src/app`, `src/components`, `src/server`, `prisma/seed.ts` und
-Migrationen fuer die Buchungsregeln.
+**Offen bleibt daraus:**
 
-Akzeptanzkriterien:
+- **VSI-Tarife (M3e).** Schema steht, Seed leer. Blockiert durch die
+  ungeklärten neun Werte bei 80 mm PIR, die gegen das Original zu prüfen
+  sind, bevor geseedet wird. Objektrabatt 0 Prozent und "je Liste gilt
+  die neuste Fassung" sind entschieden.
+- **Bestand nur noch über Bewegungen.** Das Artikelformular schreibt den
+  Bestand heute direkt, ohne `StockMovement`. `StockReason.CORRECTION`
+  steht dafür bereit und wird nicht benutzt.
+- **Lagerberechtigung** als Merkmal an `User`, damit ein Mitarbeitender
+  eine Lieferung annehmen kann, ohne Vorgesetzter zu sein.
 
-- Kategorien, Artikel, Lagerbestand und Mindestbestand koennen durch
-  Vorgesetzte verwaltet werden.
-- Excel-Import gleicht in der Reihenfolge Artikelnummer, Kategorie plus Name,
-  dann Name ab und erzeugt keine Duplikate.
-- Katalogbuchungen frieren den Preis ein, reduzieren den Bestand atomar und
-  protokollieren die Lagerbewegung.
-- VSI-Buchungen reduzieren den Lagerbestand nicht; der Standardrabatt ist
-  0 Prozent und kann pro Baustelle und Buchung gesetzt werden.
-- Mitarbeitende sehen nur eigene Buchungen, Vorgesetzte alle der Firma.
-- Soft Delete, Monatsabschluss und Audit-Transaktion gelten auch fuer
-  Buchungen.
-- Die neun Werte fuer PIR 80 mm werden vor dem Seed gegen das Original geprueft
-  und nicht stillschweigend falsch zugeordnet.
+### Dazugekommen, Tests (war in jeder Aufgabe gefordert, fehlte ganz)
 
-Validierung: Import-, Berechtigungs-, Bestands- und Preis-Freeze-Tests sowie
-`npm run typecheck`, `npm run lint`.
+Seit 13.09.2026 gibt es zwei Schichten, beide in der CI:
+
+- `tests/einheit`, reine Logik ohne Datenbank, `npm test`
+- `tests/server`, Server Actions gegen ein echtes Postgres,
+  `npm run test:server`
+
+Offen bleibt die dritte Schicht, Oberfläche im Browser mit Playwright.
+Sie ist die teuerste und hat bisher die echten Fehler gefunden.
 
 ### P1, Auswertungen und Exporte aus M4 umsetzen
 
@@ -110,7 +116,9 @@ Validierung: Retention-Tests mit eingefrorener Zeit und Cron-Smoke-Test.
 
 ## Pruefprotokoll
 
-- `npm run typecheck`: bestanden am 2026-09-13.
-- `npm run lint`: bestanden am 2026-09-13.
+- `npm run typecheck`: bestanden am 2026-09-14.
+- `npm run lint`: bestanden am 2026-09-14.
+- `npm test`: 117 bestanden am 2026-09-14.
+- `npm run test:server`: 74 bestanden am 2026-09-14.
 - `.next/dev/logs/next-development.log`: nur erfolgreiche Kompilierungen und
   React-DevTools-Hinweise, keine ungeloeste Exception im gelesenen Verlauf.
