@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { DatumFeld } from "@/components/ui/datum-feld";
+import { DatumFeld } from "@/components/ui/eingabefelder";
 import { redirect } from "next/navigation";
 import { format } from "date-fns";
 import { getSession } from "@/lib/session";

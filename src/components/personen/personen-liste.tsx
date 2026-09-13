@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { setZugang, setStammdaten } from "@/server/users";
-import { DatumFeld } from "@/components/ui/datum-feld";
+import { DatumFeld } from "@/components/ui/eingabefelder";
 
 export type Zeile = {
   id: string;

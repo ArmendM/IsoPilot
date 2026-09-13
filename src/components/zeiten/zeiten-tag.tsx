@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { saveTimeEntry, deleteTimeEntry } from "@/server/time-entries";
+import { ZeitFeld } from "@/components/ui/eingabefelder";
 
 export type ZeileDaten = {
   id: string;
@@ -246,8 +247,7 @@ function Formular({
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <label className="space-y-1">
           <span className={beschriftung}>Beginn</span>
-          <input
-            type="time"
+          <ZeitFeld
             required
             value={f.start}
             onChange={(e) => setF({ ...f, start: e.target.value })}
@@ -256,8 +256,7 @@ function Formular({
         </label>
         <label className="space-y-1">
           <span className={beschriftung}>Ende</span>
-          <input
-            type="time"
+          <ZeitFeld
             required
             value={f.ende}
             onChange={(e) => setF({ ...f, ende: e.target.value })}
@@ -270,7 +269,10 @@ function Formular({
             type="number"
             min={0}
             max={480}
-            step={5}
+            // Schrittweite 1, nicht 15: sonst wäre eine getippte 20 nach
+            // HTML-Regeln ungültig und das Formular liesse sich nicht
+            // absenden. Die 15er-Schritte stehen als Tasten darunter.
+            step={1}
             value={f.pause}
             onChange={(e) => setF({ ...f, pause: Number(e.target.value) })}
             className={feld}
@@ -282,6 +284,26 @@ function Formular({
             {vorschau || "—"}
           </output>
         </label>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <span className={beschriftung}>Pause schnell wählen</span>
+        {[0, 15, 30, 45, 60].map((m) => (
+          <button
+            key={m}
+            type="button"
+            onClick={() => setF({ ...f, pause: m })}
+            aria-pressed={f.pause === m}
+            className={[
+              "h-8 rounded-md border px-2.5 text-xs tabular-nums",
+              f.pause === m
+                ? "border-foreground bg-foreground text-background"
+                : "border-black/15 hover:bg-black/5 dark:border-white/20 dark:hover:bg-white/10",
+            ].join(" ")}
+          >
+            {m} min
+          </button>
+        ))}
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">

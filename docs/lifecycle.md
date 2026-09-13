@@ -131,7 +131,7 @@ verschieben sich nun einmal, aber sie sagt es.
 **Datumsfelder** in diesem Abschnitt und in allen folgenden, also
 `plannedStart`, `plannedEnd`, `deadline`, `validUntil`, `issuedAt`,
 `dueDate` und `discountDeadline`, verwenden `DatumFeld` aus
-`components/ui/datum-feld`. Der Kalender öffnet beim Klick ins Feld, die
+`components/ui/eingabefelder`. Der Kalender öffnet beim Klick ins Feld, die
 Eingabe über die Tastatur bleibt möglich. Siehe `CLAUDE.md`, Abschnitt
 Technische Konventionen.
 

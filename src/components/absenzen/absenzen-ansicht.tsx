@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { saveAbsence, decideAbsence, deleteAbsence } from "@/server/absences";
-import { DatumFeld } from "@/components/ui/datum-feld";
+import { DatumFeld } from "@/components/ui/eingabefelder";
 
 export type Zeile = {
   id: string;
