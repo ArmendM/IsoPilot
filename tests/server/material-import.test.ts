@@ -240,6 +240,65 @@ describe("Import ausführen", () => {
   });
 });
 
+/* Der Fehler aus dem Betrieb: PRUEF-1 wurde nach dem ersten Testimport
+ * stillgelegt. Beim zweiten Lauf fehlte er im Abgleich, der Import wollte
+ * ihn anlegen und lief in Material_companyId_sku_key. */
+describe("Stillgelegte Artikel", () => {
+  it("aktualisiert einen stillgelegten Artikel, statt am Anlegen zu scheitern", async () => {
+    const { c } = await aufbau();
+    const still = await db.material.create({
+      data: {
+        companyId: c.id, sku: "PRUEF-1", name: "Prüfartikel",
+        unit: "M2", price: "7.70", isActive: false,
+      },
+    });
+
+    const r = await importAusfuehren(
+      formular(await datei([KOPF, ["PRUEF-1", "Prüfartikel", "", "m2", "9.90"]])),
+    );
+
+    expect(r).toEqual({ ok: true, aktualisiert: 1, angelegt: 0, uebersprungen: 0 });
+    expect(await db.material.count({ where: { sku: "PRUEF-1" } })).toBe(1);
+    expect(Number((await db.material.findUniqueOrThrow({ where: { id: still.id } })).price)).toBe(9.9);
+  });
+
+  /* Stilllegen ist ein Entscheid im Betrieb, keine Frage der
+   * Lieferantenliste. Der Import weckt ihn nicht wieder auf. */
+  it("legt einen stillgelegten Artikel durch den Import nicht wieder frei", async () => {
+    const { c } = await aufbau();
+    const still = await db.material.create({
+      data: {
+        companyId: c.id, sku: "PRUEF-1", name: "Prüfartikel",
+        unit: "M2", price: "7.70", isActive: false,
+      },
+    });
+
+    await importAusfuehren(
+      formular(await datei([KOPF, ["PRUEF-1", "Prüfartikel", "", "m2", "9.90"]])),
+    );
+
+    expect((await db.material.findUniqueOrThrow({ where: { id: still.id } })).isActive).toBe(false);
+  });
+});
+
+describe("Doppelte Artikelnummern in der Datei", () => {
+  it("schreibt nichts und überspringt beide Zeilen", async () => {
+    await aufbau();
+    const r = await importAusfuehren(
+      formular(
+        await datei([
+          KOPF,
+          ["DOPP-1", "Erster", "", "m2", "1.00"],
+          ["DOPP-1", "Zweiter", "", "m2", "2.00"],
+        ]),
+      ),
+    );
+
+    expect(r).toEqual({ ok: true, aktualisiert: 0, angelegt: 0, uebersprungen: 2 });
+    expect(await db.material.count({ where: { sku: "DOPP-1" } })).toBe(0);
+  });
+});
+
 describe("Berechtigung", () => {
   it("lässt eine mitarbeitende Person weder vorschauen noch importieren", async () => {
     const { liridon } = await aufbau();

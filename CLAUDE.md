@@ -643,6 +643,15 @@ festgenagelt sind und beim Bauen erst durch die Tests auffielen:
   Artikel ohne Kategorie und erwischt unter zwei gleichnamigen lautlos
   den einen. Fehlt die Kategorie, läuft die Zeile über den Namen und
   fällt dort als uneindeutig auf.
+- **Stillgelegte Artikel gehören in den Abgleich.** Sie bleiben in der
+  Datenbank, und die Artikelnummer ist eindeutig. Wer sie übergeht,
+  versucht anzulegen und scheitert an `Material_companyId_sku_key`. Genau
+  so ist der erste Import im Betrieb fehlgeschlagen. Der Import weckt sie
+  aber nicht wieder auf: Stilllegen ist ein Entscheid im Betrieb, keine
+  Frage der Lieferantenliste.
+- **Dieselbe Artikelnummer zweimal in einer Datei** macht beide Zeilen
+  fehlerhaft. Die erste legte an, die zweite liefe in dieselbe Bedingung.
+  Lieber in der Vorschau benennen als beim Schreiben scheitern.
 - **Uneindeutige Zeilen werden übersprungen, nie geraten.** Passen zwei
   Artikel auf eine Zeile, bekäme sonst der falsche stillschweigend einen
   neuen Preis, und niemand würde es merken.

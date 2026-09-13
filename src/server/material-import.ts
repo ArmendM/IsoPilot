@@ -131,11 +131,24 @@ async function leseDatei(
 }
 
 async function katalogVon(companyId: string): Promise<Katalogartikel[]> {
+  /* Bewusst ohne Filter auf isActive: ein stillgelegter Artikel bleibt in
+   * der Datenbank, und seine Artikelnummer ist eindeutig. Wer ihn beim
+   * Abgleich übergeht, versucht ihn anzulegen und scheitert an
+   * `Material_companyId_sku_key`. */
   const rows = await db.material.findMany({
-    where: { companyId, isActive: true },
-    select: { id: true, sku: true, name: true, category: { select: { name: true } } },
+    where: { companyId },
+    select: {
+      id: true, sku: true, name: true, isActive: true,
+      category: { select: { name: true } },
+    },
   });
-  return rows.map((m) => ({ id: m.id, sku: m.sku, name: m.name, kategorie: m.category?.name ?? null }));
+  return rows.map((m) => ({
+    id: m.id,
+    sku: m.sku,
+    name: m.name,
+    kategorie: m.category?.name ?? null,
+    aktiv: m.isActive,
+  }));
 }
 
 async function abgleichen(companyId: string, datei: unknown) {
