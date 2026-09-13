@@ -210,23 +210,20 @@ Zwei getrennte Bereiche, nicht vermischen:
 
 ## Tests
 
-**Es gibt bis heute keine einzige Testdatei im Projekt.**
-`docs/CLAUDE-CODE-TASKS.md` fordert zu jeder Aufgabe Tests, für M6b
-ausdrücklich für erlaubte, verbotene und begründungspflichtige
-Statuswechsel. Das ist die grösste offene Lücke in der Arbeitsweise, und
-der richtige Zeitpunkt ist eher vor M3d als danach: den Excel-Abgleich über
-drei Stufen ohne Tests zu bauen, ist genau die Stelle, an der still
-Duplikate entstehen.
+`npm test` läuft über **Vitest**, `npm run test:watch` beim Entwickeln.
+Die CI ruft den Schritt bereits auf, sie hatte `npm test --if-present`
+und einen Postgres-Service von Anfang an, nur lief er leer, solange es
+kein `test`-Skript gab.
 
 Es braucht **nicht einen Runner, sondern drei Arten von Tests**, mit sehr
-verschiedenen Kosten. Sie sollen getrennt aufrufbar sein, sonst wartet man
-für eine reine Rechenregel auf eine Datenbank:
+verschiedenen Kosten. Sie sind getrennt aufrufbar, sonst wartet man für
+eine reine Rechenregel auf eine Datenbank:
 
-| Art | Prüft | Braucht | Erwartete Dauer |
+| Ordner | Prüft | Braucht | Stand |
 |---|---|---|---|
-| Reine Logik | `lib/dates.ts`, Statustabelle in `guards.ts`, Import-Abgleich, Ausmassrechnung | nichts, nur Node | Sekunden |
-| Server Actions | Transaktion, Lagerbewegung, Berechtigung, Monatsabschluss, Soft Delete | echtes Postgres mit eigener Testdatenbank | Zehn Sekunden bis Minuten |
-| Oberfläche | Formulare, Anzeige, Wechsel zwischen Datensätzen | Browser und laufende App | Minuten |
+| `tests/einheit` | `lib/dates.ts`, Statusmodell, später Import-Abgleich und Ausmassrechnung | nichts als Node, läuft in Millisekunden | **da** |
+| `tests/server` | Transaktion, Lagerbewegung, Berechtigung, Monatsabschluss, Soft Delete | echtes Postgres mit eigener Testdatenbank | offen |
+| `tests/oberflaeche` | Formulare, Anzeige, Wechsel zwischen Datensätzen | Browser und laufende App, Playwright | offen |
 
 Die dritte Art ist die teuerste und zugleich die, die bisher die echten
 Fehler gefunden hat: ein Zahlenfeld zeigte `0500` statt 500, und der
@@ -234,11 +231,28 @@ Auftraggeber kippte beim Bearbeiten lautlos auf eine andere Firma. Beides
 war im Datenpfad nicht sichtbar. Sie ersetzt die ersten beiden nicht, und
 umgekehrt genauso wenig.
 
-Bis es soweit ist, wird Rechenlogik mit einem Wegwerf-Skript über `tsx`
-geprüft. Das hat bei der Statustabelle einen Fehler gefunden, den das
-blosse Lesen nicht gezeigt hätte. Es ist aber kein Ersatz: das Skript
-läuft einmal und danach nie wieder, und in der CI läuft heute nur
-`typecheck` und `lint`.
+**Die Zeitzone wird in `vitest.config.mts` bewusst nicht festgenagelt.**
+Produktion läuft laut Dockerfile auf `Europe/Zurich`, die CI auf UTC. Wer
+`TZ` im Test pinnt, versteckt genau den Fehler, den diese Tests finden
+sollen. Gegengeprüft wird mit `TZ=UTC npm test`.
+
+Damit reine Logik ohne Datenbank testbar ist, gilt: **eine Datei mit
+Rechenregeln importiert kein Prisma.** `src/lib/db.ts` baut den Client
+schon beim Import auf, und ein Test, der ihn mitlädt, ist weder schnell
+noch verlässlich. Deshalb liegt das Statusmodell in
+`src/server/site-lifecycle.ts` und nicht mehr in `guards.ts`, das `db`
+braucht.
+
+**Gefunden und offen gelassen:** `workingDays` in `src/lib/dates.ts`
+rechnet über `eachDayOfInterval` und `isWeekend`, beide lesen die
+Systemzeitzone. Mit UTC-Mitternacht als Eingabe stimmt das nur, solange
+die Verschiebung nicht negativ ist. In `Europe/Zurich` und UTC geht es
+auf, in `America/New_York` zählt es einen Samstag als Arbeitstag. Für
+IsoPilot ist das folgenlos, beide Laufzeiten sind nicht negativ. Es hängt
+aber die Ferienberechnung daran, deshalb wurde es nicht nebenbei in einem
+Test-Paket geändert. Wer es anfasst: über `utcToZurich` rechnen und im
+Filter `format(d, "yyyy-MM-dd")` statt `isoDate(d)` verwenden, sonst wird
+zweimal umgerechnet.
 
 ## Aufbewahrung
 
@@ -271,6 +285,9 @@ npm run db:studio    # Daten ansehen
 npm run db:seed      # Stammdaten
 npm run typecheck    # tsc --noEmit
 npm run lint
+npm test             # Vitest einmal, tests/einheit
+npm run test:watch   # Vitest beim Entwickeln
+TZ=UTC npm test      # gegenprüfen wie in der CI
 ```
 
 Postgres und Mailpit laufen über `brew services`.
@@ -332,11 +349,12 @@ Vorgehen, Backup-Wiederherstellung geübt, Schulung
 bezahlten Rechnung, mit der Reihenfolge M6a bis M7c. Bewusst nach dem
 Parallelbetrieb, nicht davor.
 
-### Kein toter Code: die Übergangstabelle in `guards.ts`
+### Kein toter Code: das Statusmodell in `site-lifecycle.ts`
 
 `NEXT_STATUS`, `needsReason`, `assertTransition`, `canBookTime` und
-`canBookMaterial` in `src/server/guards.ts` werden heute nirgends
-aufgerufen, sind aber **kein Überbleibsel und nicht zu löschen.** Sie sind
+`canBookMaterial` in `src/server/site-lifecycle.ts` werden heute nirgends
+aufgerufen, sind aber **kein Überbleibsel und nicht zu löschen.**
+`tests/einheit/site-lifecycle.test.ts` nagelt sie fest. Sie sind
 die vorgezogene Umsetzung des Statusmodells aus `docs/lifecycle.md`, das
 dort mit "Erlaubte Übergänge stehen in einer Tabelle im Code" genau diese
 Tabelle meint. `docs/CLAUDE-CODE-TASKS.md` führt das als P0 "Baustellenstatus
@@ -390,8 +408,8 @@ kaputt, alles wird es mit mehr Daten oder mehr Nebenläufigkeit:
   `saveMaterialBooking` prüft Existenz und Firma, nie `site.status`, und
   die Oberfläche zeigt den Abschnitt auch bei `DONE`. Damit lassen sich
   Materialkosten einer abgeschlossenen Baustelle nachträglich verändern,
-  genau gegen die Einfrier-Regel. `canBookMaterial` aus `guards.ts` ist
-  die Funktion, die das mit M6b abfängt.
+  genau gegen die Einfrier-Regel. `canBookMaterial` aus
+  `site-lifecycle.ts` ist die Funktion, die das mit M6b abfängt.
 - **Doppeltes Rückgängigmachen kann das Lager zweimal gutschreiben.**
   `deleteMaterialBooking` liest, prüft `deletedAt` und schreibt dann über
   `update({ where: { id } })`. Zwei parallele Klicks buchen die Menge
