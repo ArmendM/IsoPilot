@@ -370,7 +370,7 @@ Rückfall, `/abschluss` Monatsabschluss.
 - M3c Materialbuchung auf eine Baustelle: **fertig**
 - M3d Excel-Import in den Katalog: **als Nächstes**
 - M3e VSI-Tarifmatrix: offen
-- M3f Materialbuchung verbessern, Kategoriefilter und Ändern: offen
+- M3f Materialbuchung verbessern: Kategoriefilter **fertig**, Ändern offen
 
 **M4 Auswertung**
 Auswertung Mitarbeitende, Auswertung Baustellen, Export Excel und PDF,
@@ -514,13 +514,21 @@ braucht eine Migration.
 
 Zwei Dinge stören im Betrieb, beide aus dem Klicktest an M3c:
 
-**Kategorie zuerst wählen.** Das Artikel-Dropdown in
-`src/components/baustellen/material-buchung.tsx` listet heute den ganzen
-Katalog. Mit ein paar Dutzend Artikeln ist das auf dem Telefon auf der
-Baustelle nicht mehr zu bedienen. Davor gehört eine Kategorieauswahl, die
-das Dropdown einschränkt. Die Kategorien gibt es bereits aus M3b. Die
-Auswahl ist ein Anzeigefilter, sie gehört nicht in die Server Action und
-nicht an die Buchung.
+**Kategorie zuerst wählen: fertig.** Vor dem Artikel-Dropdown steht jetzt
+eine Kategoriewahl, vorbelegt mit der ersten Kategorie, nicht mit "Alle":
+sonst wäre nichts gewonnen. "Alle Kategorien" steht als letzter Eintrag
+zur Verfügung. Die Kategoriewahl erscheint erst ab zwei Kategorien.
+
+Die Filterlogik liegt in `src/lib/materialwahl.ts`, ohne React und ohne
+Prisma, und ist in `tests/einheit/materialwahl.test.ts` geprüft. Zwei
+Dinge, die dort festgenagelt sind:
+
+- `Material.categoryId` ist **optional**. Artikel ohne Kategorie bekommen
+  einen eigenen Topf "Ohne Kategorie", sonst wären sie über die
+  Kategoriewahl gar nicht mehr erreichbar.
+- Nach einem Kategoriewechsel zeigt die bisherige Auswahl auf einen
+  Artikel der alten Kategorie. Gebucht wird dann der erste sichtbare,
+  sonst bucht das Formular etwas anderes, als im Dropdown steht.
 
 **Buchung ändern statt nur rückgängig machen.** Heute gibt es zu einer
 Buchung ausschliesslich "Rückgängig". Wer sich bei der Menge vertippt,

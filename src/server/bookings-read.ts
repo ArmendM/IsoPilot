@@ -65,14 +65,25 @@ export type MaterialWahl = {
   unit: "M2" | "LFM" | "STK" | "KG" | "ROLLE";
   preis: number;
   lager: number;
+  kategorieId: string | null;
+  kategorie: string | null;
 };
 
-/** Aktive Artikel zur Auswahl bei der Buchung. */
+/** Aktive Artikel zur Auswahl bei der Buchung, nach Kategorie gruppiert
+ *  sortiert: die Buchung wählt zuerst die Kategorie, dann den Artikel. */
 export async function materialAuswahl(user: SessionUser): Promise<MaterialWahl[]> {
   const rows = await db.material.findMany({
     where: { companyId: user.companyId, isActive: true },
-    orderBy: { name: "asc" },
-    select: { id: true, sku: true, name: true, unit: true, price: true, stock: true },
+    orderBy: [
+      { category: { sortOrder: "asc" } },
+      { category: { name: "asc" } },
+      { name: "asc" },
+    ],
+    select: {
+      id: true, sku: true, name: true, unit: true, price: true, stock: true,
+      categoryId: true,
+      category: { select: { name: true } },
+    },
   });
   return rows.map((m) => ({
     id: m.id,
@@ -81,5 +92,7 @@ export async function materialAuswahl(user: SessionUser): Promise<MaterialWahl[]
     unit: m.unit,
     preis: Number(m.price),
     lager: Number(m.stock),
+    kategorieId: m.categoryId,
+    kategorie: m.category?.name ?? null,
   }));
 }
