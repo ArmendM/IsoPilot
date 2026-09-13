@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { saveSite, setSiteStatus } from "@/server/sites";
+import { ZahlFeld } from "@/components/ui/eingabefelder";
 
 export type Zeile = {
   id: string;
@@ -367,25 +368,23 @@ function Formular({
 
         <label className="space-y-1">
           <span className={bez}>Sollstunden</span>
-          <input
-            type="number"
+          <ZahlFeld
             min={0}
             step={1}
-            value={f.targetHours}
-            onChange={(e) => setF({ ...f, targetHours: Number(e.target.value) })}
+            wert={f.targetHours}
+            onWert={(n) => setF({ ...f, targetHours: n })}
             className={feld}
           />
         </label>
 
         <label className="space-y-1">
           <span className={bez}>Objektrabatt in Prozent</span>
-          <input
-            type="number"
+          <ZahlFeld
             min={0}
             max={100}
             step={1}
-            value={f.discountPct}
-            onChange={(e) => setF({ ...f, discountPct: Number(e.target.value) })}
+            wert={f.discountPct}
+            onWert={(n) => setF({ ...f, discountPct: n })}
             className={feld}
           />
         </label>
