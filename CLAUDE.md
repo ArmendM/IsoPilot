@@ -176,6 +176,38 @@ Zwei getrennte Bereiche, nicht vermischen:
 - `components/` kennt kein Prisma, `server/` kennt kein React
 - Keine Selbstregistrierung, keine impliziten Rechte
 
+## Tests
+
+**Es gibt bis heute keine einzige Testdatei im Projekt.**
+`docs/CLAUDE-CODE-TASKS.md` fordert zu jeder Aufgabe Tests, für M6b
+ausdrücklich für erlaubte, verbotene und begründungspflichtige
+Statuswechsel. Das ist die grösste offene Lücke in der Arbeitsweise, und
+der richtige Zeitpunkt ist eher vor M3d als danach: den Excel-Abgleich über
+drei Stufen ohne Tests zu bauen, ist genau die Stelle, an der still
+Duplikate entstehen.
+
+Es braucht **nicht einen Runner, sondern drei Arten von Tests**, mit sehr
+verschiedenen Kosten. Sie sollen getrennt aufrufbar sein, sonst wartet man
+für eine reine Rechenregel auf eine Datenbank:
+
+| Art | Prüft | Braucht | Erwartete Dauer |
+|---|---|---|---|
+| Reine Logik | `lib/dates.ts`, Statustabelle in `guards.ts`, Import-Abgleich, Ausmassrechnung | nichts, nur Node | Sekunden |
+| Server Actions | Transaktion, Lagerbewegung, Berechtigung, Monatsabschluss, Soft Delete | echtes Postgres mit eigener Testdatenbank | Zehn Sekunden bis Minuten |
+| Oberfläche | Formulare, Anzeige, Wechsel zwischen Datensätzen | Browser und laufende App | Minuten |
+
+Die dritte Art ist die teuerste und zugleich die, die bisher die echten
+Fehler gefunden hat: ein Zahlenfeld zeigte `0500` statt 500, und der
+Auftraggeber kippte beim Bearbeiten lautlos auf eine andere Firma. Beides
+war im Datenpfad nicht sichtbar. Sie ersetzt die ersten beiden nicht, und
+umgekehrt genauso wenig.
+
+Bis es soweit ist, wird Rechenlogik mit einem Wegwerf-Skript über `tsx`
+geprüft. Das hat bei der Statustabelle einen Fehler gefunden, den das
+blosse Lesen nicht gezeigt hätte. Es ist aber kein Ersatz: das Skript
+läuft einmal und danach nie wieder, und in der CI läuft heute nur
+`typecheck` und `lint`.
+
 ## Aufbewahrung
 
 | Daten | Frist |
@@ -254,6 +286,7 @@ Rückfall, `/abschluss` Monatsabschluss.
 - M3c Materialbuchung auf eine Baustelle: **fertig**
 - M3d Excel-Import in den Katalog: **als Nächstes**
 - M3e VSI-Tarifmatrix: offen
+- M3f Materialbuchung verbessern, Kategoriefilter und Ändern: offen
 
 **M4 Auswertung**
 Auswertung Mitarbeitende, Auswertung Baustellen, Export Excel und PDF,
@@ -262,6 +295,31 @@ Firmeneinstellungen mit Logo-Upload, Aufbewahrungsjob
 **M5 Produktivstart**
 Seed mit echten Stammdaten, ein Monat Parallelbetrieb neben dem alten
 Vorgehen, Backup-Wiederherstellung geübt, Schulung
+
+**M6 und M7** stehen in `docs/lifecycle.md`, von der Offerte bis zur
+bezahlten Rechnung, mit der Reihenfolge M6a bis M7c. Bewusst nach dem
+Parallelbetrieb, nicht davor.
+
+### Kein toter Code: die Übergangstabelle in `guards.ts`
+
+`NEXT_STATUS`, `needsReason`, `assertTransition`, `canBookTime` und
+`canBookMaterial` in `src/server/guards.ts` werden heute nirgends
+aufgerufen, sind aber **kein Überbleibsel und nicht zu löschen.** Sie sind
+die vorgezogene Umsetzung des Statusmodells aus `docs/lifecycle.md`, das
+dort mit "Erlaubte Übergänge stehen in einer Tabelle im Code" genau diese
+Tabelle meint. `docs/CLAUDE-CODE-TASKS.md` führt das als P0 "Baustellenstatus
+auf das definierte Lifecycle-Modell heben" und nennt dieselben Funktionen
+als vorhandene Grundlage.
+
+Ungenutzt sind sie, weil das `SiteStatus`-Enum in `prisma/schema.prisma`
+erst OPEN, PAUSED und DONE kennt und `setSiteStatus` in
+`src/server/sites.ts` jeden Wechsel frei erlaubt. Das aufzulösen ist M6b
+und braucht Migration, `SiteStatusEvent` und Oberfläche, also mehr als ein
+Aufräumen.
+
+Wer hier aufräumen will, prüft bitte zuerst `docs/lifecycle.md`. Ein
+früherer Anlauf hat die Funktionen als toten Code eingestuft, allein weil
+`grep` keine Verwendung fand.
 
 ### M3c, Materialbuchung (fertig, PR #20)
 
@@ -290,6 +348,66 @@ für alle, nicht nur Vorgesetzte. Mitarbeitende sehen und buchen nur eigene
 Buchungen, Vorgesetzte alle und können auch für eine andere Person buchen,
 wie bei der Zeiterfassung. Absichtlich kein Hardstop bei negativem Lager,
 nur der bestehende Mindestbestand-Hinweis im Materialkatalog.
+
+### Nachträglich an M3c gefunden
+
+Aus einer späteren Durchsicht, nach Gewicht. Nichts davon ist heute
+kaputt, alles wird es mit mehr Daten oder mehr Nebenläufigkeit:
+
+- **Abgeschlossene und pausierte Baustellen nehmen Material an.**
+  `saveMaterialBooking` prüft Existenz und Firma, nie `site.status`, und
+  die Oberfläche zeigt den Abschnitt auch bei `DONE`. Damit lassen sich
+  Materialkosten einer abgeschlossenen Baustelle nachträglich verändern,
+  genau gegen die Einfrier-Regel. `canBookMaterial` aus `guards.ts` ist
+  die Funktion, die das mit M6b abfängt.
+- **Doppeltes Rückgängigmachen kann das Lager zweimal gutschreiben.**
+  `deleteMaterialBooking` liest, prüft `deletedAt` und schreibt dann über
+  `update({ where: { id } })`. Zwei parallele Klicks buchen die Menge
+  zweimal zurück. Die Bedingung gehört ins `WHERE`:
+  `updateMany({ where: { id, deletedAt: null } })` und Abbruch bei
+  `count === 0`.
+- **Artikel und Preis werden vor der Transaktion gelesen.** Der
+  eingefrorene `unitPrice` stammt aus einem Lesevorgang ausserhalb. Mit
+  dem Preisimport aus M3d wird dieses Fenster real statt theoretisch.
+- **`isoUtc` in `bookings-read.ts` dupliziert `isoDate` aus `lib/dates.ts`**
+  mit anderer Logik, rohes UTC statt Zürich. Heute gleich, weil `bookedOn`
+  immer UTC-Mitternacht ist. Sobald ein `bookedOn` eine Uhrzeit trägt,
+  laufen die beiden still auseinander.
+
+### M3f, Materialbuchung verbessern (offen)
+
+Zwei Dinge stören im Betrieb, beide aus dem Klicktest an M3c:
+
+**Kategorie zuerst wählen.** Das Artikel-Dropdown in
+`src/components/baustellen/material-buchung.tsx` listet heute den ganzen
+Katalog. Mit ein paar Dutzend Artikeln ist das auf dem Telefon auf der
+Baustelle nicht mehr zu bedienen. Davor gehört eine Kategorieauswahl, die
+das Dropdown einschränkt. Die Kategorien gibt es bereits aus M3b. Die
+Auswahl ist ein Anzeigefilter, sie gehört nicht in die Server Action und
+nicht an die Buchung.
+
+**Buchung ändern statt nur rückgängig machen.** Heute gibt es zu einer
+Buchung ausschliesslich "Rückgängig". Wer sich bei der Menge vertippt,
+muss löschen und neu erfassen, und im Protokoll stehen dann drei Vorgänge
+statt einem. Menge, Datum und Artikel sollen sich ändern lassen.
+
+Das war in M3c eine bewusste Vereinfachung, siehe den Abschnitt darüber.
+Sie fallen zu lassen wirft zwei Fragen auf, die vor dem Code zu klären
+sind:
+
+- **Was passiert mit dem Lager?** Eine geänderte Menge darf keine zweite
+  Abgangsbuchung erzeugen, sondern nur die Differenz. `StockMovement`
+  braucht dafür einen eigenen `StockReason`, sonst liest sich der
+  Lagerverlauf später falsch.
+- **Was passiert mit dem eingefrorenen Preis?** Wird beim Ändern der Menge
+  der ursprüngliche `unitPrice` behalten, oder der heutige Katalogpreis
+  genommen? Beim Wechsel auf einen anderen Artikel gibt es keinen
+  ursprünglichen Preis mehr. Vorschlag: Menge und Datum behalten den
+  eingefrorenen Preis, ein Artikelwechsel holt den aktuellen. Das ist ein
+  fachlicher Entscheid, kein technischer.
+
+Wie bei M3c: Schreiben und Audit-Log in einer Transaktion, `assertMonthOpen`,
+und Mitarbeitende ändern nur eigene Buchungen.
 
 ### Als Nächstes: M3d, Excel-Import in den Katalog
 
@@ -331,13 +449,6 @@ Fachliche Entscheide, die niemand aus dem Code ableiten kann:
 - Preisunterschiede Brandschutz zwischen der Liste von 2018 und 2022.
   Aktuell gelten die Werte von 2022. Kundenspezifische Preislisten wären
   ein späterer Ausbauschritt.
-- **Toter Code in `src/server/guards.ts` zu prüfen und wohl zu entfernen:**
-  `NEXT_STATUS`, `needsReason`, `assertTransition`, `canBookTime`,
-  `canBookMaterial` beschreiben einen Baustellen-Workflow mit Status wie
-  OFFERTE, AUFTRAG, VERRECHNET. Das aktuelle `SiteStatus`-Enum kennt aber
-  nur OPEN, PAUSED, DONE, und eine Suche zeigte keine Verwendung dieser
-  Exporte ausserhalb der Datei selbst. Vor dem Löschen mit frischem
-  `grep` bestätigen, dass wirklich nichts mehr darauf zugreift.
 
 ## Was nicht gebaut wird
 
