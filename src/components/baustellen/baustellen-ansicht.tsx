@@ -390,6 +390,21 @@ function Formular({
         </label>
       </div>
 
+      {/* Ein fokussiertes Auswahlfeld wechselt bei einem Pfeiltastendruck
+          lautlos den Wert. Beim Auftraggeber fällt das erst auf, wenn die
+          Rechnung an die falsche Firma geht, deshalb wird eine Änderung
+          hier ausdrücklich angezeigt, bevor gespeichert wird. */}
+      {zeile && f.partnerId !== (zeile.partnerId ?? "") && (
+        <p className="rounded-md border border-amber-400 bg-amber-50 p-2 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200">
+          Auftraggeber wird von{" "}
+          <strong>{zeile.partnerName ?? "Keiner"}</strong> auf{" "}
+          <strong>
+            {partner.find((p) => p.id === f.partnerId)?.name ?? "Keiner"}
+          </strong>{" "}
+          geändert.
+        </p>
+      )}
+
       {fehler && (
         <p role="alert" className="text-sm text-red-700 dark:text-red-300">
           {fehler}
