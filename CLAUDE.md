@@ -220,19 +220,40 @@ Mailpit-Oberfläche: http://localhost:8025
 - Commits auf Deutsch: `feat: Ferienantrag mit Arbeitstagsberechnung`
 - Deployment nur manuell oder per Tag, nie automatisch bei jedem Push
 - Vor jeder Migration auf dem Server ein Backup, im Skript verankert
+- **Vor der Arbeit abzweigen, nicht danach.** Nach einem Merge steht man
+  auf `main`, und dort gehört kein Commit hin.
+- **Nach `npm run db:migrate` den Dev-Server neu starten.** Er hält den
+  erzeugten Prisma-Client im Speicher. Sonst ist ein neues Feld still
+  `undefined`, ohne Fehlermeldung, und die Anzeige zeigt es einfach nicht.
+- **Den Abschluss eines CI-Laufs direkt auslesen**, mit
+  `gh run view <id> --json conclusion`. Bei `gh run watch … | tail; echo $?`
+  liest man den Status von `tail` und hält einen roten Lauf für grün.
 
-## Roadmap
+## Roadmap und Stand
 
-**M1 Fundament**
-Next.js, Prisma, Schema, OIDC-Anmeldung, Session und Rollenprüfung,
-Audit-Log, Server aufsetzen, erstes Deployment
+Stand 13.09.2026. Dieser Abschnitt ist die Antwort auf "wo stehen wir und
+was kommt als Nächstes". Er wird bei jedem abgeschlossenen Stück
+nachgeführt.
 
-**M2 Zeiterfassung**
-Zeiteinträge, Monatskalender mit offenen Tagen, Absenzen, Ferienanspruch,
-Feiertagsjob, Monatsabschluss
+**M1 Fundament — fertig**
+Next.js 16, Prisma 7, Schema, Anmeldung über Infomaniak mit Warteraum,
+Sitzung und Rollenprüfung, Audit-Log, Benutzerverwaltung unter
+`/personen`. Offen bleibt nur das Aufsetzen des Servers und das erste
+Deployment, dafür steht `docs/BETRIEB.md` bereit.
 
-**M3 Baustellen und Material**
-Partnerfirmen, Baustellen, Materialkatalog mit Import, Lager, VSI-Tarife
+**M2 Zeiterfassung — fertig**
+`/zeiten` Tagesansicht, `/zeiten/monat` Monatskalender mit offenen Tagen,
+`/absenzen` mit Antrag, Bewilligung, halben Tagen und Ferienanspruch
+anteilig mit Übertrag, Feiertagsjob gegen OpenHolidays mit lokalem
+Rückfall, `/abschluss` Monatsabschluss.
+
+**M3 Baustellen und Material — angefangen**
+
+- M3a `/baustellen` mit Soll-Ist, Status und Auftraggeber: **fertig**
+- M3b `/material` Katalog mit Lager, Mindestbestand, Kategorien: **fertig**
+- M3c Materialbuchung auf eine Baustelle: **als Nächstes**
+- M3d Excel-Import in den Katalog: offen
+- M3e VSI-Tarifmatrix: offen
 
 **M4 Auswertung**
 Auswertung Mitarbeitende, Auswertung Baustellen, Export Excel und PDF,
@@ -242,8 +263,34 @@ Firmeneinstellungen mit Logo-Upload, Aufbewahrungsjob
 Seed mit echten Stammdaten, ein Monat Parallelbetrieb neben dem alten
 Vorgehen, Backup-Wiederherstellung geübt, Schulung
 
+### Als Nächstes: M3c, Materialbuchung
+
+Material aus dem Katalog auf eine Baustelle buchen. Das Schema steht
+bereits vollständig, es braucht **keine Migration**:
+
+- `MaterialBooking` hat `unitPrice` mit dem Kommentar "Preis zum
+  Buchungszeitpunkt, eingefroren". Genau das ist die Regel aus diesem
+  Dokument: ein späterer Preisimport darf abgeschlossene Baustellen nicht
+  rückwirkend ändern. Die Buchung schreibt den Preis als eigenen Wert und
+  verweist nicht auf den Artikel.
+- `BookingKind` unterscheidet `CATALOG` (reduziert das Lager) von `VSI`
+  (berührt das Lager nicht). Für M3c zählt nur `CATALOG`.
+- `StockMovement` mit `StockReason` nimmt die Lagerbewegung auf.
+
+Zu beachten: Buchung, Lagerbewegung und Protokolleintrag gehören in
+dieselbe Transaktion, und der Monatsabschluss muss über `assertMonthOpen`
+geprüft werden wie bei Zeiten und Absenzen.
+
 ## Offene Punkte
 
+Fachliche Entscheide, die niemand aus dem Code ableiten kann:
+
+- **Übertrag der Ferientage ist nicht begrenzt.** Wer ein Jahr lang keine
+  Ferien nimmt, trägt die vollen 25 Tage ins Folgejahr. Ob das so gewollt
+  ist oder eine Obergrenze braucht, ist eine Absprache.
+- **`employedFrom` muss bei jeder neuen Person gesetzt werden**, sonst
+  gilt das Eintrittsjahr als voll und der Ferienanspruch wird nicht
+  anteilig gekürzt. Bei Daut und Armend steht der 01.01.2026.
 - Namensrechte prüfen: nic.ch, zefix.ch, swissreg.ch
 - Schriftliche Regelung mit Daut und Qail, wem der Code gehört.
   Vorschlag: Armend behält die Rechte, IsoTeam erhält ein unbefristetes,
