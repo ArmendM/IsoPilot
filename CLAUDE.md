@@ -84,6 +84,38 @@ aus der Discovery, ein `end_session_endpoint` gibt es dort nicht, der
 Logout wirkt also nur bei uns. Der IdP liefert die Claims `sub`, `email`,
 `email_verified`, `name` und `groups`.
 
+**Offen: der Zustimmungsdialog erscheint bei jeder Anmeldung.** Infomaniak
+zeigt vor jeder Weiterleitung "Request for connection authorisation" mit
+"Access your profile email address" und "View your user profile", und es
+muss jedes Mal "Authorise" angeklickt werden. Für vier Personen, die sich
+täglich anmelden, ist das lästig.
+
+Geprüft und ausgeschlossen, dass es an IsoPilot liegt:
+
+- `src/app/api/auth/login/route.ts` schickt **keinen `prompt`-Parameter**.
+  Wir erzwingen den Dialog also nicht, es gibt bei uns nichts abzuschalten.
+- Die Scopes sind `openid email profile`, genau die zwei Zeilen im Dialog.
+  Nichts Überflüssiges, `phone` wäre möglich und wird nicht angefragt.
+- Das Discovery-Dokument nennt **kein `prompt_values_supported`**. Ob
+  `prompt=none` unterstützt wird, ist damit nicht zugesichert.
+
+Damit liegt der Hebel beim IdP, nicht bei uns. Zu klären, in dieser
+Reihenfolge:
+
+1. Im Infomaniak Manager bei der Anwendung nachsehen, ob es eine
+   Einstellung für gespeicherte Zustimmung oder eine als vertrauenswürdig
+   markierte Anwendung gibt.
+2. Wenn nicht, `prompt=none` versuchen. Das hilft aber nur, wenn
+   Infomaniak die Zustimmung überhaupt speichert. Tut es das nicht, kommt
+   `interaction_required` zurück statt eines Codes, und es braucht einen
+   Rückfall auf die normale Anmeldung. Ohne Rückfall wäre die Anmeldung
+   danach kaputt, also nicht ungeprüft einbauen.
+3. Sonst Infomaniak fragen. Ein Verdacht, der zur bereits dokumentierten
+   Beobachtung passt: Infomaniak gibt einen öffentlichen Client ohne
+   Secret aus. Einem Client, der sich nicht ausweisen kann, jede
+   Anmeldung erneut zustimmen zu lassen, wäre eine nachvollziehbare
+   Entscheidung auf deren Seite und dann nichts, was sich abstellen lässt.
+
 ## Fachliche Regeln
 
 **Arbeitszeit**
