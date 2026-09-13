@@ -339,6 +339,13 @@ Mailpit-Oberfläche: http://localhost:8025
 - Vor jeder Migration auf dem Server ein Backup, im Skript verankert
 - **Vor der Arbeit abzweigen, nicht danach.** Nach einem Merge steht man
   auf `main`, und dort gehört kein Commit hin.
+- **Immer von `main` abzweigen**, also `git checkout main && git pull`
+  als eigenen Schritt vor `git checkout -b`. Wird von einem anderen
+  Feature-Branch abgezweigt, schleppt der neue Zweig dessen Commits mit,
+  und ein Squash-Merge bringt sie ungeprüft auf `main`. Genau so ist der
+  Excel-Import aus M3d vor seinem Klicktest gelandet, siehe #34. Vor dem
+  Erstellen eines PR mit `git log main..HEAD --oneline` gegenprüfen, dass
+  nur die eigenen Commits drin sind.
 - **Nach `npm ci` `npm run db:generate` nachziehen.** `npm ci` wirft
   `node_modules` weg, und es gibt kein `postinstall`, das den Prisma-Client
   neu erzeugt. Ohne diesen Schritt meldet `npm run typecheck` lauter
@@ -390,7 +397,7 @@ Rückfall, `/abschluss` Monatsabschluss.
 - M3c Materialbuchung auf eine Baustelle: **fertig**
 - M3d Excel-Import in den Katalog: **fertig**
 - M3e VSI-Tarifmatrix: **als Nächstes**
-- M3f Materialbuchung verbessern: Kategoriefilter **fertig**, Ändern offen
+- M3f Materialbuchung verbessern, Kategoriefilter und Ändern: **fertig**
 
 **M4 Auswertung**
 Auswertung Mitarbeitende, Auswertung Baustellen, Export Excel und PDF,
@@ -530,48 +537,44 @@ Gehört der Sache nach zu M4, die Auswertung Mitarbeitende ist der Ort, wo
 der Saldo sichtbar wird. Das Datenmodell dafür fehlt aber noch ganz und
 braucht eine Migration.
 
-### M3f, Materialbuchung verbessern (offen)
+### M3f, Materialbuchung verbessern (fertig)
 
-Zwei Dinge stören im Betrieb, beide aus dem Klicktest an M3c:
-
-**Kategorie zuerst wählen: fertig.** Vor dem Artikel-Dropdown steht jetzt
-eine Kategoriewahl, vorbelegt mit der ersten Kategorie, nicht mit "Alle":
+**Kategorie zuerst wählen.** Vor dem Artikel-Dropdown steht eine
+Kategoriewahl, vorbelegt mit der ersten Kategorie, nicht mit "Alle":
 sonst wäre nichts gewonnen. "Alle Kategorien" steht als letzter Eintrag
-zur Verfügung. Die Kategoriewahl erscheint erst ab zwei Kategorien.
+zur Verfügung, die Kategoriewahl erscheint erst ab zwei Kategorien.
 
 Die Filterlogik liegt in `src/lib/materialwahl.ts`, ohne React und ohne
-Prisma, und ist in `tests/einheit/materialwahl.test.ts` geprüft. Zwei
-Dinge, die dort festgenagelt sind:
+Prisma. Zwei Dinge sind dort festgenagelt: `Material.categoryId` ist
+**optional**, solche Artikel bekommen einen Topf "Ohne Kategorie", sonst
+wären sie über die Kategoriewahl nicht erreichbar. Und nach einem
+Kategoriewechsel wird der erste sichtbare Artikel gebucht, sonst bucht
+das Formular etwas anderes, als im Dropdown steht.
 
-- `Material.categoryId` ist **optional**. Artikel ohne Kategorie bekommen
-  einen eigenen Topf "Ohne Kategorie", sonst wären sie über die
-  Kategoriewahl gar nicht mehr erreichbar.
-- Nach einem Kategoriewechsel zeigt die bisherige Auswahl auf einen
-  Artikel der alten Kategorie. Gebucht wird dann der erste sichtbare,
-  sonst bucht das Formular etwas anderes, als im Dropdown steht.
+**Buchung ändern statt nur rückgängig machen.** Menge, Datum und Artikel
+lassen sich an Ort und Stelle in der Liste ändern. Die Rechenlogik dazu
+steht in `src/lib/buchungsaenderung.ts`, geprüft in `tests/einheit`:
 
-**Buchung ändern statt nur rückgängig machen.** Heute gibt es zu einer
-Buchung ausschliesslich "Rückgängig". Wer sich bei der Menge vertippt,
-muss löschen und neu erfassen, und im Protokoll stehen dann drei Vorgänge
-statt einem. Menge, Datum und Artikel sollen sich ändern lassen.
+- **Der Preis bleibt eingefroren, solange der Artikel derselbe ist.** Eine
+  Mengenkorrektur ist dieselbe Buchung, ein zwischenzeitlicher Preisimport
+  darf sie nicht rückwirkend verändern. Ein **Artikelwechsel** holt den
+  heutigen Katalogpreis: für den neuen Artikel gibt es keinen
+  ursprünglichen Preis, den man behalten könnte. Die Oberfläche sagt das
+  an, sobald ein anderer Artikel gewählt ist.
+- **Ins Lager geht nur die Differenz.** Wer 10 auf 12 korrigiert, erzeugt
+  eine Bewegung von -2, nicht eine zweite von -12. Beim Artikelwechsel
+  geht die alte Menge ganz zurück und die neue ganz ab, das sind zwei
+  Bewegungen auf zwei Artikeln. Ohne Mengenänderung entsteht gar keine
+  Bewegung, eine Zeile mit delta 0 wäre nur Rauschen.
+- Dafür gibt es **`StockReason.BOOKING_CHANGE`**, bewusst getrennt von
+  `CORRECTION`: dort steht eine Inventurdifferenz, hier eine berichtigte
+  Buchung. Im Lagerverlauf muss beides auseinanderzuhalten sein.
 
-Das war in M3c eine bewusste Vereinfachung, siehe den Abschnitt darüber.
-Sie fallen zu lassen wirft zwei Fragen auf, die vor dem Code zu klären
-sind:
-
-- **Was passiert mit dem Lager?** Eine geänderte Menge darf keine zweite
-  Abgangsbuchung erzeugen, sondern nur die Differenz. `StockMovement`
-  braucht dafür einen eigenen `StockReason`, sonst liest sich der
-  Lagerverlauf später falsch.
-- **Was passiert mit dem eingefrorenen Preis?** Wird beim Ändern der Menge
-  der ursprüngliche `unitPrice` behalten, oder der heutige Katalogpreis
-  genommen? Beim Wechsel auf einen anderen Artikel gibt es keinen
-  ursprünglichen Preis mehr. Vorschlag: Menge und Datum behalten den
-  eingefrorenen Preis, ein Artikelwechsel holt den aktuellen. Das ist ein
-  fachlicher Entscheid, kein technischer.
-
-Wie bei M3c: Schreiben und Audit-Log in einer Transaktion, `assertMonthOpen`,
-und Mitarbeitende ändern nur eigene Buchungen.
+**Geändert wird nur auf einer offenen Baustelle**, genau wie beim Buchen:
+eine Änderung verschiebt die Materialkosten. Rückgängig machen bleibt
+dagegen überall erlaubt, das nimmt nur weg. Und fällt das neue Datum in
+einen anderen Monat, müssen **beide** Monate offen sein, sonst liesse
+sich ein Eintrag aus einem gesperrten Monat herausschieben.
 
 ### M3d, Excel-Import in den Katalog (fertig)
 

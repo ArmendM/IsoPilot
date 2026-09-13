@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/session";
 import { assertMonthOpen, assertOwnerOrAdmin, assertSameCompany } from "./guards";
+import { planeAenderung } from "@/lib/buchungsaenderung";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -151,6 +152,117 @@ export async function deleteMaterialBooking(id: string): Promise<ActionResult> {
           action: "DELETE",
           entity: "MaterialBooking",
           entityId: id,
+          before: JSON.parse(JSON.stringify(before)),
+          after: JSON.parse(JSON.stringify(after)),
+        },
+      });
+    });
+
+    revalidatePath("/baustellen");
+    revalidatePath("/material");
+    return { ok: true };
+  } catch (e) {
+    return fehler(e);
+  }
+}
+
+const Aenderung = z.object({
+  id: z.string().min(1),
+  materialId: z.string().min(1),
+  menge: z.number().positive().max(1_000_000),
+  bookedOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+});
+
+/**
+ * Eine bestehende Buchung ändern: Menge, Datum oder Artikel.
+ *
+ * Preis und Lager folgen `planeAenderung` in `lib/buchungsaenderung.ts`.
+ * Kurz: Menge und Datum behalten den eingefrorenen Preis, ein
+ * Artikelwechsel holt den heutigen, und ins Lager geht nur die Differenz.
+ *
+ * Geändert wird nur auf einer offenen Baustelle, genau wie beim Buchen:
+ * eine Änderung verschiebt die Materialkosten, und die einer
+ * abgeschlossenen Baustelle dürfen sich nicht nachträglich bewegen.
+ * Rückgängig machen bleibt dagegen überall erlaubt, das nimmt nur weg.
+ *
+ * Fällt das Datum in einen anderen Monat, müssen **beide** Monate offen
+ * sein. Sonst liesse sich ein Eintrag aus einem gesperrten Monat
+ * herausschieben und die Sperre wäre wertlos.
+ */
+export async function updateMaterialBooking(raw: unknown): Promise<ActionResult> {
+  const user = await requireUser();
+  const parsed = Aenderung.safeParse(raw);
+  if (!parsed.success) return { ok: false, error: "Artikel, Menge und Datum werden gebraucht." };
+  const i = parsed.data;
+
+  try {
+    const before = await db.materialBooking.findUnique({
+      where: { id: i.id },
+      include: { site: true },
+    });
+    if (!before || before.deletedAt) return { ok: false, error: "Buchung nicht gefunden." };
+    if (before.site.companyId !== user.companyId)
+      return { ok: false, error: "Buchung nicht gefunden." };
+    if (before.kind !== "CATALOG" || !before.materialId)
+      return { ok: false, error: "Nur Katalogbuchungen lassen sich hier ändern." };
+
+    assertOwnerOrAdmin(user, before.userId);
+    if (before.site.status !== "OPEN") throw new Error("SITE_CLOSED");
+
+    const neuesDatum = new Date(`${i.bookedOn}T00:00:00Z`);
+    await assertMonthOpen(user.companyId, before.bookedOn);
+    await assertMonthOpen(user.companyId, neuesDatum);
+
+    await db.$transaction(async (tx) => {
+      const material = await tx.material.findUnique({ where: { id: i.materialId } });
+      if (!material || material.companyId !== user.companyId || !material.isActive)
+        throw new Error("MATERIAL_NOT_FOUND");
+
+      const plan = planeAenderung(
+        {
+          materialId: before.materialId!,
+          menge: Number(before.quantity),
+          einzelpreis: Number(before.unitPrice),
+        },
+        { materialId: material.id, menge: i.menge, heutigerPreis: Number(material.price) },
+      );
+
+      const after = await tx.materialBooking.update({
+        where: { id: i.id },
+        data: {
+          materialId: material.id,
+          quantity: i.menge,
+          unit: material.unit,
+          unitPrice: plan.einzelpreis,
+          bookedOn: neuesDatum,
+        },
+      });
+
+      for (const b of plan.bewegungen) {
+        await tx.material.update({
+          where: { id: b.materialId },
+          data: { stock: { increment: b.delta } },
+        });
+        await tx.stockMovement.create({
+          data: {
+            materialId: b.materialId,
+            userId: user.id,
+            delta: b.delta,
+            reason: "BOOKING_CHANGE",
+            note: plan.artikelGewechselt
+              ? `Buchung auf ${before.site.name ?? before.site.street}, Artikel gewechselt`
+              : `Buchung auf ${before.site.name ?? before.site.street}, Menge berichtigt`,
+          },
+        });
+      }
+
+      await tx.auditLog.create({
+        data: {
+          companyId: user.companyId,
+          actorId: user.id,
+          action: "UPDATE",
+          entity: "MaterialBooking",
+          entityId: after.id,
           before: JSON.parse(JSON.stringify(before)),
           after: JSON.parse(JSON.stringify(after)),
         },

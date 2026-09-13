@@ -294,6 +294,11 @@ enum StockReason {
   BOOKING // Verbrauch auf Baustelle
   CORRECTION // Inventurdifferenz
   RETURN // Rückgabe ans Lager
+  // Mengen- oder Artikelkorrektur an einer bestehenden Buchung. Bewusst
+  // getrennt von CORRECTION: dort steht eine Inventurdifferenz, hier eine
+  // berichtigte Buchung. Im Lagerverlauf muss beides auseinanderzuhalten
+  // sein, sonst weiss später niemand, warum der Bestand sprang.
+  BOOKING_CHANGE
 }
 
 model StockMovement {
