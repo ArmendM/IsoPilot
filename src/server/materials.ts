@@ -15,7 +15,6 @@ const Artikel = z.object({
   unit: z.enum(["M2", "LFM", "STK", "KG", "ROLLE"]),
   preis: z.number().min(0).max(1000000),
   lager: z.number().min(0).max(1000000),
-  fehlmenge: z.number().min(0).max(1000000),
   mindestbestand: z.number().min(0).max(1000000),
   fireClass: z.string().max(20).nullable(),
 });
@@ -54,7 +53,6 @@ export async function saveMaterial(raw: unknown): Promise<ActionResult> {
       unit: i.unit,
       price: i.preis,
       stock: i.lager,
-      shortfall: i.fehlmenge,
       minStock: i.mindestbestand,
       fireClass: i.fireClass?.trim() || null,
     };
@@ -64,8 +62,19 @@ export async function saveMaterial(raw: unknown): Promise<ActionResult> {
       if (i.id && (!before || before.companyId !== user.companyId))
         throw new Error("FORBIDDEN");
 
+      /* Wird der Lagerbestand tatsächlich geändert, ist das eine Zählung.
+       * Eine offene Fehlmenge gilt damit als erledigt, sonst bliebe ein
+       * Bestellbedarf stehen, den es nach der Inventur nicht mehr gibt.
+       * Bleibt die Zahl gleich, etwa weil nur der Preis geändert wurde,
+       * wird die Fehlmenge nicht angerührt. Gefüllt wird sie sonst
+       * ausschliesslich über Buchungen und den Wareneingang. */
+      const gezaehlt = before !== null && Number(before.stock) !== i.lager;
+
       const after = i.id
-        ? await tx.material.update({ where: { id: i.id }, data: daten })
+        ? await tx.material.update({
+            where: { id: i.id },
+            data: gezaehlt ? { ...daten, shortfall: 0 } : daten,
+          })
         : await tx.material.create({ data: { ...daten, companyId: user.companyId } });
 
       await tx.auditLog.create({

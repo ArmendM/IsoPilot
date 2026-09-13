@@ -274,7 +274,6 @@ function ArtikelFormular({
     unit: artikel?.unit ?? ("M2" as Artikel["unit"]),
     preis: artikel?.preis ?? 0,
     lager: artikel?.lager ?? 0,
-    fehlmenge: artikel?.fehlmenge ?? 0,
     mindestbestand: artikel?.mindestbestand ?? 0,
     fireClass: artikel?.fireClass ?? "",
   });
@@ -297,7 +296,6 @@ function ArtikelFormular({
             unit: f.unit,
             preis: Number(f.preis) || 0,
             lager: Number(f.lager) || 0,
-            fehlmenge: Number(f.fehlmenge) || 0,
             mindestbestand: Number(f.mindestbestand) || 0,
             fireClass: f.fireClass.trim() || null,
           });
@@ -396,21 +394,6 @@ function ArtikelFormular({
             step={1}
             wert={f.lager}
             onWert={(n) => setF({ ...f, lager: n })}
-            className={feld}
-          />
-        </label>
-
-        {/* Wird durch Buchungen gefüllt, die das Lager nicht decken konnte.
-            Von Hand auf 0 setzen, sobald die Ware geliefert und der
-            Lagerbestand gezählt ist. Ein eigener Wareneingang würde das
-            später selbst erledigen. */}
-        <label className="space-y-1">
-          <span className={bez}>Fehlmenge, offen zu bestellen</span>
-          <ZahlFeld
-            min={0}
-            step={1}
-            wert={f.fehlmenge}
-            onWert={(n) => setF({ ...f, fehlmenge: n })}
             className={feld}
           />
         </label>

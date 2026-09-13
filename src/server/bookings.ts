@@ -91,6 +91,7 @@ export async function saveMaterialBooking(raw: unknown): Promise<ActionResult> {
           data: {
             materialId: material.id,
             userId: user.id,
+            siteId: site.id,
             delta: abgang,
             reason: "BOOKING",
             note: `Buchung auf ${site.name ?? site.street}`,
@@ -160,6 +161,7 @@ export async function deleteMaterialBooking(id: string): Promise<ActionResult> {
             data: {
               materialId: m.id,
               userId: user.id,
+              siteId: before.siteId,
               delta: zugang,
               reason: "RETURN",
               note: "Buchung rückgängig gemacht",

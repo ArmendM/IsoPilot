@@ -230,6 +230,7 @@ model Site {
   bookings MaterialBooking[]
 
   @@index([companyId, status])
+  stockMovements StockMovement[]
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -310,15 +311,23 @@ model StockMovement {
   id         String      @id @default(cuid())
   materialId String
   userId     String
+  // Wohin die Ware ging, bei einem Abgang auf eine Baustelle. Als
+  // Verknüpfung und nicht als Satzteil in `note`: der Lagerverlauf soll
+  // verlässlich sagen können, wo das Material geblieben ist, auch wenn
+  // die Baustelle später umbenannt wird.
+  siteId     String?
   delta      Decimal     @db.Decimal(12, 2) // negativ bei Verbrauch
   reason     StockReason
+  // Freitext, etwa eine Lieferscheinnummer beim Wareneingang.
   note       String?
   createdAt  DateTime    @default(now())
 
   material Material @relation(fields: [materialId], references: [id])
   user     User     @relation(fields: [userId], references: [id])
+  site     Site?    @relation(fields: [siteId], references: [id])
 
   @@index([materialId, createdAt])
+  @@index([siteId])
 }
 
 // ─────────────────────────────────────────────────────────────
