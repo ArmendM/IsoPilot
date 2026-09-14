@@ -245,9 +245,16 @@ Zwei getrennte Bereiche, nicht vermischen:
 
 ## Marke
 
-Verbindlich ist das **Markenhandbuch** unter `docs/marke`, die Dateien
-liegen unter `public/marke`. Was im Code steht, ist die Umsetzung davon,
-nicht eine zweite Meinung dazu.
+Verbindlich ist das **Markenhandbuch**,
+`docs/marke/MARKENHANDBUCH.md`, die Dateien liegen unter `public/marke`.
+Was im Code steht, ist die Umsetzung davon, nicht eine zweite Meinung
+dazu.
+
+Eine Abweichung, bewusst: das Handbuch zeigt eine Beispielkomponente mit
+drei Fassungen, seine eigene Tabelle "Fassungen und wann welche" nennt
+aber vier. Die Umsetzung folgt der Tabelle und damit den gelieferten
+Dateien, also `farbig`, `negativ-rot`, `negativ-weiss` und `schwarz`. Die
+Pfaddaten sind gegen das Handbuch geprüft und identisch.
 
 | Farbe | Wert | Wofür |
 |---|---|---|
