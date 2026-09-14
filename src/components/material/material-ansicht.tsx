@@ -3,6 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { saveMaterial, setMaterialAktiv, saveKategorie } from "@/server/materials";
+import { inventur } from "@/server/lager";
+import { zaehldifferenz } from "@/lib/lagerdeckung";
 import { ZahlFeld } from "@/components/ui/eingabefelder";
 
 export type Artikel = {
@@ -44,10 +46,15 @@ export function MaterialAnsicht({
   artikel,
   kategorien,
   istAdmin,
+  istLager,
 }: {
   artikel: Artikel[];
   kategorien: Kategorie[];
   istAdmin: boolean;
+  /* Zählen darf, wer die Lagerberechtigung hat. Den Katalog pflegen
+   * bleibt beim Vorgesetzten: das eine ist der Lagerplatz, das andere
+   * sind Preise und Stammdaten. */
+  istLager: boolean;
 }) {
   const [neu, setNeu] = useState(false);
   const [kategorienOffen, setKategorienOffen] = useState(false);
@@ -126,6 +133,7 @@ export function MaterialAnsicht({
               a={a}
               kategorien={kategorien}
               istAdmin={istAdmin}
+              istLager={istLager}
             />
           ))}
         </ul>
@@ -138,15 +146,18 @@ function ArtikelKarte({
   a,
   kategorien,
   istAdmin,
+  istLager,
 }: {
   a: Artikel;
   kategorien: Kategorie[];
   istAdmin: boolean;
+  istLager: boolean;
 }) {
   const router = useRouter();
   const [laeuft, start] = useTransition();
   const [fehler, setFehler] = useState("");
   const [offen, setOffen] = useState(false);
+  const [zaehlen, setZaehlen] = useState(false);
 
   return (
     <li
@@ -212,30 +223,49 @@ function ArtikelKarte({
         </p>
       )}
 
-      {istAdmin && (
+      {(istAdmin || istLager) && (
         <div className="mt-3 flex flex-wrap gap-3 text-sm">
-          <button
-            type="button"
-            onClick={() => setOffen(!offen)}
-            className="h-9 px-1 underline text-black/60 dark:text-white/60"
-          >
-            {offen ? "Schliessen" : "Bearbeiten"}
-          </button>
-          <button
-            type="button"
-            disabled={laeuft}
-            onClick={() => {
-              setFehler("");
-              start(async () => {
-                const r = await setMaterialAktiv(a.id, !a.istAktiv);
-                if (r.ok) router.refresh();
-                else setFehler(r.error);
-              });
-            }}
-            className="h-9 px-1 underline text-black/60 disabled:opacity-50 dark:text-white/60"
-          >
-            {a.istAktiv ? "Stilllegen" : "Wieder aufnehmen"}
-          </button>
+          {istAdmin && (
+            <>
+              <button
+                type="button"
+                onClick={() => setOffen(!offen)}
+                className="h-9 px-1 underline text-black/60 dark:text-white/60"
+              >
+                {offen ? "Schliessen" : "Bearbeiten"}
+              </button>
+              <button
+                type="button"
+                disabled={laeuft}
+                onClick={() => {
+                  setFehler("");
+                  start(async () => {
+                    const r = await setMaterialAktiv(a.id, !a.istAktiv);
+                    if (r.ok) router.refresh();
+                    else setFehler(r.error);
+                  });
+                }}
+                className="h-9 px-1 underline text-black/60 disabled:opacity-50 dark:text-white/60"
+              >
+                {a.istAktiv ? "Stilllegen" : "Wieder aufnehmen"}
+              </button>
+            </>
+          )}
+          {istLager && a.istAktiv && (
+            <button
+              type="button"
+              onClick={() => setZaehlen(!zaehlen)}
+              className="h-9 px-1 underline text-black/60 dark:text-white/60"
+            >
+              {zaehlen ? "Inventur schliessen" : "Inventur"}
+            </button>
+          )}
+        </div>
+      )}
+
+      {zaehlen && (
+        <div className="mt-4 border-t border-black/10 pt-4 dark:border-white/15">
+          <InventurFormular a={a} onFertig={() => setZaehlen(false)} />
         </div>
       )}
 
@@ -250,6 +280,122 @@ function ArtikelKarte({
         </div>
       )}
     </li>
+  );
+}
+
+/* Inventur. Gezählt wird der Bestand und nicht die Differenz: auf dem
+ * Lagerplatz zählt man Stücke, das Rechnen macht die Maschine.
+ *
+ * Die angezeigte Berichtigung kommt aus derselben Funktion, die der
+ * Server schreibt. Zwei Rechnungen für dieselbe Zahl gingen sonst
+ * irgendwann auseinander, und die Vorschau zeigte etwas anderes an, als
+ * nachher im Verlauf steht. */
+function InventurFormular({ a, onFertig }: { a: Artikel; onFertig: () => void }) {
+  const router = useRouter();
+  const [laeuft, start] = useTransition();
+  const [fehler, setFehler] = useState("");
+  const [gezaehlt, setGezaehlt] = useState(a.lager);
+  const [notiz, setNotiz] = useState("");
+
+  const differenz = zaehldifferenz(
+    { bestand: a.lager, fehlmenge: a.fehlmenge },
+    Number(gezaehlt) || 0,
+  );
+
+  return (
+    <form
+      className="space-y-3"
+      onSubmit={(e) => {
+        e.preventDefault();
+        setFehler("");
+        start(async () => {
+          const r = await inventur({
+            materialId: a.id,
+            gezaehlt: Number(gezaehlt) || 0,
+            note: notiz.trim() || null,
+          });
+          if (!r.ok) {
+            setFehler(r.error);
+            return;
+          }
+          onFertig();
+          router.refresh();
+        });
+      }}
+    >
+      <h3 className="text-sm font-medium">Inventur</h3>
+
+      <p className="text-sm text-black/60 dark:text-white/60">
+        Laut System {menge(a.lager)} {EINHEIT[a.unit]}
+        {a.fehlmenge > 0 && (
+          <>
+            , dazu eine Fehlmenge von {menge(a.fehlmenge)}. Die Zählung
+            erledigt sie: was gezählt ist, ist da.
+          </>
+        )}
+      </p>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="space-y-1">
+          <span className={bez}>Gezählter Bestand</span>
+          <ZahlFeld
+            min={0}
+            step={1}
+            wert={gezaehlt}
+            onWert={setGezaehlt}
+            className={feld}
+          />
+        </label>
+        <label className="space-y-1">
+          <span className={bez}>Notiz, freiwillig</span>
+          <input
+            type="text"
+            maxLength={160}
+            value={notiz}
+            onChange={(e) => setNotiz(e.target.value)}
+            placeholder="Jahresinventur, Bruch, Schwund"
+            className={feld}
+          />
+        </label>
+      </div>
+
+      <p className="text-sm">
+        {differenz === 0 ? (
+          <span className="text-black/60 dark:text-white/60">
+            Die Zählung bestätigt den Bestand, es entsteht keine Bewegung.
+          </span>
+        ) : (
+          <span className="text-amber-800 dark:text-amber-300">
+            Berichtigung um {differenz > 0 ? "+" : ""}
+            {menge(differenz)} {EINHEIT[a.unit]}, als Inventurdifferenz im
+            Lagerverlauf.
+          </span>
+        )}
+      </p>
+
+      {fehler && (
+        <p role="alert" className="text-sm text-red-700 dark:text-red-300">
+          {fehler}
+        </p>
+      )}
+
+      <div className="flex gap-3">
+        <button
+          type="submit"
+          disabled={laeuft}
+          className="h-10 rounded-md bg-foreground px-4 text-sm font-medium text-background disabled:opacity-50"
+        >
+          {laeuft ? "Speichert" : "Bestand übernehmen"}
+        </button>
+        <button
+          type="button"
+          onClick={onFertig}
+          className="h-10 px-2 text-sm underline text-black/60 dark:text-white/60"
+        >
+          Abbrechen
+        </button>
+      </div>
+    </form>
   );
 }
 
@@ -387,16 +533,21 @@ function ArtikelFormular({
           />
         </label>
 
-        <label className="space-y-1">
-          <span className={bez}>Lagerbestand</span>
-          <ZahlFeld
-            min={0}
-            step={1}
-            wert={f.lager}
-            onWert={(n) => setF({ ...f, lager: n })}
-            className={feld}
-          />
-        </label>
+        {/* Nur beim Anlegen. An einem bestehenden Artikel bewegen den
+            Bestand ausschliesslich Wareneingang, Buchung, Rückgabe und
+            Inventur, jede mit einer Zeile im Lagerverlauf. */}
+        {!artikel && (
+          <label className="space-y-1">
+            <span className={bez}>Anfangsbestand</span>
+            <ZahlFeld
+              min={0}
+              step={1}
+              wert={f.lager}
+              onWert={(n) => setF({ ...f, lager: n })}
+              className={feld}
+            />
+          </label>
+        )}
 
         <label className="space-y-1">
           <span className={bez}>Mindestbestand</span>
@@ -419,6 +570,14 @@ function ArtikelFormular({
             {kategorien.find((k) => k.id === f.categoryId)?.name ?? "Keine"}
           </strong>{" "}
           geändert.
+        </p>
+      )}
+
+      {artikel && (
+        <p className="text-sm text-black/50 dark:text-white/50">
+          Der Lagerbestand steht hier nicht mehr: er ändert sich über
+          Wareneingang, Buchung und Inventur, damit jeder Sprung im
+          Lagerverlauf erklärt ist.
         </p>
       )}
 

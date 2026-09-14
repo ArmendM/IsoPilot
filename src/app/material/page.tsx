@@ -107,7 +107,12 @@ export default async function MaterialPage({ searchParams }: PageProps<"/materia
         </Link>
       </p>
 
-      <MaterialAnsicht artikel={liste} kategorien={kats} istAdmin={istAdmin} />
+      <MaterialAnsicht
+        artikel={liste}
+        kategorien={kats}
+        istAdmin={istAdmin}
+        istLager={istLager}
+      />
 
       {istLager && (
         <section className="mt-8 border-t border-black/10 pt-6 dark:border-white/15">

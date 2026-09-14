@@ -100,7 +100,16 @@ async function main() {
     ["WS-10000","Brandabschottung Weichschott","Weichschott 8001-10000 cm2","STK",558,"VKF",6,2],
   ] as const;
 
-  for (const [sku, cat, name, unit, price, fire] of mats) {
+  /* Anfangsbestand und Mindestbestand stehen in jeder Zeile und gehören
+   * ausschliesslich in den create-Zweig. Ein erneuter Seed darf einen
+   * gewachsenen Bestand niemals zurücksetzen, und eine Inventur schon
+   * gar nicht rückgängig machen.
+   *
+   * Eine Lagerbewegung entsteht dazu nicht: StockMovement braucht eine
+   * Person, und beim Seed gibt es noch keine, die Konten entstehen erst
+   * bei der ersten Anmeldung. Der Anfangsbestand ist der Stand, bei dem
+   * der Verlauf beginnt. */
+  for (const [sku, cat, name, unit, price, fire, stock, minStock] of mats) {
     const alu = sku === "ALU-GS";
     await db.material.upsert({
       where: { companyId_sku: { companyId: company.id, sku } },
@@ -109,6 +118,7 @@ async function main() {
         companyId: company.id, categoryId: catIds[cat], sku, name,
         unit: unit as never, price,
         fireClass: fire ?? undefined,
+        stock, minStock,
         smallQtyThreshold: unit === "M2" ? 30 : null,
         smallQtySurcharge: unit === "M2" ? (alu ? 5 : 2) : null,
       },
