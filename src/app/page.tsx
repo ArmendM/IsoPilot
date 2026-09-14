@@ -112,6 +112,16 @@ export default async function StartPage() {
               </p>
             </Link>
             <Link
+              href="/auswertung/baustellen"
+              className="rounded-lg border border-black/10 p-4 hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/5"
+            >
+              <h2 className="text-sm font-medium">Auswertung Baustellen</h2>
+              <p className="mt-1 text-sm text-black/60 dark:text-white/60">
+                Eine Baustelle oder alle: Soll und Ist, Materialkosten,
+                VSI-Ausmass und Auftraggeber.
+              </p>
+            </Link>
+            <Link
               href="/abschluss"
               className="rounded-lg border border-black/10 p-4 hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/5"
             >

@@ -515,9 +515,10 @@ Rückfall, `/abschluss` Monatsabschluss.
 **M4 Auswertung — angefangen**
 
 - M4a Auswertung Mitarbeitende, Ansicht: **fertig**
-- M4b Auswertung Baustellen, Ansicht: **als Nächstes**
-- M4c Export Excel und PDF für beide: offen
-- M4d Firmeneinstellungen mit Logo-Upload: offen
+- M4b Auswertung Baustellen, Ansicht: **fertig**
+- M4c Export Excel und PDF für beide: **fertig**
+- M4d Firmeneinstellungen mit Logo-Upload: **als Nächstes**. Das PDF
+  trägt die Firmenzeile bereits aus `Company`, es fehlt nur das Bild.
 - M4e Aufbewahrungsjob für Login-Protokolle: offen
 
 Dazu **Sollstunden und Zeitsaldo**, siehe den eigenen Abschnitt weiter
@@ -757,6 +758,105 @@ zugleich. Die Auswertung Baustellen bleibt ein eigener Bereich.
   Werkstatt- und Bürotage soll es ausdrücklich geben.
 
 Offen daran: Excel und PDF, das ist M4c, und die Sollstunden.
+
+### M4b und M4c, Auswertung Baustellen und Excel (fertig)
+
+`/auswertung/baustellen`, eine Baustelle auf einmal oder alle als
+Übersicht. Beide Auswertungen haben einen Knopf "Als Excel
+herunterladen".
+
+- **Nur für Vorgesetzte.** Eine Baustellenauswertung führt die Stunden
+  aller Beteiligten und die Kosten zusammen, und Mitarbeitende sehen nur
+  ihre eigenen Zeiten und Buchungen. Die Auswertung Mitarbeitende ist
+  dagegen für alle da, jede Person sieht dort sich selbst.
+- **Ist im Zeitraum und Ist gesamt stehen nebeneinander.** Das Soll gilt
+  für die ganze Baustelle, die Stunden werden über den gewählten Zeitraum
+  gezählt. Die Differenz gegen einen Monat zu rechnen wäre nichtssagend
+  und sähe trotzdem nach einer Aussage aus, deshalb geht sie gegen Ist
+  gesamt, und beide Zahlen sind benannt.
+- **Gerechnet wird mit dem eingefrorenen Preis der Buchung**, nie mit dem
+  heutigen Katalogpreis. Ein Test hält fest, dass ein Preisimport eine
+  abgeschlossene Baustelle nicht rückwirkend verteuert.
+- **Der Rabatt der Position wird abgezogen**, dieselbe Rechnung für
+  Material und VSI.
+
+**Die Excel-Mechanik liegt in `src/server/excel.ts`** und beschreibt ein
+Blatt als gewöhnliche Daten: Kopfzeilen, Spalten mit Art, Zeilen, Summe.
+Beide Auswertungen benutzen dieselbe Stelle, zwei getrennte Bauten liefen
+auseinander, sobald jemand eine Spalte anders formatiert.
+
+- **Der Knopf trägt dieselben Abfrageparameter wie die Ansicht.** Der
+  Export rechnet damit über denselben Weg. Eine zweite Rechnung für den
+  Export wäre die sicherste Art, zwei verschiedene Ergebnisse zu bekommen.
+- **Die Berechtigung hängt nicht am Knopf**, sondern am Lesezugriff: eine
+  Adresse tippt sich schnell von Hand.
+- **Zahlen bleiben Zahlen, nicht Text.** In der Mappe soll weitergerechnet
+  werden können, genau dafür wird sie geholt. Stunden stehen als
+  Dezimalzahl und nicht als Uhrzeit, 8,25 Stunden sind keine 8 Uhr 25.
+- **Die Einzelpositionen sind überall dabei.** In der Auswertung
+  Mitarbeitende ist das Kästchen ab Werk angehakt und bleibt abwählbar,
+  die Auswertung Baustellen zeigt die einzelnen Zeiteinträge mit Person
+  und Tag zusätzlich zur Summe je Person. Excel und PDF enthalten sie
+  immer, auch wenn die Ansicht sie ausblendet: eine Datei wird abgelegt
+  und später hervorgeholt, und dann ist die Frage nach dem einzelnen Tag
+  längst gestellt.
+- Ein leeres Kästchen schickt über GET nichts mit. Das Formular trägt
+  deshalb ein verstecktes Feld, sonst liesse sich "noch nichts gewählt"
+  nicht von "abgewählt" unterscheiden und das Kästchen wäre nicht
+  abwählbar.
+
+**Das PDF liegt in `src/server/pdf.ts` und rendert dieselbe
+Beschreibung.** `src/server/auswertung-blaetter.ts` baut sie einmal,
+Excel und PDF machen daraus nur noch eine Datei. Das ist keine Frage der
+Sorgfalt, sondern des Aufbaus: baute jeder Weg seine Tabellen selbst,
+unterschieden sie sich früher oder später, und niemand merkte es, weil
+niemand beide Dateien nebeneinander legt. Genau das verlangt auch
+`docs/CLAUDE-CODE-TASKS.md` mit "Excel und PDF enthalten die gleichen
+geprueften Werte".
+
+- **pdfkit statt eines Browsers.** Auf zwei vCPU und 4 GB RAM ist ein
+  Headless-Chrome je Bericht kein Werkzeug, sondern ein Risiko. pdfkit
+  schreibt in einen Puffer und bringt Helvetica mit, das die Umlaute über
+  WinAnsi deckt. Eine Schriftdatei braucht es nicht.
+- **`serverExternalPackages: ["pdfkit"]` in `next.config.ts`.** pdfkit
+  liest seine Schriftmetriken zur Laufzeit als `.afm`-Dateien aus dem
+  eigenen Paket, gebündelt fände es sie nicht mehr. Auf der Liste, die
+  Next von sich aus ausnimmt, steht es nicht.
+- **Ab sieben Spalten wird quer gedruckt.** Die Baustellenübersicht hat
+  neun, auf A4 hoch wäre sie unlesbar.
+- **Der Kopf steht auf jeder Seite**, Firmenzeile, Titel und Blattname,
+  dazu die Titelzeile der Tabelle nach jedem Umbruch. Ein Blatt Papier
+  ohne Firmenzeile lässt sich nicht zuordnen.
+- **Alle Zellen einer Zeile werden gegen dieselbe gemerkte Höhe
+  gezeichnet.** pdfkit rückt nach jedem `text` um die Zeilenhöhe der
+  Schrift vor, und die ist nicht die Zeilenhöhe der Tabelle. Wer das mit
+  einem festen Betrag ausgleicht, verschiebt jede weitere Zelle um die
+  Differenz, und die Zeile läuft über die Spalten hinweg schräg aus dem
+  Raster. Genau so stand die Titelzeile einmal mitten in der Überschrift.
+
+**Geprüft wird die Anordnung, nicht nur der Inhalt.**
+`tests/einheit/pdf.test.ts` liest die Textmatrizen aus dem Inhaltsstrom
+aus und prüft, dass alle Zellen einer Zeile dieselbe Höhe haben, dass die
+Blöcke in der richtigen Reihenfolge von oben nach unten stehen und dass
+zwischen Überschrift und Titelzeile Luft bleibt. Ein Test, der nur fragt,
+ob ein Text vorkommt, hätte den schrägen Kopf nie gefunden: inhaltlich
+war alles da, im Bericht stand es übereinander. In den Textmatrizen wird
+`y` nach unten kleiner, weiter oben heisst also grösseres `y`.
+- **Das Logo ist die Wortmarke aus `public/marke`**, solange unter
+  `Company.logoPath` nichts steht. Steht dort ein Pfad, gilt dieser: eine
+  zweite Firma soll ihr eigenes Logo tragen können, ohne dass jemand im
+  Code etwas ändert. Eine fehlende oder unlesbare Datei übergeht der
+  Bericht, statt abzubrechen: sonst steht jemand vor einer leeren Seite,
+  weil ein Bild fehlt. **Ins PDF geht die PNG**, pdfkit kennt nur PNG und
+  JPEG und wirft bei einer SVG "Unknown image format". Das Übrige steht
+  in `public/marke/EINBAU.md`.
+
+Geprüft wurde nicht nur mit Vitest, sondern gegen einen
+**Produktionsbuild mit `output: "standalone"`** und einer eingesetzten
+Sitzung: alle vier Routen liefern 200 mit dem richtigen Inhaltstyp, ohne
+Sitzung 307, bei unsinnigem Zeitraum 400, bei fremder Kennung 403. Der
+Bündelungsfehler mit den `.afm`-Dateien wäre in keinem Vitest-Lauf
+aufgefallen.
 
 ### Offen: alte Lagerbewegungen kennen ihre Baustelle nicht
 
