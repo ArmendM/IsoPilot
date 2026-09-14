@@ -297,3 +297,45 @@ describe("pdf", () => {
     expect(b.subarray(0, 5).toString()).toBe("%PDF-");
   });
 });
+
+/* Der Berichtskopf mit Logo. Geprüft wird die Anordnung: ein Bild, das
+ * den Text überdeckt, ist schlimmer als keines. */
+describe("Kopf mit Logo", () => {
+  /* Ein winziges gültiges PNG, 1 mal 1 Bildpunkt. Die echte Wortmarke
+   * liegt in public/marke und gehört nicht in einen Einheitstest. */
+  const einPunkt = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+    "base64",
+  );
+
+  const bericht: Bericht = {
+    titel: "Auswertung Baustelle: MFH Mattenhof",
+    untertitel: ["Industriestrasse 8, 6030 Ebikon"],
+    blaetter: [
+      {
+        name: "Übersicht",
+        spalten: [{ titel: "Kennzahl" }, { titel: "Wert", art: "zahl" }],
+        zeilen: [["Ist im Zeitraum in Stunden", 38]],
+      },
+    ],
+  };
+
+  it("rückt die Firmenzeile neben das Logo, statt darüber", async () => {
+    const ohne = stellen(await pdf(bericht, firma));
+    const mit = stellen(await pdf(bericht, { ...firma, logo: einPunkt }));
+
+    const x = (s: typeof ohne) => s.find((g) => g.text.startsWith("IsoTeam"))!.x;
+    expect(x(mit)).toBeGreaterThan(x(ohne));
+  });
+
+  /* Mit Logo braucht der Kopf mehr Höhe. Der Titel darf deswegen nicht
+   * ins Bild rutschen. */
+  it("schiebt den Titel unter das Logo", async () => {
+    const ohne = stellen(await pdf(bericht, firma));
+    const mit = stellen(await pdf(bericht, { ...firma, logo: einPunkt }));
+
+    const y = (s: typeof ohne) =>
+      s.find((g) => g.text.startsWith("Auswertung Baustelle"))!.y;
+    expect(y(mit)).toBeLessThanOrEqual(y(ohne));
+  });
+});

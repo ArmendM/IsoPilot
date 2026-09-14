@@ -776,10 +776,14 @@ zwischen Überschrift und Titelzeile Luft bleibt. Ein Test, der nur fragt,
 ob ein Text vorkommt, hätte den schrägen Kopf nie gefunden: inhaltlich
 war alles da, im Bericht stand es übereinander. In den Textmatrizen wird
 `y` nach unten kleiner, weiter oben heisst also grösseres `y`.
-- **Das Logo kommt aus `Company.logoPath`** und fehlt heute, weil noch
-  nichts hochlädt. Eine fehlende oder unlesbare Datei übergeht der
+- **Das Logo ist die Wortmarke aus `public/marke`**, solange unter
+  `Company.logoPath` nichts steht. Steht dort ein Pfad, gilt dieser: eine
+  zweite Firma soll ihr eigenes Logo tragen können, ohne dass jemand im
+  Code etwas ändert. Eine fehlende oder unlesbare Datei übergeht der
   Bericht, statt abzubrechen: sonst steht jemand vor einer leeren Seite,
-  weil ein Bild fehlt.
+  weil ein Bild fehlt. **Ins PDF geht die PNG**, pdfkit kennt nur PNG und
+  JPEG und wirft bei einer SVG "Unknown image format". Das Übrige steht
+  in `public/marke/EINBAU.md`.
 
 Geprüft wurde nicht nur mit Vitest, sondern gegen einen
 **Produktionsbuild mit `output: "standalone"`** und einer eingesetzten
