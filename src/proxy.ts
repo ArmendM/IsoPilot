@@ -10,7 +10,14 @@ const PUBLIC = [
   "/api/health",
   "/api/cron",
   "/_next",
+  // Die Symbole und die Marke. Sie stehen im Kopf jeder Seite, also auch
+  // im Kopf der Anmeldeseite. Ohne Ausnahme hier holte der Browser sie
+  // ohne Sitzung nicht, bekäme die Anmeldeseite als Antwort und zeigte
+  // ein leeres Symbol, bevor sich überhaupt jemand angemeldet hat.
   "/favicon.ico",
+  "/icon.svg",
+  "/apple-icon.png",
+  "/marke/",
 ];
 
 export default function proxy(req: NextRequest) {
