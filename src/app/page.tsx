@@ -79,6 +79,17 @@ export default async function StartPage() {
             Ferien beantragen, krank melden, Ferienstand ansehen.
           </p>
         </Link>
+
+        <Link
+          href="/auswertung/mitarbeitende"
+          className="rounded-lg border border-black/10 p-4 hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/5"
+        >
+          <h2 className="text-sm font-medium">Auswertung Mitarbeitende</h2>
+          <p className="mt-1 text-sm text-black/60 dark:text-white/60">
+            Eine Person über einen Monat, ein Jahr oder eine freie Zeitspanne,
+            mit Stunden, Pausen, Ferien und Krankheit.
+          </p>
+        </Link>
       </nav>
 
       {user.role === "ADMIN" && (

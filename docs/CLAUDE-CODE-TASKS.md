@@ -70,16 +70,18 @@ Sie ist die teuerste und hat bisher die echten Fehler gefunden.
 
 ### P1, Auswertungen und Exporte aus M4 umsetzen
 
-Quelle: Auswertungen in `CLAUDE.md`. Es gibt keine getrennten Auswertungsseiten
-fuer Mitarbeitende und Baustellen, keine Excel-/PDF-Exporte und keine
-Firmeneinstellungen fuer Logo und Firmenzeile.
+Quelle: Auswertungen in `CLAUDE.md`. Die Auswertung Mitarbeitende steht
+seit M4a unter `/auswertung/mitarbeitende`. Es fehlen die Auswertung
+Baustellen, die Excel- und PDF-Exporte und die Firmeneinstellungen fuer
+Logo und Firmenzeile.
 
 Akzeptanzkriterien:
 
 - Mitarbeitenden-Auswertung waehlt genau eine Person und bietet Monat, Jahr
   oder freie Zeitspanne mit Nettostunden, Pausen, Ferien und Krankheit.
+  **Erfuellt mit M4a**, gedeckt durch `tests/server/auswertung.test.ts`.
 - Vorgesetzte sind auswaehlbar; Mitarbeitende koennen fremde Daten weder
-  laden noch exportieren.
+  laden noch exportieren. **Erfuellt fuer das Laden**, der Export fehlt noch.
 - Baustellenauswertung kann eine Baustelle oder eine Gesamtuebersicht zeigen
   und enthaelt Soll, Ist, Differenz, Materialkosten, VSI, Partner und Zeitraum.
 - Excel und PDF enthalten die gleichen geprueften Werte; PDF enthaelt Logo und
