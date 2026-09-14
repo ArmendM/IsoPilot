@@ -165,26 +165,32 @@ Reihenfolge:
   schuldet, hat die fünf im Lager längst verbraucht. Alles rechnet
   deshalb über einen einzigen Saldo, siehe `src/lib/lagerdeckung.ts`.
   Ohne das heben sich Verbrauch und Rückgabe nicht mehr auf.
-- Die **Lagerbewegung** hält die tatsächliche Bestandsänderung fest, nicht
-  die gebuchte Menge. Sonst ginge die Summe der Bewegungen nicht mehr mit
-  dem Bestand auf. Deckt das Lager gar nichts, entsteht folgerichtig auch
-  keine Bewegung, nur die Fehlmenge wächst.
+- Die **Lagerbewegung** einer Buchung hält die tatsächliche
+  Bestandsänderung fest, nicht die gebuchte Menge. Deckt das Lager gar
+  nichts, entsteht folgerichtig auch keine Bewegung, nur die Fehlmenge
+  wächst. **Wareneingang und Inventur folgen dieser Regel bewusst nicht**,
+  siehe den Abschnitt "Offen: zwei Konventionen im Lagerverlauf".
 - **Wareneingang** unter `/material`: gelieferte Ware einbuchen, mit
   `StockReason.DELIVERY` und optionaler Lieferscheinnummer. Tilgt zuerst
   eine offene Fehlmenge, erst dann wächst der Bestand.
-- **Die Fehlmenge wird nur über Buchungen und den Wareneingang bewegt**,
-  nicht mehr von Hand. Zwei Wege zur selben Zahl laufen auseinander.
-  Ausnahme: wird der Bestand im Artikelformular **geändert**, ist das eine
-  Zählung, und eine offene Fehlmenge gilt damit als erledigt. Bleibt die
-  Zahl gleich, etwa weil nur der Preis geändert wurde, bleibt sie stehen.
+- **Der Bestand ist nirgends von Hand schreibbar.** Er bewegt sich nur
+  über Wareneingang, Buchung, Rückgabe und **Inventur**, jede mit einer
+  Zeile im Verlauf. Zwei Wege zur selben Zahl laufen auseinander, und ein
+  Sprung ohne Zeile lässt sich später von niemandem mehr erklären. Im
+  Artikelformular steht der Bestand deshalb nur noch beim **Anlegen**, als
+  Anfangsbestand, und auch der bekommt eine Bewegung.
+- **Die Inventur zählt den Bestand, nicht die Differenz.** Auf dem
+  Lagerplatz zählt man Stücke, das Rechnen macht die Maschine. Was gezählt
+  ist, ist da: eine offene Fehlmenge gilt damit als erledigt, sonst
+  stünden Bestand und Fehlmenge zugleich über null.
 - **Lagerverlauf** unter `/lager`, eine eigene Seite: jede Bewegung mit
   Datum, Menge, Vorgang, Ziel und Person, filterbar nach Artikel und
   Baustelle. Die Baustelle hängt als Verknüpfung an `StockMovement`, nicht
   als Satzteil in `note`: der Verlauf soll auch dann sagen können, wohin
   die Ware ging, wenn die Baustelle später umbenannt wird.
-- Anfangsbestände stehen im Seed, damit nicht jede erste Buchung ins Minus
-  läuft. Sie stehen nur im `create`-Zweig: ein erneuter Seed darf einen
-  gewachsenen Bestand niemals zurücksetzen.
+- Anfangsbestände stehen im Seed, damit nicht jede erste Buchung in eine
+  Fehlmenge läuft. Sie stehen nur im `create`-Zweig: ein erneuter Seed darf
+  einen gewachsenen Bestand niemals zurücksetzen.
 - Preise werden bei der Buchung eingefroren, ein Preisimport ändert
   abgeschlossene Baustellen nicht rückwirkend
 
@@ -438,6 +444,7 @@ Rückfall, `/abschluss` Monatsabschluss.
 - M3f Materialbuchung verbessern, Kategoriefilter und Ändern: **fertig**
 - M3g Lager: Fehlmenge, Bestellbedarf, Wareneingang, Lagerverlauf: **fertig**
 - M3h Lagerberechtigung als eigenes Merkmal an `User`: **fertig**
+- M3i Bestand nur noch über Bewegungen, Inventur: **fertig**
 
 **M4 Auswertung**
 Auswertung Mitarbeitende, Auswertung Baustellen, Export Excel und PDF,
@@ -589,18 +596,66 @@ Entschieden beim Bauen:
   und der Excel-Import bleiben beim Vorgesetzten: das sind Preise und
   Stammdaten, nicht die Annahme einer Lieferung.
 
-### Offen: Bestand ändern hinterlässt keine Spur
+### M3i, Bestand nur noch über Bewegungen (fertig)
 
-Wird der Lagerbestand im Artikelformular geändert, gilt das als Zählung
-und tilgt die Fehlmenge, aber es entsteht **keine Lagerbewegung**. Im
-Verlauf unter `/lager` fehlt dieser Sprung also. `StockReason.CORRECTION`
-steht im Schema für genau das, "Inventurdifferenz", und wird nirgends
-benutzt.
+Der Bestand war im Artikelformular direkt schreibbar, und im Verlauf blieb
+von diesem Sprung nichts übrig. Jetzt gibt es dafür die **Inventur**,
+`inventur` in `src/server/lager.ts`, je Artikel unter `/material`.
 
-Sauber wäre, den Bestand gar nicht mehr direkt schreibbar zu machen,
-sondern nur noch über Bewegungen: Wareneingang, Buchung, Rückgabe und eine
-Inventurkorrektur. Dann geht die Summe der Bewegungen immer mit dem
-Bestand auf. Das ist der eigentliche Abschluss von M3g.
+- **Gezählt wird der Bestand**, nicht die Differenz, und der gezählte Wert
+  steht in der Notiz der Bewegung.
+- **Anfangsbestand nur beim Anlegen**, und mit einer Bewegung. Sonst
+  stünde gleich zu Beginn eine Menge im Lager, die im Verlauf nirgends
+  herkommt.
+- **Wer zählen darf, hängt an der Lagerberechtigung**, nicht an der Rolle:
+  zählen tut, wer am Lagerplatz steht. Den Katalog pflegen bleibt beim
+  Vorgesetzten.
+- **Die Vorschau im Formular rechnet mit derselben Funktion wie der
+  Server** (`zaehldifferenz`). Zwei Rechnungen für dieselbe Zahl gehen
+  irgendwann auseinander, und dann zeigt die Vorschau etwas anderes an,
+  als nachher im Verlauf steht.
+
+**Nebenbei gefunden und behoben: der Seed setzte nie einen
+Anfangsbestand.** Jede Zeile in `prisma/seed.ts` trug Bestand und
+Mindestbestand als siebte und achte Spalte, die Schleife las aber nur
+sechs Werte aus, und `create` kannte weder `stock` noch `minStock`. Die
+Angabe in diesem Dokument, die Anfangsbestände stünden im Seed, stimmte
+also nicht. Das ist die wahrscheinliche Ursache dafür, dass im Testbetrieb
+sieben Artikel bei bis zu -115 standen. Beides steht jetzt im
+`create`-Zweig, ein erneuter Seed setzt einen gewachsenen Bestand nicht
+zurück. Eine Bewegung entsteht dazu nicht: `StockMovement` braucht eine
+Person, und beim Seed gibt es noch keine.
+
+### Offen: zwei Konventionen im Lagerverlauf
+
+Beim Bauen der Inventur aufgefallen, und es ist ein Entscheid, kein Fehler
+im Code. Die Bewegungen tragen heute **zwei verschiedene Zahlen**:
+
+| Vorgang | `delta` ist |
+|---|---|
+| Buchung, Rückgabe, Berichtigung | die Änderung des **Bestands** |
+| Wareneingang, Inventur | die Änderung des **Saldos**, also Bestand minus Fehlmenge |
+
+Beide sind begründet. Für die Buchung steht der Grund oben: die Bewegung
+soll den echten Abgang zeigen. Für den Wareneingang steht er in M3g: die
+Lieferung selbst ist das Ereignis, und getilgte Fehlmenge ist ebenfalls
+angekommene Ware. Für die Inventur ist es zwingend: wer bei Bestand 0 und
+Fehlmenge 30 zehn Stück zählt, ändert den Bestand um 10 und die Bücher um
+40, und über den Bestand allein bliebe die getilgte Fehlmenge genau so
+ohne Spur, wie es vorher der ganze Sprung war.
+
+Solange beide Konventionen nebeneinander stehen, gilt **nicht**, dass die
+Summe der Bewegungen mit dem Bestand aufgeht. Was aufginge, wäre die Summe
+mit dem **Saldo**, wenn alle Vorgänge die Saldoänderung trügen: eine
+Buchung von 120 auf ein Lager mit 100 stünde dann als -120 statt als -100.
+
+**Vorschlag, zu entscheiden bevor jemand aus dem Verlauf rechnet:** auf
+die Saldokonvention gehen. Sie zeigt in jeder Zeile die Zahl, die im
+Betrieb wirklich vorkommt, die verbaute Menge und die gelieferte Menge,
+und sie stimmt als einzige über alle Vorgänge. Betroffen sind drei
+Stellen in `src/server/bookings.ts` und zwei festgenagelte Tests in
+`tests/server/bookings.test.ts`. Vor dem Produktivstart ist die Tabelle
+leer, später wäre es eine Umrechnung alter Zeilen.
 
 ### Offen: alte Lagerbewegungen kennen ihre Baustelle nicht
 

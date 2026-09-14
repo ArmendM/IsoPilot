@@ -14,6 +14,9 @@ const Artikel = z.object({
   categoryId: z.string().nullable(),
   unit: z.enum(["M2", "LFM", "STK", "KG", "ROLLE"]),
   preis: z.number().min(0).max(1000000),
+  /* Anfangsbestand, nur beim Anlegen. An einem bestehenden Artikel wird
+   * der Bestand nicht mehr über dieses Formular geschrieben, sondern nur
+   * noch über Bewegungen: Wareneingang, Buchung, Rückgabe, Inventur. */
   lager: z.number().min(0).max(1000000),
   mindestbestand: z.number().min(0).max(1000000),
   fireClass: z.string().max(20).nullable(),
@@ -52,7 +55,6 @@ export async function saveMaterial(raw: unknown): Promise<ActionResult> {
       categoryId: i.categoryId || null,
       unit: i.unit,
       price: i.preis,
-      stock: i.lager,
       minStock: i.mindestbestand,
       fireClass: i.fireClass?.trim() || null,
     };
@@ -62,20 +64,31 @@ export async function saveMaterial(raw: unknown): Promise<ActionResult> {
       if (i.id && (!before || before.companyId !== user.companyId))
         throw new Error("FORBIDDEN");
 
-      /* Wird der Lagerbestand tatsächlich geändert, ist das eine Zählung.
-       * Eine offene Fehlmenge gilt damit als erledigt, sonst bliebe ein
-       * Bestellbedarf stehen, den es nach der Inventur nicht mehr gibt.
-       * Bleibt die Zahl gleich, etwa weil nur der Preis geändert wurde,
-       * wird die Fehlmenge nicht angerührt. Gefüllt wird sie sonst
-       * ausschliesslich über Buchungen und den Wareneingang. */
-      const gezaehlt = before !== null && Number(before.stock) !== i.lager;
-
+      /* Der Bestand steht bewusst nicht in `daten`. An einem bestehenden
+       * Artikel bewegen ihn nur noch Wareneingang, Buchung, Rückgabe und
+       * Inventur, jede mit einer Zeile im Verlauf. Zwei Wege zur selben
+       * Zahl laufen sonst auseinander, und der Sprung im Bestand bliebe
+       * unerklärt. */
       const after = i.id
-        ? await tx.material.update({
-            where: { id: i.id },
-            data: gezaehlt ? { ...daten, shortfall: 0 } : daten,
-          })
-        : await tx.material.create({ data: { ...daten, companyId: user.companyId } });
+        ? await tx.material.update({ where: { id: i.id }, data: daten })
+        : await tx.material.create({
+            data: { ...daten, companyId: user.companyId, stock: i.lager },
+          });
+
+      /* Ein Anfangsbestand beim Anlegen ist die erste Zählung des
+       * Artikels und bekommt deshalb ebenfalls eine Bewegung. Ohne sie
+       * stünde gleich zu Beginn eine Menge im Lager, die im Verlauf
+       * nirgends herkommt. */
+      if (!before && i.lager > 0)
+        await tx.stockMovement.create({
+          data: {
+            materialId: after.id,
+            userId: user.id,
+            delta: i.lager,
+            reason: "CORRECTION",
+            note: "Anfangsbestand beim Anlegen",
+          },
+        });
 
       await tx.auditLog.create({
         data: {

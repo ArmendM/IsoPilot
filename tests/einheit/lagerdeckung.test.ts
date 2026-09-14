@@ -5,6 +5,8 @@ import {
   bestellbedarf,
   gibZurueck,
   verbrauche,
+  zaehldifferenz,
+  zaehle,
 } from "@/lib/lagerdeckung";
 
 const d = (bestand: number, fehlmenge = 0): Deckung => ({ bestand, fehlmenge });
@@ -125,5 +127,44 @@ describe("Bestellbedarf", () => {
 
   it("bleibt bei vollem Lager ohne Fehlmenge bei null", () => {
     expect(bestellbedarf(d(50), 0)).toBe(0);
+  });
+});
+
+/* Die Inventur: gezählt wird der Bestand, und was gezählt ist, ist da.
+ * Eine offene Fehlmenge ist damit erledigt. */
+describe("zaehle", () => {
+  it("setzt den Bestand auf das Gezählte", () => {
+    expect(zaehle(38)).toEqual({ bestand: 38, fehlmenge: 0 });
+  });
+
+  it("tilgt eine offene Fehlmenge, sobald etwas gezählt wird", () => {
+    expect(zaehle(10)).toEqual({ bestand: 10, fehlmenge: 0 });
+  });
+
+  /* Auch eine Zählung auf null räumt die Fehlmenge weg: gezählt ist
+   * gezählt, und der Bestellbedarf kommt danach aus dem Mindestbestand. */
+  it("lässt bei null nichts stehen", () => {
+    expect(zaehle(0)).toEqual({ bestand: 0, fehlmenge: 0 });
+  });
+});
+
+describe("zaehldifferenz", () => {
+  it("nennt die Differenz zum Bestand, wenn nichts fehlt", () => {
+    expect(zaehldifferenz({ bestand: 42, fehlmenge: 0 }, 38)).toBe(-4);
+  });
+
+  /* Der Kern: über den Bestand allein wären es +10, und die getilgten 30
+   * verschwänden lautlos aus dem Verlauf. */
+  it("rechnet eine getilgte Fehlmenge mit", () => {
+    expect(zaehldifferenz({ bestand: 0, fehlmenge: 30 }, 10)).toBe(40);
+  });
+
+  it("ist null, wenn die Zählung den Bestand bestätigt", () => {
+    expect(zaehldifferenz({ bestand: 42, fehlmenge: 0 }, 42)).toBe(0);
+  });
+
+  /* Auch das ist eine Berichtigung, obwohl der Bestand bei null bleibt. */
+  it("ist nicht null, wenn nur die Fehlmenge wegfällt", () => {
+    expect(zaehldifferenz({ bestand: 0, fehlmenge: 30 }, 0)).toBe(30);
   });
 });

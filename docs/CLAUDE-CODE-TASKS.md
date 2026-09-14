@@ -43,18 +43,19 @@ Kategorien, Lager und Mindestbestand (M3b), Buchung auf eine Baustelle mit
 eingefrorenem Preis (M3c), Excel-Import mit Vorschau und ohne Duplikate
 (M3d), Kategoriefilter und Ändern einer Buchung (M3f), Fehlmenge,
 Bestellbedarf, Wareneingang und Lagerverlauf (M3g), Lagerberechtigung als
-Merkmal an `User` (M3h). Gedeckt durch Tests in `tests/einheit` und
-`tests/server`.
+Merkmal an `User` (M3h), Bestand nur noch über Bewegungen samt Inventur
+(M3i). Gedeckt durch Tests in `tests/einheit` und `tests/server`.
 
 **Offen bleibt daraus:**
+
+- **Zwei Konventionen im Lagerverlauf.** Buchungen tragen die Änderung des
+  Bestands, Wareneingang und Inventur die des Saldos. Ein Entscheid, kein
+  Fehler, Begründung und Vorschlag stehen in `CLAUDE.md`.
 
 - **VSI-Tarife (M3e).** Schema steht, Seed leer. Blockiert durch die
   ungeklärten neun Werte bei 80 mm PIR, die gegen das Original zu prüfen
   sind, bevor geseedet wird. Objektrabatt 0 Prozent und "je Liste gilt
   die neuste Fassung" sind entschieden.
-- **Bestand nur noch über Bewegungen.** Das Artikelformular schreibt den
-  Bestand heute direkt, ohne `StockMovement`. `StockReason.CORRECTION`
-  steht dafür bereit und wird nicht benutzt.
 
 ### Dazugekommen, Tests (war in jeder Aufgabe gefordert, fehlte ganz)
 

@@ -50,6 +50,26 @@ export const gibZurueck = (d: Deckung, menge: number): Deckung =>
   ausSaldo(saldo(d) + menge);
 
 /**
+ * Eine Zählung setzt den Saldo auf den gezählten Bestand. Eine offene
+ * Fehlmenge ist damit erledigt: wer zehn zählt, schuldet nichts mehr,
+ * sonst stünden Bestand und Fehlmenge zugleich über null.
+ */
+export const zaehle = (gezaehlt: number): Deckung => ausSaldo(gezaehlt);
+
+/**
+ * Wie stark eine Zählung die Bücher berichtigt: die Änderung des Saldos,
+ * nicht nur die des Bestands.
+ *
+ * Der Unterschied zählt genau dann, wenn eine Fehlmenge offen war. Wer
+ * bei Bestand 0 und Fehlmenge 30 zehn Stück zählt, ändert den Bestand um
+ * 10, die Bücher aber um 40. Über den Bestand allein bliebe die getilgte
+ * Fehlmenge ohne Spur im Verlauf, und ohne Spur zu bleiben ist genau das,
+ * was die Inventur beheben soll.
+ */
+export const zaehldifferenz = (d: Deckung, gezaehlt: number): number =>
+  runde(gezaehlt - saldo(d));
+
+/**
  * Was bestellt werden muss, damit wieder alles gedeckt ist: die
  * Fehlmenge von den Baustellen plus das, was bis zum Mindestbestand
  * fehlt.
