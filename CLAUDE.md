@@ -449,10 +449,12 @@ Rückfall, `/abschluss` Monatsabschluss.
 **M4 Auswertung — angefangen**
 
 - M4a Auswertung Mitarbeitende, Ansicht: **fertig**
-- M4b Auswertung Baustellen, Ansicht: **als Nächstes**
-- M4c Export Excel und PDF für beide: offen
-- M4d Firmeneinstellungen mit Logo-Upload: offen
-- M4e Aufbewahrungsjob für Login-Protokolle: offen
+- M4b Auswertung Baustellen, Ansicht: **fertig**
+- M4c Export Excel für beide: **fertig**
+- M4d Firmeneinstellungen mit Logo-Upload: **als Nächstes**, das PDF
+  braucht Logo und Firmenzeile
+- M4e Export PDF für beide: offen, nach M4d
+- M4f Aufbewahrungsjob für Login-Protokolle: offen
 
 Dazu **Sollstunden und Zeitsaldo**, siehe den eigenen Abschnitt weiter
 unten: dafür fehlt das Datenmodell noch ganz, und es stehen fachliche
@@ -691,6 +693,48 @@ zugleich. Die Auswertung Baustellen bleibt ein eigener Bereich.
   Werkstatt- und Bürotage soll es ausdrücklich geben.
 
 Offen daran: Excel und PDF, das ist M4c, und die Sollstunden.
+
+### M4b und M4c, Auswertung Baustellen und Excel (fertig)
+
+`/auswertung/baustellen`, eine Baustelle auf einmal oder alle als
+Übersicht. Beide Auswertungen haben einen Knopf "Als Excel
+herunterladen".
+
+- **Nur für Vorgesetzte.** Eine Baustellenauswertung führt die Stunden
+  aller Beteiligten und die Kosten zusammen, und Mitarbeitende sehen nur
+  ihre eigenen Zeiten und Buchungen. Die Auswertung Mitarbeitende ist
+  dagegen für alle da, jede Person sieht dort sich selbst.
+- **Ist im Zeitraum und Ist gesamt stehen nebeneinander.** Das Soll gilt
+  für die ganze Baustelle, die Stunden werden über den gewählten Zeitraum
+  gezählt. Die Differenz gegen einen Monat zu rechnen wäre nichtssagend
+  und sähe trotzdem nach einer Aussage aus, deshalb geht sie gegen Ist
+  gesamt, und beide Zahlen sind benannt.
+- **Gerechnet wird mit dem eingefrorenen Preis der Buchung**, nie mit dem
+  heutigen Katalogpreis. Ein Test hält fest, dass ein Preisimport eine
+  abgeschlossene Baustelle nicht rückwirkend verteuert.
+- **Der Rabatt der Position wird abgezogen**, dieselbe Rechnung für
+  Material und VSI.
+
+**Die Excel-Mechanik liegt in `src/server/excel.ts`** und beschreibt ein
+Blatt als gewöhnliche Daten: Kopfzeilen, Spalten mit Art, Zeilen, Summe.
+Beide Auswertungen benutzen dieselbe Stelle, zwei getrennte Bauten liefen
+auseinander, sobald jemand eine Spalte anders formatiert.
+
+- **Der Knopf trägt dieselben Abfrageparameter wie die Ansicht.** Der
+  Export rechnet damit über denselben Weg. Eine zweite Rechnung für den
+  Export wäre die sicherste Art, zwei verschiedene Ergebnisse zu bekommen.
+- **Die Berechtigung hängt nicht am Knopf**, sondern am Lesezugriff: eine
+  Adresse tippt sich schnell von Hand.
+- **Zahlen bleiben Zahlen, nicht Text.** In der Mappe soll weitergerechnet
+  werden können, genau dafür wird sie geholt. Stunden stehen als
+  Dezimalzahl und nicht als Uhrzeit, 8,25 Stunden sind keine 8 Uhr 25.
+- Die Mappe zur Auswertung Mitarbeitende enthält die Einzelpositionen
+  **immer**, anders als die Ansicht: eine Mappe wird abgelegt und später
+  hervorgeholt, und dann ist die Frage nach dem einzelnen Tag längst
+  gestellt.
+
+Das PDF fehlt noch und kommt nach den Firmeneinstellungen, es braucht
+Logo und Firmenzeile.
 
 ### Offen: alte Lagerbewegungen kennen ihre Baustelle nicht
 

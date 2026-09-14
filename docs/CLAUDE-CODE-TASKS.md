@@ -70,10 +70,10 @@ Sie ist die teuerste und hat bisher die echten Fehler gefunden.
 
 ### P1, Auswertungen und Exporte aus M4 umsetzen
 
-Quelle: Auswertungen in `CLAUDE.md`. Die Auswertung Mitarbeitende steht
-seit M4a unter `/auswertung/mitarbeitende`. Es fehlen die Auswertung
-Baustellen, die Excel- und PDF-Exporte und die Firmeneinstellungen fuer
-Logo und Firmenzeile.
+Quelle: Auswertungen in `CLAUDE.md`. Beide Auswertungen stehen seit M4a
+und M4b unter `/auswertung/mitarbeitende` und `/auswertung/baustellen`,
+beide mit Excel-Ausgabe (M4c). Es fehlen die Firmeneinstellungen fuer Logo
+und Firmenzeile und darauf aufbauend die PDF-Ausgabe.
 
 Akzeptanzkriterien:
 
@@ -84,8 +84,11 @@ Akzeptanzkriterien:
   laden noch exportieren. **Erfuellt fuer das Laden**, der Export fehlt noch.
 - Baustellenauswertung kann eine Baustelle oder eine Gesamtuebersicht zeigen
   und enthaelt Soll, Ist, Differenz, Materialkosten, VSI, Partner und Zeitraum.
+  **Erfuellt mit M4b**, gedeckt durch `tests/server/auswertung-baustellen.test.ts`.
 - Excel und PDF enthalten die gleichen geprueften Werte; PDF enthaelt Logo und
-  Firmenangaben.
+  Firmenangaben. **Excel erfuellt mit M4c**, Ansicht und Mappe rechnen ueber
+  denselben Lesezugriff. Das PDF fehlt und braucht zuerst die
+  Firmeneinstellungen.
 - Geld bleibt `Decimal`, Berechtigungen liegen in Server Actions.
 
 Validierung: Berechtigungs- und Summen-Tests sowie ein Export-Smoke-Test.
