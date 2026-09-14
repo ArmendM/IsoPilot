@@ -1,0 +1,34 @@
+IsoTeam Logo, Dateiuebersicht
+
+Alle SVG haben einen transparenten Hintergrund. Das heisst: die weissen
+Fassungen sind in einer Dateivorschau auf weissem Grund unsichtbar. Das ist
+kein Fehler, sie gehoeren auf einen dunklen oder blauen Untergrund.
+VORSCHAU.png zeigt jede Datei auf dem Grund, fuer den sie gedacht ist.
+
+wortmarke/
+  isoteam-wortmarke-farbig.svg          Standard, auf hellem Grund
+  isoteam-wortmarke-negativ-rot.svg     auf dunklem, neutralem Grund
+  isoteam-wortmarke-negativ-weiss.svg   auf Blau und fuer Stickerei
+  isoteam-wortmarke-schwarz.svg         Einfarbdruck, Stempel, Fax
+
+signet/
+  isoteam-signet-farbig.svg             Zeichen ohne Schrift
+  isoteam-signet-negativ-weiss.svg      auf dunklem oder blauem Grund
+  isoteam-signet-schwarz.svg            Einfarbig
+
+icon/
+  isoteam-appicon.svg + PNG 512/192/180 App-Icon fuer IsoPilot
+  isoteam-favicon.svg + PNG 32/16       kompakte Fassung, haelt bis 16 Pixel
+
+Farben
+  Tiefblau   #0A4A7C   Wortmarke und Kachel
+  Blau       #0F6FB8   Linien und Flaechen, nicht im Logo selbst
+  Rot        #D0342A   Waerme, nur als Akzent im Signet
+  Anthrazit  #131C24   Einfarbfassung und Text
+  Papier     #F5F6F7   heller Grund
+
+Hinweis: Rot auf Tiefblau hat wenig Helligkeitsunterschied. Auf blauem Grund
+darum immer die weisse Fassung verwenden, nicht die mit Rot.
+
+Schrift: Archivo ExtraBold, in der Wortmarke in Kurven umgewandelt.
+Begleittexte in Barlow. Beide kostenlos ueber Google Fonts.
