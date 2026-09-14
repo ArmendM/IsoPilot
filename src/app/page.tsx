@@ -11,27 +11,30 @@ export default async function StartPage() {
 
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 p-6">
-      <header className="flex items-baseline justify-between gap-4">
+      <header className="flex items-start justify-between gap-4">
         <div>
-          {/* Die Wortmarke statt des Schriftzugs: IsoPilot ist die
-              Software, IsoTeam ist der Betrieb, und oben links gehört
-              der Betrieb hin. Die Fassung "farbig" gilt auf hellem
-              Grund, siehe fassungFuer in lib/marke.ts. */}
-          <IsoTeamWortmarke hoehe={26} />
-          <h1 className="mt-2 text-2xl font-semibold tracking-tight">IsoPilot</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">IsoPilot</h1>
           <p className="mt-1 text-sm text-black/60 dark:text-white/60">
             Angemeldet als {user.name},{" "}
             {user.role === "ADMIN" ? "Vorgesetzter" : "Mitarbeitender"}
           </p>
         </div>
-        <form action="/api/auth/logout" method="post">
-          <button
-            type="submit"
-            className="rounded-md border border-black/15 px-3 py-1.5 text-sm hover:bg-black/5 dark:border-white/20 dark:hover:bg-white/10"
-          >
-            Abmelden
-          </button>
-        </form>
+        {/* Die Wortmarke rechts, an derselben Stelle wie auf den
+            Unterseiten. IsoPilot ist die Software und steht als Titel
+            links, IsoTeam ist der Betrieb und steht als Marke rechts.
+            Die Fassung "farbig" gilt auf hellem Grund, siehe fassungFuer
+            in lib/marke.ts. */}
+        <div className="flex flex-col items-end gap-3">
+          <IsoTeamWortmarke hoehe={24} />
+          <form action="/api/auth/logout" method="post">
+            <button
+              type="submit"
+              className="rounded-md border border-black/15 px-3 py-1.5 text-sm hover:bg-black/5 dark:border-white/20 dark:hover:bg-white/10"
+            >
+              Abmelden
+            </button>
+          </form>
+        </div>
       </header>
 
       <nav className="mt-8 grid gap-3 sm:grid-cols-2">

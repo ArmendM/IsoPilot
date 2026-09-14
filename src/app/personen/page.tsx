@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { personen } from "@/server/users-read";
 import { PersonenListe } from "@/components/personen/personen-liste";
+import { Kopfleiste } from "@/components/marke/kopfleiste";
 
 export default async function PersonenPage() {
   const user = await getSession();
@@ -15,7 +16,7 @@ export default async function PersonenPage() {
 
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 p-6">
-      <nav className="flex gap-4 text-sm">
+      <Kopfleiste>
         <Link href="/" className="text-black/60 underline dark:text-white/60">
           Übersicht
         </Link>
@@ -25,7 +26,7 @@ export default async function PersonenPage() {
         <Link href="/absenzen" className="text-black/60 underline dark:text-white/60">
           Absenzen
         </Link>
-      </nav>
+      </Kopfleiste>
 
       <h1 className="mt-4 text-2xl font-semibold tracking-tight">Personen</h1>
       <p className="mt-1 text-sm text-black/60 dark:text-white/60">

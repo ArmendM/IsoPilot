@@ -1,5 +1,3 @@
-"use client";
-
 import { type Fassung, logofarben } from "@/lib/marke";
 
 /* Wortmarke und Signet als Komponente.
@@ -11,7 +9,11 @@ import { type Fassung, logofarben } from "@/lib/marke";
  *
  * Als Komponente und nicht als `img`: so lässt sich die Fassung wählen,
  * ohne vier Dateien zu laden, und die Farbe steckt im Markup statt in
- * einem Dateinamen. Für Druck und Beilagen bleiben die Dateien. */
+ * einem Dateinamen. Für Druck und Beilagen bleiben die Dateien.
+ *
+ * Bewusst ohne "use client": die Komponente hat keinen Zustand und kein
+ * Ereignis. So wird sie auf dem Server gezeichnet und schickt kein
+ * Javascript in den Browser, obwohl sie auf jeder Seite steht. */
 
 const WORTMARKE_VIEWBOX = "75 -699 4692 711";
 const SIGNET_VIEWBOX = "-380 -380 760 760";

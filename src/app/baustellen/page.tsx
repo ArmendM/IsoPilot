@@ -5,6 +5,7 @@ import { baustellen, partnerwahl } from "@/server/sites-read";
 import { buchungen, materialAuswahl } from "@/server/bookings-read";
 import { auswaehlbarePersonen } from "@/server/time-entries-read";
 import { BaustellenAnsicht } from "@/components/baustellen/baustellen-ansicht";
+import { Kopfleiste } from "@/components/marke/kopfleiste";
 
 export default async function BaustellenPage({
   searchParams,
@@ -28,7 +29,7 @@ export default async function BaustellenPage({
 
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 p-6">
-      <nav className="flex gap-4 text-sm">
+      <Kopfleiste>
         <Link href="/" className="text-black/60 underline dark:text-white/60">
           Übersicht
         </Link>
@@ -38,7 +39,7 @@ export default async function BaustellenPage({
         <Link href="/material" className="text-black/60 underline dark:text-white/60">
           Material
         </Link>
-      </nav>
+      </Kopfleiste>
 
       <h1 className="mt-4 text-2xl font-semibold tracking-tight">Baustellen</h1>
       <p className="mt-1 text-sm text-black/60 dark:text-white/60">
