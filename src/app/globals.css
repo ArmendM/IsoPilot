@@ -1,15 +1,30 @@
 @import "tailwindcss";
 
+/* Farben aus dem Markenhandbuch, siehe docs/marke und src/lib/marke.ts.
+ * Blau steht für Flächen und Zustände in der Oberfläche, im Logo selbst
+ * kommt es nicht vor. */
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #131c24;
+  --tiefblau: #0a4a7c;
+  --blau: #0f6fb8;
+  --rot: #d0342a;
+  --papier: #f5f6f7;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-tiefblau: var(--tiefblau);
+  --color-blau: var(--blau);
+  --color-rot: var(--rot);
+  --color-papier: var(--papier);
+  /* Barlow für Fliesstext, Archivo für Titel. Beide über next/font, das
+   * sie beim Bauen mitnimmt: die Oberfläche fragt damit kein fremdes
+   * Netz, und auf der Baustelle ist die Seite auch bei schlechtem Empfang
+   * sofort richtig gesetzt. */
+  --font-sans: var(--font-barlow);
+  --font-titel: var(--font-archivo);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -22,5 +37,12 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  /* Kein Arial mehr an dieser Stelle: die Zeile aus create-next-app
+   * überschrieb die geladene Schrift, sie wurde geholt und nie benutzt. */
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+h1,
+h2 {
+  font-family: var(--font-titel), var(--font-sans), system-ui, sans-serif;
 }

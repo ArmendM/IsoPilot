@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
+import { IsoTeamWortmarke } from "@/components/marke/isoteam-logo";
 
 // Kein requireUser(): eine abgelaufene Sitzung hat noch ein Cookie, der Proxy
 // lässt sie also durch. Hier gehört eine Weiterleitung hin, kein Fehler.
@@ -12,7 +13,12 @@ export default async function StartPage() {
     <main className="mx-auto w-full max-w-2xl flex-1 p-6">
       <header className="flex items-baseline justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">IsoPilot</h1>
+          {/* Die Wortmarke statt des Schriftzugs: IsoPilot ist die
+              Software, IsoTeam ist der Betrieb, und oben links gehört
+              der Betrieb hin. Die Fassung "farbig" gilt auf hellem
+              Grund, siehe fassungFuer in lib/marke.ts. */}
+          <IsoTeamWortmarke hoehe={26} />
+          <h1 className="mt-2 text-2xl font-semibold tracking-tight">IsoPilot</h1>
           <p className="mt-1 text-sm text-black/60 dark:text-white/60">
             Angemeldet als {user.name},{" "}
             {user.role === "ADMIN" ? "Vorgesetzter" : "Mitarbeitender"}

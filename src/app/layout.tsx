@@ -1,15 +1,25 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Archivo, Barlow } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+/* Die Schriften aus dem Markenhandbuch. next/font nimmt sie beim Bauen
+ * mit, die Oberfläche fragt also kein fremdes Netz: das ist schneller
+ * und hält die Adressen der Mitarbeitenden aus fremden Zugriffsprotokollen
+ * heraus.
+ *
+ * Nur die Gewichte, die das Handbuch nennt. Jedes weitere wäre eine
+ * Datei, die auf der Baustelle mitgeladen wird, ohne dass sie jemand
+ * sieht. */
+const archivo = Archivo({
+  variable: "--font-archivo",
   subsets: ["latin"],
+  weight: ["800"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const barlow = Barlow({
+  variable: "--font-barlow",
   subsets: ["latin"],
+  weight: ["400", "500"],
 });
 
 export const metadata: Metadata = {
@@ -21,7 +31,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="de-CH"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${archivo.variable} ${barlow.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>

@@ -1,0 +1,35 @@
+IsoTeam Dokumentvorlagen
+
+isoteam-vorlagen.html
+  Die vier Dokumente als druckfertiges HTML: Geschaeftsbrief, Offerte,
+  Rechnung mit Swiss QR-Zahlteil, Baustellenrapport. Das ist die Datei fuer
+  IsoPilot. Mit Puppeteer oder Playwright und printBackground: true rendern.
+  Am Ende der Seite stehen die Einbauhinweise.
+
+isoteam-vorlagen.pdf
+  Dieselben vier Seiten als PDF, zum Anschauen und Ausdrucken.
+
+isoteam-brief.dotx / isoteam-brief.docx
+  Word-Vorlage fuer Briefe ausserhalb der App. Die .dotx oeffnet beim
+  Doppelklick ein neues Dokument, das Original bleibt unveraendert.
+  Ablegen unter: Windows %APPDATA%\Microsoft\Templates
+                 macOS ~/Library/Group Containers/UBF8T346G9.Office/User Content/Templates
+
+isoteam-briefpapier-vordruck.pdf
+  Nur Kopf und Fuss, leere Mitte. Fuer eine Druckerei, wenn ihr vorgedrucktes
+  Briefpapier bestellen wollt.
+
+briefpapier-vordruck.html
+  Quelle dazu, falls etwas angepasst werden muss.
+
+Wichtig zur QR-Rechnung
+  Der Zahlteil zeigt das korrekte Layout und traegt einen echten Datensatz.
+  Fuer den Produktivbetrieb die Bibliothek swissqrbill einsetzen und die erste
+  echte Rechnung ueber das offizielle Validierungsportal pruefen.
+
+  Eure IBAN CH57 8080 8009 7723 8862 6 ist eine normale IBAN, keine QR-IBAN.
+  Erlaubte Referenzarten sind darum nur NON oder SCOR, nicht QRR.
+
+Platzhalter
+  Alles in eckigen Klammern ist auszufuellen. Positionen, Betraege und die
+  Muster AG sind Beispieldaten, damit das Layout beurteilbar ist.

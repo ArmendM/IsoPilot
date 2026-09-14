@@ -243,6 +243,55 @@ Zwei getrennte Bereiche, nicht vermischen:
   Partnerfirma, Zeitraum
 - Ausgabe als Excel und PDF, PDF mit Firmenlogo und Firmenzeile
 
+## Marke
+
+Verbindlich ist das **Markenhandbuch** unter `docs/marke`, die Dateien
+liegen unter `public/marke`. Was im Code steht, ist die Umsetzung davon,
+nicht eine zweite Meinung dazu.
+
+| Farbe | Wert | Wofür |
+|---|---|---|
+| Tiefblau | `#0A4A7C` | Wortmarke, Kachel des Symbols, Linien im Briefkopf |
+| Blau | `#0F6FB8` | Flächen und Zustände in IsoPilot, **nicht im Logo** |
+| Rot | `#D0342A` | nur die rechte Ringhälfte |
+| Anthrazit | `#131C24` | Text und Einfarbfassung |
+| Papier | `#F5F6F7` | heller Grund |
+
+- **Rot und Tiefblau haben fast dieselbe Helligkeit.** Auf blauem Grund
+  gehört deshalb die ganz weisse Fassung, nie die mit rotem Halbring,
+  sonst verschwindet der halbe Ring. Die Regel steht als `fassungFuer` in
+  `src/lib/marke.ts` und ist in `tests/einheit/marke.test.ts`
+  festgenagelt: man sieht sie nicht, wenn man sie falsch macht.
+- **Schriften: Archivo 800 für Titel, Barlow 400 und 500 für alles
+  andere**, über `next/font/google`. Das nimmt sie beim Bauen mit, die
+  Oberfläche fragt also kein fremdes Netz. Nur die Gewichte, die das
+  Handbuch nennt: jedes weitere wäre eine Datei, die auf der Baustelle
+  mitgeladen wird, ohne dass sie jemand sieht.
+- **Das Logo ist eine Komponente**, `src/components/marke/isoteam-logo.tsx`,
+  mit denselben Pfaden wie die Dateien. Die Buchstaben sind Kurven, das
+  Logo steht also auch dort richtig, wo Archivo noch nicht geladen ist.
+  Für Druck und Beilagen bleiben die Dateien.
+- Mindestbreite am Bildschirm 90 Pixel, im Druck 18 Millimeter.
+
+### Dokumentvorlagen, noch nicht umgesetzt
+
+Unter `docs/marke/vorlagen` liegen vier A4-Vorlagen als druckfertiges
+HTML: Geschäftsbrief, Offerte, Rechnung mit Swiss QR-Zahlteil und
+Baustellenrapport, dazu eine Word-Vorlage und ein Vordruck fürs
+Briefpapier. **Gebaut wird daraus vorerst nichts**, Offerten und
+Rechnungen stehen in M6 und M7 und damit hinter dem Parallelbetrieb.
+
+Zwei Dinge daraus sind aber schon entschieden und gehören nicht neu
+diskutiert:
+
+- **Für den Zahlteil die Bibliothek `swissqrbill`**, nicht selbst bauen,
+  und die erste echte Rechnung einmal über das offizielle
+  Validierungsportal prüfen.
+- **Die Firmen-IBAN ist eine normale IBAN, keine QR-IBAN**
+  (Institutsnummer 80808 liegt ausserhalb 30000 bis 31999). Erlaubt sind
+  darum nur die Referenzarten **NON oder SCOR, nicht QRR**, und die
+  Rechnungsnummer gehört in das Feld "Zusätzliche Informationen".
+
 ## Technische Konventionen
 
 - **Zeitzonen:** immer `date-fns-tz` mit `Europe/Zurich`, nie blankes `new Date()`
@@ -850,6 +899,20 @@ Fachliche Entscheide, die niemand aus dem Code ableiten kann:
 - **`employedFrom` muss bei jeder neuen Person gesetzt werden**, sonst
   gilt das Eintrittsjahr als voll und der Ferienanspruch wird nicht
   anteilig gekürzt. Bei Daut und Armend steht der 01.01.2026.
+- **Die Firmendaten im Markenhandbuch widersprechen denen in diesem
+  Dokument und in der Datenbank.** Zu klären, bevor etwas davon auf eine
+  Rechnung gerät:
+
+  | Angabe | In CLAUDE.md und in der Datenbank | Im Markenhandbuch |
+  |---|---|---|
+  | UID und MwSt | CHE-190.604.537 | CHE-305.978.601 |
+  | Mail | isoteam.daut@gmail.com | info@isoteam-suljejmani.ch |
+  | Telefon | 079 616 89 75 | dazu 076 574 25 82 |
+  | IBAN | nicht erfasst | CH57 8080 8009 7723 8862 6, Raiffeisen Emmenbrücke |
+
+  Dazu die Leistungszeile "Wärme . Kälte . Lüftungsisolationen .
+  Brandschutz" und die Zahlungskonditionen "10 Tage 2% Skonto, 30 Tage
+  netto", beides steht bisher nirgends. MwSt-Normalsatz 8.1 Prozent.
 - Namensrechte prüfen: nic.ch, zefix.ch, swissreg.ch
 - Schriftliche Regelung mit Daut und Qail, wem der Code gehört.
   Vorschlag: Armend behält die Rechte, IsoTeam erhält ein unbefristetes,
