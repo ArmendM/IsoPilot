@@ -8,9 +8,19 @@ Auswertungen als Excel und PDF.
 
 ## Kontext
 
-**Firma:** Isoteam Suljejmani GmbH, Gerliswilstrasse 68, 6020 Emmenbrücke,
-MwSt. CHE-190.604.537. Isolation von Lüftungs- und Heizungsleitungen,
-Brandschutz.
+**Firma:** IsoTeam Suljejmani GmbH, Gerliswilstrasse 68, 6020 Emmenbrücke.
+UID und MwSt CHE-305.978.601, MwSt-Normalsatz 8.1 Prozent.
+`info@isoteam-suljejmani.ch`, 079 616 89 75 / 076 574 25 82.
+Raiffeisenbank Emmenbrücke, IBAN CH57 8080 8009 7723 8862 6.
+Leistungszeile: Wärme . Kälte . Lüftungsisolationen . Brandschutz.
+Zahlungskonditionen: 10 Tage 2% Skonto, 30 Tage netto.
+Isolation von Lüftungs- und Heizungsleitungen, Brandschutz.
+
+**Massgebend für diese Angaben ist `docs/marke/MARKENHANDBUCH.md`.**
+Stehen sie woanders anders, gilt das Handbuch, und die andere Stelle wird
+nachgezogen. Im Code stehen sie an genau einer Stelle, in `prisma/seed.ts`,
+und von dort in `Company`. Nichts liest sie fest verdrahtet aus dem Code,
+Berichte und Belege holen sie über `firmenkopf` aus der Datenbank.
 
 **Nutzende:** vier Personen, alle mit Infomaniak-Konto.
 
@@ -906,20 +916,6 @@ Fachliche Entscheide, die niemand aus dem Code ableiten kann:
 - **`employedFrom` muss bei jeder neuen Person gesetzt werden**, sonst
   gilt das Eintrittsjahr als voll und der Ferienanspruch wird nicht
   anteilig gekürzt. Bei Daut und Armend steht der 01.01.2026.
-- **Die Firmendaten im Markenhandbuch widersprechen denen in diesem
-  Dokument und in der Datenbank.** Zu klären, bevor etwas davon auf eine
-  Rechnung gerät:
-
-  | Angabe | In CLAUDE.md und in der Datenbank | Im Markenhandbuch |
-  |---|---|---|
-  | UID und MwSt | CHE-190.604.537 | CHE-305.978.601 |
-  | Mail | isoteam.daut@gmail.com | info@isoteam-suljejmani.ch |
-  | Telefon | 079 616 89 75 | dazu 076 574 25 82 |
-  | IBAN | nicht erfasst | CH57 8080 8009 7723 8862 6, Raiffeisen Emmenbrücke |
-
-  Dazu die Leistungszeile "Wärme . Kälte . Lüftungsisolationen .
-  Brandschutz" und die Zahlungskonditionen "10 Tage 2% Skonto, 30 Tage
-  netto", beides steht bisher nirgends. MwSt-Normalsatz 8.1 Prozent.
 - Namensrechte prüfen: nic.ch, zefix.ch, swissreg.ch
 - Schriftliche Regelung mit Daut und Qail, wem der Code gehört.
   Vorschlag: Armend behält die Rechte, IsoTeam erhält ein unbefristetes,

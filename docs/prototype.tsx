@@ -2439,13 +2439,13 @@ function Admin({me,data,save,holSrc}){
               <div style={{flex:1}}><label style={lbl}>Ort</label>
                 <input value={co.city??"Emmenbrücke"} onChange={e=>setCo({city:e.target.value})} style={inp}/></div></div>
             <label style={lbl}>MwSt.-Nummer</label>
-            <input value={co.vat??"CHE-190.604.537"} onChange={e=>setCo({vat:e.target.value})} style={inp}/>
+            <input value={co.vat??"CHE-305.978.601"} onChange={e=>setCo({vat:e.target.value})} style={inp}/>
             <label style={lbl}>IBAN oder QR-IBAN</label>
             <input value={co.iban??""} onChange={e=>setCo({iban:e.target.value})} placeholder="CH.. .... .... .... .... ." style={inp}/>
             <label style={lbl}>Telefon</label>
             <input value={co.phone??"079 616 89 75"} onChange={e=>setCo({phone:e.target.value})} style={inp}/>
             <label style={lbl}>E-Mail</label>
-            <input value={co.mail??"isoteam.daut@gmail.com"} onChange={e=>setCo({mail:e.target.value})} style={{...inp,marginBottom:0}}/>
+            <input value={co.mail??"info@isoteam-suljejmani.ch"} onChange={e=>setCo({mail:e.target.value})} style={{...inp,marginBottom:0}}/>
             <div style={{fontSize:11,color:"#9ca3af",marginTop:10}}>Diese Angaben erscheinen im Kopf jedes PDF-Auszugs.</div>
           </div>
         </>);})()}

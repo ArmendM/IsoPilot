@@ -15,25 +15,40 @@ const db = new PrismaClient({
 });
 
 async function main() {
+  /* Firmendaten nach dem Markenhandbuch, docs/marke/MARKENHANDBUCH.md.
+   * Es ist die massgebende Quelle, und diese Angaben stehen später auf
+   * Offerten und Rechnungen.
+   *
+   * Anders als beim Material stehen sie auch im update-Zweig: eine
+   * berichtigte UID soll ein erneuter Seed durchsetzen, sonst bleibt in
+   * einer laufenden Datenbank die falsche stehen. Gewachsene Zahlen wie
+   * der Lagerbestand werden davon nicht berührt, die stehen weiterhin
+   * nur im create-Zweig. */
+  const firmendaten = {
+    name: "IsoTeam Suljejmani GmbH",
+    street: "Gerliswilstrasse 68",
+    zip: "6020",
+    city: "Emmenbrücke",
+    vatNumber: "CHE-305.978.601",
+    phone: "079 616 89 75 / 076 574 25 82",
+    email: "info@isoteam-suljejmani.ch",
+    /* Normale IBAN, keine QR-IBAN: die Institutsnummer 80808 liegt
+     * ausserhalb von 30000 bis 31999. Für den Zahlteil sind damit nur
+     * die Referenzarten NON und SCOR erlaubt, nicht QRR. */
+    iban: "CH57 8080 8009 7723 8862 6",
+  };
+
   const company = await db.company.upsert({
     where: { id: "isoteam" },
-    update: {},
+    update: firmendaten,
     create: {
       id: "isoteam",
-      name: "IsoTeam Suljejmani GmbH",
-      street: "Gerliswilstrasse 68",
-      zip: "6020",
-      city: "Emmenbrücke",
-      vatNumber: "CHE-190.604.537",
-      phone: "079 616 89 75",
-      email: "isoteam.daut@gmail.com",
+      ...firmendaten,
       canton: "LU",
       defaultVacationDays: 25,
       // Regietarife gemäss Preisliste 01.01.2024
       regieRateA: 84,
       regieRateB: 76,
-      // QR-IBAN vor dem ersten Rechnungsversand eintragen
-      iban: null,
     },
   });
 
@@ -127,7 +142,7 @@ async function main() {
 
   console.log("Seed fertig: Firma, 2 Partner, 5 Kategorien, 29 Artikel");
   console.log("Personen entstehen bei der ersten Anmeldung über Infomaniak.");
-  console.log("Offen: QR-IBAN eintragen, VSI-Tarife importieren");
+  console.log("Offen: VSI-Tarife importieren");
 }
 
 main().finally(() => db.$disconnect());
