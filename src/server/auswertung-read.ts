@@ -183,3 +183,265 @@ export async function auswertungPerson(
 
 /** Stunden auf zwei Stellen, sonst summieren sich Rundungsreste sichtbar auf. */
 const runde = (n: number) => Math.round(n * 100) / 100;
+
+
+/* ────────────────────────────────────────────────────────────
+ * Auswertung Baustellen
+ *
+ * Ein eigener Bereich, nicht mit der Auswertung Mitarbeitende
+ * vermischt: die eine fragt, was eine Person geleistet hat, die andere,
+ * was eine Baustelle gekostet hat.
+ *
+ * Nur für Vorgesetzte. Eine Baustellenauswertung führt die Stunden aller
+ * Beteiligten und die Kosten zusammen, und Mitarbeitende sehen nur ihre
+ * eigenen Zeiten und Buchungen.
+ * ──────────────────────────────────────────────────────────── */
+
+export type MaterialPosition = {
+  datum: string;
+  bezeichnung: string;
+  menge: number;
+  einheit: string;
+  einzelpreis: number;
+  rabattPct: number;
+  betrag: number;
+  person: string;
+};
+
+export type PersonAnteil = { personId: string; name: string; stunden: number };
+
+/** Ein einzelner Zeiteintrag auf der Baustelle, mit der Person dazu. */
+export type ZeitPosition = {
+  datum: string;
+  person: string;
+  von: string | null;
+  bis: string | null;
+  pause: number;
+  netto: number;
+  istRegie: boolean;
+  notiz: string | null;
+};
+
+export type BaustellenAuswertung = {
+  baustelle: {
+    id: string;
+    bezeichnung: string;
+    adresse: string;
+    partner: string | null;
+    status: "OPEN" | "PAUSED" | "DONE";
+  };
+  zeitraum: Zeitraum;
+  soll: number;
+  /** Ist über den gewählten Zeitraum. */
+  istImZeitraum: number;
+  /** Ist über die ganze Laufzeit der Baustelle. */
+  istGesamt: number;
+  /** Soll minus Ist gesamt. Gegen den Zeitraum gerechnet wäre sie
+   *  nichtssagend: das Soll gilt für die ganze Baustelle. */
+  differenz: number;
+  materialkosten: number;
+  vsiBetrag: number;
+  materialPositionen: MaterialPosition[];
+  vsiPositionen: MaterialPosition[];
+  proPerson: PersonAnteil[];
+  /** Die einzelnen Zeiteinträge im Zeitraum, nicht nur die Summe je Person. */
+  zeitPositionen: ZeitPosition[];
+};
+
+export type BaustellenZeile = {
+  id: string;
+  bezeichnung: string;
+  partner: string | null;
+  status: "OPEN" | "PAUSED" | "DONE";
+  soll: number;
+  istImZeitraum: number;
+  istGesamt: number;
+  differenz: number;
+  materialkosten: number;
+  vsiBetrag: number;
+};
+
+const adresseVon = (s: { street: string; zip: string; city: string }) =>
+  `${s.street}, ${s.zip} ${s.city}`;
+
+/** Betrag einer Buchung, mit dem eingefrorenen Preis und dem Rabatt. */
+const betragVon = (b: { quantity: unknown; unitPrice: unknown; discountPct: number }) =>
+  runde(Number(b.quantity) * Number(b.unitPrice) * (1 - b.discountPct / 100));
+
+/**
+ * Eine Baustelle über einen Zeitraum.
+ *
+ * Stunden und Materialkosten werden über den Zeitraum gerechnet, das
+ * Soll-Ist dagegen über die ganze Laufzeit: das Soll gilt für die
+ * Baustelle und nicht für einen Monat. Beide Zahlen stehen deshalb
+ * nebeneinander, statt eine davon stillschweigend zu wählen.
+ */
+export async function auswertungBaustelle(
+  user: SessionUser,
+  siteId: string,
+  zeitraum: Zeitraum,
+): Promise<BaustellenAuswertung> {
+  if (user.role !== "ADMIN") throw new Error("FORBIDDEN");
+
+  const site = await db.site.findUnique({
+    where: { id: siteId },
+    include: { partner: { select: { name: true } } },
+  });
+  if (!site || site.companyId !== user.companyId) throw new Error("FORBIDDEN");
+
+  const von = new Date(`${zeitraum.von}T00:00:00Z`);
+  const bis = new Date(`${zeitraum.bis}T00:00:00Z`);
+
+  const [imZeitraum, gesamt, buchungen] = await Promise.all([
+    db.timeEntry.findMany({
+      where: { siteId, deletedAt: null, workDate: { gte: von, lte: bis } },
+      orderBy: [{ workDate: "asc" }, { startedAt: "asc" }],
+      select: {
+        workDate: true, startedAt: true, endedAt: true, breakMinutes: true,
+        billingMode: true, note: true,
+        user: { select: { id: true, name: true } },
+      },
+    }),
+    db.timeEntry.findMany({
+      where: { siteId, deletedAt: null },
+      select: { startedAt: true, endedAt: true, breakMinutes: true },
+    }),
+    db.materialBooking.findMany({
+      where: { siteId, deletedAt: null, bookedOn: { gte: von, lte: bis } },
+      orderBy: [{ bookedOn: "asc" }],
+      include: {
+        material: { select: { name: true, sku: true } },
+        user: { select: { name: true } },
+      },
+    }),
+  ]);
+
+  const proPerson = new Map<string, PersonAnteil>();
+  for (const e of imZeitraum) {
+    const v = proPerson.get(e.user.id) ?? {
+      personId: e.user.id,
+      name: e.user.name,
+      stunden: 0,
+    };
+    v.stunden += netHours(e.startedAt, e.endedAt, e.breakMinutes);
+    proPerson.set(e.user.id, v);
+  }
+
+  const alsPosition = (b: (typeof buchungen)[number]): MaterialPosition => ({
+    datum: isoUtc(b.bookedOn),
+    bezeichnung:
+      b.kind === "VSI"
+        ? (b.label ?? "VSI-Position")
+        : b.material
+          ? (b.material.sku ? `${b.material.sku} · ${b.material.name}` : b.material.name)
+          : "Artikel entfernt",
+    menge: Number(b.quantity),
+    einheit: b.unit,
+    einzelpreis: Number(b.unitPrice),
+    rabattPct: b.discountPct,
+    betrag: betragVon(b),
+    person: b.user.name,
+  });
+
+  const materialPositionen = buchungen.filter((b) => b.kind === "CATALOG").map(alsPosition);
+  const vsiPositionen = buchungen.filter((b) => b.kind === "VSI").map(alsPosition);
+
+  const zeitPositionen: ZeitPosition[] = imZeitraum.map((e) => ({
+    datum: isoUtc(e.workDate),
+    person: e.user.name,
+    von: hhmm(e.startedAt, "Europe/Zurich"),
+    bis: hhmm(e.endedAt, "Europe/Zurich"),
+    pause: e.breakMinutes,
+    netto: netHours(e.startedAt, e.endedAt, e.breakMinutes),
+    istRegie: e.billingMode === "REGIE",
+    notiz: e.note,
+  }));
+
+  const istImZeitraum = runde(
+    imZeitraum.reduce((s, e) => s + netHours(e.startedAt, e.endedAt, e.breakMinutes), 0),
+  );
+  const istGesamt = runde(
+    gesamt.reduce((s, e) => s + netHours(e.startedAt, e.endedAt, e.breakMinutes), 0),
+  );
+
+  return {
+    baustelle: {
+      id: site.id,
+      bezeichnung: site.name ?? adresseVon(site),
+      adresse: adresseVon(site),
+      partner: site.partner?.name ?? null,
+      status: site.status,
+    },
+    zeitraum,
+    soll: Number(site.targetHours),
+    istImZeitraum,
+    istGesamt,
+    differenz: runde(Number(site.targetHours) - istGesamt),
+    materialkosten: runde(materialPositionen.reduce((s, p) => s + p.betrag, 0)),
+    vsiBetrag: runde(vsiPositionen.reduce((s, p) => s + p.betrag, 0)),
+    materialPositionen,
+    vsiPositionen,
+    proPerson: [...proPerson.values()]
+      .map((p) => ({ ...p, stunden: runde(p.stunden) }))
+      .sort((a, b) => b.stunden - a.stunden),
+    zeitPositionen,
+  };
+}
+
+/**
+ * Alle Baustellen als Übersicht, abgeschlossene eingeschlossen: sie
+ * verschwinden aus der Auswahl, bleiben aber in Auswertungen.
+ */
+export async function auswertungAlleBaustellen(
+  user: SessionUser,
+  zeitraum: Zeitraum,
+): Promise<BaustellenZeile[]> {
+  if (user.role !== "ADMIN") throw new Error("FORBIDDEN");
+
+  const von = new Date(`${zeitraum.von}T00:00:00Z`);
+  const bis = new Date(`${zeitraum.bis}T00:00:00Z`);
+
+  const sites = await db.site.findMany({
+    where: { companyId: user.companyId },
+    orderBy: [{ status: "asc" }, { name: "asc" }, { street: "asc" }],
+    include: {
+      partner: { select: { name: true } },
+      entries: {
+        where: { deletedAt: null },
+        select: { workDate: true, startedAt: true, endedAt: true, breakMinutes: true },
+      },
+      bookings: {
+        where: { deletedAt: null, bookedOn: { gte: von, lte: bis } },
+        select: { kind: true, quantity: true, unitPrice: true, discountPct: true },
+      },
+    },
+  });
+
+  return sites.map((s) => {
+    const stunden = (nurZeitraum: boolean) =>
+      runde(
+        s.entries
+          .filter((e) => !nurZeitraum || (e.workDate >= von && e.workDate <= bis))
+          .reduce((sum, e) => sum + netHours(e.startedAt, e.endedAt, e.breakMinutes), 0),
+      );
+
+    const summe = (kind: "CATALOG" | "VSI") =>
+      runde(
+        s.bookings.filter((b) => b.kind === kind).reduce((sum, b) => sum + betragVon(b), 0),
+      );
+
+    const istGesamt = stunden(false);
+    return {
+      id: s.id,
+      bezeichnung: s.name ?? adresseVon(s),
+      partner: s.partner?.name ?? null,
+      status: s.status,
+      soll: Number(s.targetHours),
+      istImZeitraum: stunden(true),
+      istGesamt,
+      differenz: runde(Number(s.targetHours) - istGesamt),
+      materialkosten: summe("CATALOG"),
+      vsiBetrag: summe("VSI"),
+    };
+  });
+}
