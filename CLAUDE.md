@@ -446,11 +446,18 @@ Rückfall, `/abschluss` Monatsabschluss.
 - M3h Lagerberechtigung als eigenes Merkmal an `User`: **fertig**
 - M3i Bestand nur noch über Bewegungen, Inventur: **fertig**
 
-**M4 Auswertung**
-Auswertung Mitarbeitende, Auswertung Baustellen, Export Excel und PDF,
-Firmeneinstellungen mit Logo-Upload, Aufbewahrungsjob. Dazu **Sollstunden
-und Zeitsaldo**, siehe den eigenen Abschnitt weiter unten: dafür fehlt
-das Datenmodell noch ganz.
+**M4 Auswertung — angefangen**
+
+- M4a Auswertung Mitarbeitende, Ansicht: **fertig**
+- M4b Auswertung Baustellen, Ansicht: **als Nächstes**
+- M4c Export Excel und PDF für beide: offen
+- M4d Firmeneinstellungen mit Logo-Upload: offen
+- M4e Aufbewahrungsjob für Login-Protokolle: offen
+
+Dazu **Sollstunden und Zeitsaldo**, siehe den eigenen Abschnitt weiter
+unten: dafür fehlt das Datenmodell noch ganz, und es stehen fachliche
+Entscheide an. Die Auswertung Mitarbeitende ist der Ort, an dem der Saldo
+später als Spalte dazukommt.
 
 **M5 Produktivstart**
 Seed mit echten Stammdaten, ein Monat Parallelbetrieb neben dem alten
@@ -656,6 +663,34 @@ und sie stimmt als einzige über alle Vorgänge. Betroffen sind drei
 Stellen in `src/server/bookings.ts` und zwei festgenagelte Tests in
 `tests/server/bookings.test.ts`. Vor dem Produktivstart ist die Tabelle
 leer, später wäre es eine Umrechnung alter Zeilen.
+
+### M4a, Auswertung Mitarbeitende (fertig)
+
+`/auswertung/mitarbeitende`. Eine Person und ein Zeitraum, nie alle
+zugleich. Die Auswertung Baustellen bleibt ein eigener Bereich.
+
+- **Der Zeitraum liegt in `src/lib/zeitraum.ts`**, ohne Prisma und ohne
+  React: Monat, Jahr und freie Zeitspanne, samt Schaltjahr und
+  Monatsende. Gerechnet wird durchgehend in UTC-Mitternacht wie die
+  `@db.Date`-Spalten, `workingDays` aus `lib/dates.ts` wird bewusst nicht
+  benutzt, weil es die Systemzeitzone liest.
+- **Ein umgedrehter Zeitraum wird nicht stillschweigend getauscht.** Die
+  Auswertung zeigte dann etwas anderes an, als in den Feldern steht.
+- **Gezählt wird Tag für Tag**, mit derselben Regel wie die
+  Monatsübersicht: am Wochenende und am Feiertag wird kein Ferientag
+  verbraucht, ein halber Tag zählt halb, ein halber Absenztag ohne
+  Eintrag bleibt offen. An einem Samstag gebuchte Stunden zählen
+  trotzdem voll, er ist nur kein Werktag.
+- **Zwei verschiedene Tageszahlen, beide benannt:** Werktage im Zeitraum
+  und Tage mit Erfassung. "Arbeitstage" allein wäre zweideutig.
+- **Die Firma wird mitgeprüft**, nicht nur die Rolle. `assertOwnerOrAdmin`
+  in `guards.ts` prüft die Firma nicht, ein Vorgesetzter käme damit über
+  eine fremde Kennung in der Adresse an fremde Zahlen. Ein Test hält das
+  fest.
+- **Tage ohne Baustelle stehen als eigene Zeile**, nicht unter dem Tisch:
+  Werkstatt- und Bürotage soll es ausdrücklich geben.
+
+Offen daran: Excel und PDF, das ist M4c, und die Sollstunden.
 
 ### Offen: alte Lagerbewegungen kennen ihre Baustelle nicht
 
