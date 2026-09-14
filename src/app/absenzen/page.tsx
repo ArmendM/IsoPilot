@@ -6,6 +6,7 @@ import { absenzen } from "@/server/absences-read";
 import { ferienstand } from "@/server/vacation";
 import { AbsenzenAnsicht } from "@/components/absenzen/absenzen-ansicht";
 import { ZahlFeld } from "@/components/ui/eingabefelder";
+import { Kopfleiste } from "@/components/marke/kopfleiste";
 
 const datumDE = (iso: string) => iso.split("-").reverse().join(".");
 
@@ -42,7 +43,7 @@ export default async function AbsenzenPage({ searchParams }: PageProps<"/absenze
 
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 p-6">
-      <nav className="flex gap-4 text-sm">
+      <Kopfleiste>
         <Link href="/" className="text-black/60 underline dark:text-white/60">
           Übersicht
         </Link>
@@ -52,7 +53,7 @@ export default async function AbsenzenPage({ searchParams }: PageProps<"/absenze
         <Link href="/zeiten/monat" className="text-black/60 underline dark:text-white/60">
           Monatsansicht
         </Link>
-      </nav>
+      </Kopfleiste>
 
       <h1 className="mt-4 text-2xl font-semibold tracking-tight">Absenzen {jahr}</h1>
 

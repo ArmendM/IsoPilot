@@ -5,6 +5,7 @@ import { getSession } from "@/lib/session";
 import { formatHours, monthKey, todayISO } from "@/lib/dates";
 import { monatsabschluss } from "@/server/month-lock-read";
 import { AbschlussSchalter } from "@/components/abschluss/abschluss-schalter";
+import { Kopfleiste } from "@/components/marke/kopfleiste";
 
 const MONAT = /^\d{4}-(0[1-9]|1[0-2])$/;
 const MONATSNAME = [
@@ -33,7 +34,7 @@ export default async function AbschlussPage({ searchParams }: PageProps<"/abschl
 
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 p-6">
-      <nav className="flex gap-4 text-sm">
+      <Kopfleiste>
         <Link href="/" className="text-black/60 underline dark:text-white/60">
           Übersicht
         </Link>
@@ -43,7 +44,7 @@ export default async function AbschlussPage({ searchParams }: PageProps<"/abschl
         <Link href="/personen" className="text-black/60 underline dark:text-white/60">
           Personen
         </Link>
-      </nav>
+      </Kopfleiste>
 
       <h1 className="mt-4 text-2xl font-semibold tracking-tight">
         Monatsabschluss {MONATSNAME[m - 1]} {jahr}

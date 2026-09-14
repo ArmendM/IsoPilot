@@ -24,6 +24,11 @@ cp deploy/nginx/sites-available/*  /etc/nginx/sites-available/
 ln -s /etc/nginx/sites-available/cockpit.isoteam-suljejmani.ch.conf /etc/nginx/sites-enabled/
 rm -f /etc/nginx/sites-enabled/default
 
+# Die Adresse hier ist der Empfänger der Ablaufwarnungen von Let's
+# Encrypt, nicht die Firmenadresse aus dem Markenhandbuch. Sie bleibt
+# bewusst auf dem Gmail-Konto, bis info@isoteam-suljejmani.ch wirklich
+# gelesen wird: eine Warnung, die ins Leere geht, merkt man erst, wenn
+# das Zertifikat abgelaufen ist.
 certbot certonly --webroot -w /var/www/certbot -d cockpit.isoteam-suljejmani.ch \
   --email isoteam.daut@gmail.com --agree-tos --no-eff-email
 

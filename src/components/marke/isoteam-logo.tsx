@@ -1,0 +1,78 @@
+import { type Fassung, logofarben } from "@/lib/marke";
+
+/* Wortmarke und Signet als Komponente.
+ *
+ * Die Buchstaben sind Kurven, keine Schrift: das Logo steht auch dort
+ * richtig, wo Archivo nicht geladen ist, etwa im ersten Bildaufbau oder
+ * wenn der Browser Schriften blockiert. Die Pfade sind dieselben wie in
+ * den Dateien unter `public/marke`, die Quelle ist das Markenhandbuch.
+ *
+ * Als Komponente und nicht als `img`: so lässt sich die Fassung wählen,
+ * ohne vier Dateien zu laden, und die Farbe steckt im Markup statt in
+ * einem Dateinamen. Für Druck und Beilagen bleiben die Dateien.
+ *
+ * Bewusst ohne "use client": die Komponente hat keinen Zustand und kein
+ * Ereignis. So wird sie auf dem Server gezeichnet und schickt kein
+ * Javascript in den Browser, obwohl sie auf jeder Seite steht. */
+
+const WORTMARKE_VIEWBOX = "75 -699 4692 711";
+const SIGNET_VIEWBOX = "-380 -380 760 760";
+
+const SCHRIFT = "M75 0V-687H254V0Z M689 12Q624 12 567.0 0.5Q510 -11 466.5 -37.0Q423 -63 398.0 -105.5Q373 -148 373 -210Q373 -214 373.0 -219.0Q373 -224 374 -227H547Q547 -224 546.5 -219.5Q546 -215 546 -212Q546 -180 562.5 -160.5Q579 -141 609.0 -132.5Q639 -124 679 -124Q701 -124 720.0 -126.0Q739 -128 754.0 -133.0Q769 -138 780.5 -145.5Q792 -153 797.5 -163.5Q803 -174 803 -188Q803 -211 785.5 -226.0Q768 -241 738.5 -251.0Q709 -261 672.0 -270.0Q635 -279 595.0 -289.0Q555 -299 518.0 -314.0Q481 -329 451.5 -352.0Q422 -375 404.5 -409.5Q387 -444 387 -493Q387 -547 410.0 -586.5Q433 -626 473.5 -651.0Q514 -676 567.0 -687.5Q620 -699 680 -699Q739 -699 790.5 -687.0Q842 -675 882.0 -649.5Q922 -624 944.5 -585.5Q967 -547 968 -493V-481H796V-488Q796 -511 783.5 -528.5Q771 -546 746.0 -556.5Q721 -567 684 -567Q647 -567 621.5 -560.0Q596 -553 582.5 -540.0Q569 -527 569 -509Q569 -487 586.5 -473.0Q604 -459 634.0 -449.0Q664 -439 701.0 -430.5Q738 -422 777.5 -412.5Q817 -403 854.0 -388.5Q891 -374 921.0 -351.5Q951 -329 968.5 -296.0Q986 -263 986 -216Q986 -134 947.5 -84.0Q909 -34 841.5 -11.0Q774 12 689 12Z M2055 0V-540H1832V-687H2457V-540H2234V0Z M2560 0V-687H3127V-547H2739V-418H3078V-281H2739V-140H3134V0Z M3190 0 3448 -687H3663L3921 0H3730L3689 -119H3415L3374 0ZM3458 -253H3645L3596 -398Q3592 -409 3586.5 -425.5Q3581 -442 3575.5 -460.5Q3570 -479 3565.0 -498.0Q3560 -517 3555 -531H3548Q3544 -512 3536.5 -488.0Q3529 -464 3521.5 -440.0Q3514 -416 3508 -398Z M4003 0V-687H4264L4347 -381Q4352 -365 4359.0 -337.5Q4366 -310 4373.0 -280.0Q4380 -250 4385 -226H4393Q4397 -245 4403.0 -271.5Q4409 -298 4416.0 -327.5Q4423 -357 4429 -382L4513 -687H4767V0H4593V-293Q4593 -336 4593.5 -380.0Q4594 -424 4595.0 -460.0Q4596 -496 4596 -512H4588Q4585 -497 4578.5 -468.5Q4572 -440 4564.5 -409.5Q4557 -379 4551 -357L4451 0H4307L4206 -357Q4201 -377 4194.0 -405.0Q4187 -433 4180.5 -462.0Q4174 -491 4169 -511H4161Q4162 -485 4163.0 -447.5Q4164 -410 4165.0 -369.5Q4166 -329 4166 -293V0Z";
+const RING_LINKS = "M 1383.00 -698.27 A 358 358 0 0 0 1383.00 11.27 L 1383.00 -156.56 A 193 193 0 0 1 1383.00 -530.44 Z";
+const RING_RECHTS = "M 1479.00 -698.27 A 358 358 0 0 1 1479.00 11.27 L 1479.00 -156.56 A 193 193 0 0 0 1479.00 -530.44 Z";
+
+const SIGNET_LINKS = "M -48.00 -354.77 A 358 358 0 0 0 -48.00 354.77 L -48.00 186.94 A 193 193 0 0 1 -48.00 -186.94 Z";
+const SIGNET_RECHTS = "M 48.00 -354.77 A 358 358 0 0 1 48.00 354.77 L 48.00 186.94 A 193 193 0 0 0 48.00 -186.94 Z";
+
+/** Die ganze Wortmarke ISOTEAM mit dem geteilten Ring als O. */
+export function IsoTeamWortmarke({
+  hoehe = 32,
+  fassung = "farbig",
+  className,
+}: {
+  hoehe?: number;
+  fassung?: Fassung;
+  className?: string;
+}) {
+  const { schrift, waerme } = logofarben(fassung);
+  return (
+    <svg
+      viewBox={WORTMARKE_VIEWBOX}
+      height={hoehe}
+      role="img"
+      aria-label="IsoTeam"
+      className={className}
+    >
+      <path d={SCHRIFT} fill={schrift} />
+      <path d={RING_LINKS} fill={schrift} />
+      <path d={RING_RECHTS} fill={waerme} />
+    </svg>
+  );
+}
+
+/** Nur der geteilte Ring, ohne Schrift. Für kleine Flächen. */
+export function IsoTeamSignet({
+  groesse = 24,
+  fassung = "farbig",
+  className,
+}: {
+  groesse?: number;
+  fassung?: Fassung;
+  className?: string;
+}) {
+  const { schrift, waerme } = logofarben(fassung);
+  return (
+    <svg
+      viewBox={SIGNET_VIEWBOX}
+      width={groesse}
+      height={groesse}
+      role="img"
+      aria-label="IsoTeam"
+      className={className}
+    >
+      <path d={SIGNET_LINKS} fill={schrift} />
+      <path d={SIGNET_RECHTS} fill={waerme} />
+    </svg>
+  );
+}

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { darfLager } from "@/lib/berechtigung";
 import { lagerverlauf, verlaufFilter } from "@/server/lager-read";
+import { Kopfleiste } from "@/components/marke/kopfleiste";
 
 /* Der Lagerverlauf als eigene Seite: wo ist die Ware hingegangen, und was
  * ist wann hereingekommen. Sichtbar für Vorgesetzte und für jede Person
@@ -50,7 +51,7 @@ export default async function LagerPage({ searchParams }: PageProps<"/lager">) {
 
   return (
     <main className="mx-auto w-full max-w-4xl flex-1 p-6">
-      <nav className="flex gap-4 text-sm">
+      <Kopfleiste>
         <Link href="/" className="text-black/60 underline dark:text-white/60">
           Übersicht
         </Link>
@@ -60,7 +61,7 @@ export default async function LagerPage({ searchParams }: PageProps<"/lager">) {
         <Link href="/baustellen" className="text-black/60 underline dark:text-white/60">
           Baustellen
         </Link>
-      </nav>
+      </Kopfleiste>
 
       <h1 className="mt-4 text-2xl font-semibold tracking-tight">Lagerverlauf</h1>
       <p className="mt-1 text-sm text-black/60 dark:text-white/60">

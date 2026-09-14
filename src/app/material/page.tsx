@@ -7,6 +7,7 @@ import { MaterialAnsicht } from "@/components/material/material-ansicht";
 import { MaterialImport } from "@/components/material/material-import";
 import { Wareneingang } from "@/components/material/wareneingang";
 import { artikelFuerEingang } from "@/server/lager-read";
+import { Kopfleiste } from "@/components/marke/kopfleiste";
 
 export default async function MaterialPage({ searchParams }: PageProps<"/material">) {
   const user = await getSession();
@@ -31,7 +32,7 @@ export default async function MaterialPage({ searchParams }: PageProps<"/materia
 
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 p-6">
-      <nav className="flex gap-4 text-sm">
+      <Kopfleiste>
         <Link href="/" className="text-black/60 underline dark:text-white/60">
           Übersicht
         </Link>
@@ -46,7 +47,7 @@ export default async function MaterialPage({ searchParams }: PageProps<"/materia
             Lagerverlauf
           </Link>
         )}
-      </nav>
+      </Kopfleiste>
 
       <h1 className="mt-4 text-2xl font-semibold tracking-tight">Material</h1>
       <p className="mt-1 text-sm text-black/60 dark:text-white/60">

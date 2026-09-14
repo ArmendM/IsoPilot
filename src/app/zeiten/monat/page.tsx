@@ -5,6 +5,7 @@ import { getSession } from "@/lib/session";
 import { db } from "@/lib/db";
 import { formatHours, monthKey, todayISO } from "@/lib/dates";
 import { auswaehlbarePersonen, monatsuebersicht } from "@/server/time-entries-read";
+import { Kopfleiste } from "@/components/marke/kopfleiste";
 
 const MONAT = /^\d{4}-\d{2}$/;
 const MONATSNAME = [
@@ -48,14 +49,14 @@ export default async function MonatPage({ searchParams }: PageProps<"/zeiten/mon
 
   return (
     <main className="mx-auto w-full max-w-4xl flex-1 p-6">
-      <nav className="flex gap-4 text-sm">
+      <Kopfleiste>
         <Link href="/" className="text-black/60 underline dark:text-white/60">
           Übersicht
         </Link>
         <Link href="/zeiten" className="text-black/60 underline dark:text-white/60">
           Tagesansicht
         </Link>
-      </nav>
+      </Kopfleiste>
 
       <h1 className="mt-4 text-2xl font-semibold tracking-tight">
         {MONATSNAME[m - 1]} {jahr}

@@ -6,6 +6,7 @@ import { zeitraumAus, type ZeitraumArt } from "@/lib/zeitraum";
 import { auswertungPerson } from "@/server/auswertung-read";
 import { auswaehlbarePersonen } from "@/server/time-entries-read";
 import { ZeitraumWahl } from "@/components/auswertung/zeitraum-wahl";
+import { Kopfleiste } from "@/components/marke/kopfleiste";
 
 /* Auswertung Mitarbeitende: eine Person auf einmal, nie alle zugleich.
  * Die Auswertung Baustellen ist ein eigener Bereich, die beiden
@@ -70,7 +71,7 @@ export default async function AuswertungPersonPage({
 
   return (
     <main className="mx-auto w-full max-w-4xl flex-1 p-6">
-      <nav className="flex gap-4 text-sm">
+      <Kopfleiste>
         <Link href="/" className="text-black/60 underline dark:text-white/60">
           Übersicht
         </Link>
@@ -80,7 +81,7 @@ export default async function AuswertungPersonPage({
         <Link href="/absenzen" className="text-black/60 underline dark:text-white/60">
           Absenzen
         </Link>
-      </nav>
+      </Kopfleiste>
 
       <h1 className="mt-4 text-2xl font-semibold tracking-tight">
         Auswertung Mitarbeitende

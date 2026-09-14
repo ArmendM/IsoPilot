@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="de-CH">
+<head>
+<meta charset="utf-8">
+<title>IsoTeam Dokumentvorlagen</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700;800&family=Barlow:wght@400;500;600;700&display=swap">
+<style>
+@page { size: A4; margin: 0; }
+
+:root {
+  --blau: #0A4A7C;
+  --rot: #D0342A;
+  --tinte: #131C24;
+  --grau: #5D6B78;
+  --linie: #DCE0E4;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: #E8EAEC;
+  font-family: 'Barlow', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  color: var(--tinte);
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.bogen {
+  position: relative;
+  width: 210mm;
+  height: 297mm;
+  margin: 10mm auto;
+  padding: 16mm 20mm 12mm;
+  background: #FFFFFF;
+  box-shadow: 0 2px 14px rgba(0,0,0,0.14);
+  overflow: hidden;
+}
+
+/* Falzmarken */
+.bogen::before, .bogen::after {
+  content: ""; position: absolute; left: 0; width: 4mm; height: 0;
+  border-top: 0.2mm solid #C9D0D6;
+}
+.bogen::before { top: 105mm; }
+.bogen::after  { top: 210mm; }
+
+.kopf { display: flex; align-items: flex-start; justify-content: space-between; gap: 10mm; }
+.logo { display: block; }
+.kopf-adresse { text-align: right; font-size: 3.2mm; line-height: 1.45; color: var(--grau); }
+.kopf-adresse strong { color: var(--tinte); font-weight: 600; }
+.kopf-linie { height: 0.55mm; background: var(--blau); margin-top: 5mm; }
+.leistungen {
+  margin-top: 2.4mm; font-size: 2.6mm; font-weight: 600;
+  letter-spacing: 0.14em; text-transform: uppercase; color: var(--grau);
+}
+
+/* Adressfeld fuer Couvert C5/C6 mit Fenster rechts */
+.empfaenger {
+  position: absolute; left: 115mm; top: 45mm; width: 80mm; height: 27.5mm;
+  font-size: 3.4mm; line-height: 1.5;
+}
+
+.inhalt { position: absolute; left: 20mm; right: 20mm; top: 84mm; bottom: 26mm; }
+.bogen.mit-qr .inhalt { bottom: 121mm; }
+
+.meta { display: flex; gap: 14mm; font-size: 3.1mm; color: var(--grau); margin-bottom: 6mm; }
+.meta strong { display: block; color: var(--tinte); font-weight: 600; }
+
+h1.dok { font-family: 'Archivo', Arial, sans-serif; font-weight: 700; font-size: 6mm;
+         letter-spacing: -0.01em; margin: 0 0 4mm; }
+.betreff { font-weight: 600; font-size: 3.6mm; margin: 0 0 4mm; }
+p { font-size: 3.4mm; line-height: 1.6; margin: 0 0 3.5mm; }
+
+table.positionen { width: 100%; border-collapse: collapse; font-size: 3.1mm; }
+table.positionen th {
+  text-align: left; font-weight: 600; font-size: 2.7mm; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--grau);
+  border-bottom: 0.4mm solid var(--blau); padding: 0 2mm 1.6mm 0;
+}
+table.positionen td { padding: 2.2mm 2mm 2.2mm 0; border-bottom: 0.2mm solid var(--linie); vertical-align: top; }
+table.positionen .num { text-align: right; white-space: nowrap; }
+table.positionen th.num { text-align: right; }
+.detail { color: var(--grau); font-size: 2.8mm; }
+
+table.summen { margin-left: auto; margin-top: 5mm; font-size: 3.2mm; border-collapse: collapse; }
+table.summen td { padding: 1.4mm 0 1.4mm 10mm; text-align: left; }
+table.summen .num { text-align: right; white-space: nowrap; }
+table.summen tr.total td { font-weight: 700; border-top: 0.4mm solid var(--blau); padding-top: 2.2mm; }
+
+.konditionen { margin-top: 6mm; font-size: 2.9mm; color: var(--grau); line-height: 1.6; }
+
+.fuss {
+  position: absolute; left: 20mm; right: 20mm; bottom: 12mm;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8mm;
+  padding-top: 3mm; border-top: 0.2mm solid var(--linie);
+  font-size: 2.8mm; line-height: 1.55; color: var(--grau);
+}
+.fuss strong { color: var(--tinte); font-weight: 600; }
+
+/* Rapport */
+table.rapport { width: 100%; border-collapse: collapse; font-size: 3.1mm; margin-bottom: 6mm; }
+table.rapport th { text-align: left; font-size: 2.7mm; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--grau); font-weight: 600; border-bottom: 0.4mm solid var(--blau); padding: 0 2mm 1.6mm 0; }
+table.rapport td { padding: 2.6mm 2mm 2.6mm 0; border-bottom: 0.2mm solid var(--linie); }
+table.rapport .num { text-align: right; }
+.unterschriften { display: grid; grid-template-columns: 1fr 1fr; gap: 16mm; margin-top: 14mm; }
+.unterschrift { border-top: 0.2mm solid var(--tinte); padding-top: 1.6mm; font-size: 2.8mm; color: var(--grau); }
+
+/* ---------- QR-Zahlteil, Schriften nach Vorgabe: Helvetica/Arial ---------- */
+.qr-bereich {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 105mm;
+  font-family: Helvetica, Arial, 'Liberation Sans', sans-serif; color: #000000;
+}
+.schere {
+  position: absolute; top: -4.5mm; left: 0; right: 0; text-align: center;
+  font-size: 2.3mm; color: #5D6B78; font-family: 'Barlow', Arial, sans-serif;
+}
+.qr-bereich::before {
+  content: ""; position: absolute; top: 0; left: 0; right: 0;
+  border-top: 0.2mm dashed #000000;
+}
+.qr-raster { display: grid; grid-template-columns: 62mm 148mm; height: 105mm; }
+.empfangsschein { padding: 5mm; border-right: 0.2mm dashed #000000; position: relative; }
+.zahlteil { padding: 5mm; }
+.qr-titel { font-size: 11pt; font-weight: 700; margin-bottom: 3mm; }
+.qr-h6 { font-size: 6pt; font-weight: 700; line-height: 9pt; }
+.qr-v8 { font-size: 8pt; line-height: 9pt; margin-bottom: 0; }
+.qr-h8 { font-size: 8pt; font-weight: 700; line-height: 11pt; }
+.qr-v10 { font-size: 10pt; line-height: 11pt; }
+.abstand { margin-top: 2.5mm; }
+.qr-block { margin-bottom: 3mm; }
+.qr-betrag-zeile { display: flex; gap: 8mm; margin-top: 3mm; }
+.qr-betrag-zeile.gross { gap: 10mm; margin-top: 5mm; }
+.qr-annahme { position: absolute; right: 5mm; bottom: 5mm; font-size: 6pt; font-weight: 700; }
+.zahlteil-spalten { display: grid; grid-template-columns: 51mm 87mm; gap: 5mm; }
+.qr-code { width: 46mm; height: 46mm; margin: 5mm 0; }
+.qr-code svg { width: 46mm; height: 46mm; display: block; }
+
+@media print {
+  body { background: #FFFFFF; }
+  .bogen { margin: 0; box-shadow: none; page-break-after: always; }
+  .bogen:last-child { page-break-after: auto; }
+  .hinweis { display: none; }
+}
+
+.hinweis {
+  max-width: 210mm; margin: 10mm auto 0; padding: 6mm 8mm;
+  background: #FFFFFF; border-left: 1mm solid var(--blau);
+  font-size: 3.2mm; line-height: 1.6; color: var(--tinte);
+}
+.hinweis h2 { font-family: 'Archivo', Arial, sans-serif; font-size: 4mm; margin: 0 0 2mm; }
+.hinweis code { background: #F0F2F4; padding: 0.3mm 1mm; font-size: 2.9mm; }
+.hinweis ul { margin: 2mm 0; padding-left: 5mm; }
+.hinweis li { margin-bottom: 1.5mm; }
+</style>
+</head>
+<body>
+  <div class="bogen ">
+    <header class="kopf">
+      <svg class="logo" viewBox="75 -699 4692 711" style="height:11mm;width:72.59mm" role="img" aria-label="IsoTeam"><path d="M75 0V-687H254V0Z M689 12Q624 12 567.0 0.5Q510 -11 466.5 -37.0Q423 -63 398.0 -105.5Q373 -148 373 -210Q373 -214 373.0 -219.0Q373 -224 374 -227H547Q547 -224 546.5 -219.5Q546 -215 546 -212Q546 -180 562.5 -160.5Q579 -141 609.0 -132.5Q639 -124 679 -124Q701 -124 720.0 -126.0Q739 -128 754.0 -133.0Q769 -138 780.5 -145.5Q792 -153 797.5 -163.5Q803 -174 803 -188Q803 -211 785.5 -226.0Q768 -241 738.5 -251.0Q709 -261 672.0 -270.0Q635 -279 595.0 -289.0Q555 -299 518.0 -314.0Q481 -329 451.5 -352.0Q422 -375 404.5 -409.5Q387 -444 387 -493Q387 -547 410.0 -586.5Q433 -626 473.5 -651.0Q514 -676 567.0 -687.5Q620 -699 680 -699Q739 -699 790.5 -687.0Q842 -675 882.0 -649.5Q922 -624 944.5 -585.5Q967 -547 968 -493V-481H796V-488Q796 -511 783.5 -528.5Q771 -546 746.0 -556.5Q721 -567 684 -567Q647 -567 621.5 -560.0Q596 -553 582.5 -540.0Q569 -527 569 -509Q569 -487 586.5 -473.0Q604 -459 634.0 -449.0Q664 -439 701.0 -430.5Q738 -422 777.5 -412.5Q817 -403 854.0 -388.5Q891 -374 921.0 -351.5Q951 -329 968.5 -296.0Q986 -263 986 -216Q986 -134 947.5 -84.0Q909 -34 841.5 -11.0Q774 12 689 12Z M2055 0V-540H1832V-687H2457V-540H2234V0Z M2560 0V-687H3127V-547H2739V-418H3078V-281H2739V-140H3134V0Z M3190 0 3448 -687H3663L3921 0H3730L3689 -119H3415L3374 0ZM3458 -253H3645L3596 -398Q3592 -409 3586.5 -425.5Q3581 -442 3575.5 -460.5Q3570 -479 3565.0 -498.0Q3560 -517 3555 -531H3548Q3544 -512 3536.5 -488.0Q3529 -464 3521.5 -440.0Q3514 -416 3508 -398Z M4003 0V-687H4264L4347 -381Q4352 -365 4359.0 -337.5Q4366 -310 4373.0 -280.0Q4380 -250 4385 -226H4393Q4397 -245 4403.0 -271.5Q4409 -298 4416.0 -327.5Q4423 -357 4429 -382L4513 -687H4767V0H4593V-293Q4593 -336 4593.5 -380.0Q4594 -424 4595.0 -460.0Q4596 -496 4596 -512H4588Q4585 -497 4578.5 -468.5Q4572 -440 4564.5 -409.5Q4557 -379 4551 -357L4451 0H4307L4206 -357Q4201 -377 4194.0 -405.0Q4187 -433 4180.5 -462.0Q4174 -491 4169 -511H4161Q4162 -485 4163.0 -447.5Q4164 -410 4165.0 -369.5Q4166 -329 4166 -293V0Z" fill="#0A4A7C"/><path d="M 1383.00 -698.27 A 358 358 0 0 0 1383.00 11.27 L 1383.00 -156.56 A 193 193 0 0 1 1383.00 -530.44 Z" fill="#0A4A7C"/><path d="M 1479.00 -698.27 A 358 358 0 0 1 1479.00 11.27 L 1479.00 -156.56 A 193 193 0 0 0 1479.00 -530.44 Z" fill="#D0342A"/></svg>
+      <div class="kopf-adresse">
+        <strong>Isoteam Suljejmani GmbH</strong><br>Gerliswilstrasse 68<br>6020 Emmenbrücke
+      </div>
+    </header>
+    <div class="kopf-linie"></div>
+    <div class="leistungen">Wärme &middot; Kälte &middot; Lüftungsisolationen &middot; Brandschutz</div>
+    <div class="empfaenger">
+      Muster AG<br>Frau Muster<br>Musterstrasse 1<br>6000 Luzern
+    </div>
+    <div class="inhalt">
+      <div class="meta">
+        <div><strong>Datum</strong>Emmenbrücke, 14. September 2026</div>
+        <div><strong>Kontakt</strong>[NAME], 079 616 89 75</div>
+      </div>
+      <p class="betreff">Betreff in einer Zeile</p>
+      <p>Sehr geehrte Frau Muster</p>
+      <p>Hier steht der Brieftext. Der Satzspiegel ist 170 Millimeter breit, das
+      Adressfeld sitzt für ein Couvert C5/C6 mit Fenster rechts. Für ein Couvert
+      mit Fenster links verschiebst du <code>.empfaenger</code> auf
+      <code>left: 20mm</code>.</p>
+      <p>Freundliche Grüsse<br>Isoteam Suljejmani GmbH</p>
+      <p style="margin-top:14mm">[NAME]<br><span style="color:var(--grau)">[FUNKTION]</span></p>
+    </div>
+    <footer class="fuss">
+      <div><strong>Isoteam Suljejmani GmbH</strong><br>Gerliswilstrasse 68, 6020 Emmenbrücke</div>
+      <div>079 616 89 75 / 076 574 25 82<br>info@isoteam-suljejmani.ch</div>
+      <div>CHE-305.978.601 MWST<br>Raiffeisenbank Emmenbrücke</div>
+    </footer>
+
+  </div>
+  <div class="bogen ">
+    <header class="kopf">
+      <svg class="logo" viewBox="75 -699 4692 711" style="height:11mm;width:72.59mm" role="img" aria-label="IsoTeam"><path d="M75 0V-687H254V0Z M689 12Q624 12 567.0 0.5Q510 -11 466.5 -37.0Q423 -63 398.0 -105.5Q373 -148 373 -210Q373 -214 373.0 -219.0Q373 -224 374 -227H547Q547 -224 546.5 -219.5Q546 -215 546 -212Q546 -180 562.5 -160.5Q579 -141 609.0 -132.5Q639 -124 679 -124Q701 -124 720.0 -126.0Q739 -128 754.0 -133.0Q769 -138 780.5 -145.5Q792 -153 797.5 -163.5Q803 -174 803 -188Q803 -211 785.5 -226.0Q768 -241 738.5 -251.0Q709 -261 672.0 -270.0Q635 -279 595.0 -289.0Q555 -299 518.0 -314.0Q481 -329 451.5 -352.0Q422 -375 404.5 -409.5Q387 -444 387 -493Q387 -547 410.0 -586.5Q433 -626 473.5 -651.0Q514 -676 567.0 -687.5Q620 -699 680 -699Q739 -699 790.5 -687.0Q842 -675 882.0 -649.5Q922 -624 944.5 -585.5Q967 -547 968 -493V-481H796V-488Q796 -511 783.5 -528.5Q771 -546 746.0 -556.5Q721 -567 684 -567Q647 -567 621.5 -560.0Q596 -553 582.5 -540.0Q569 -527 569 -509Q569 -487 586.5 -473.0Q604 -459 634.0 -449.0Q664 -439 701.0 -430.5Q738 -422 777.5 -412.5Q817 -403 854.0 -388.5Q891 -374 921.0 -351.5Q951 -329 968.5 -296.0Q986 -263 986 -216Q986 -134 947.5 -84.0Q909 -34 841.5 -11.0Q774 12 689 12Z M2055 0V-540H1832V-687H2457V-540H2234V0Z M2560 0V-687H3127V-547H2739V-418H3078V-281H2739V-140H3134V0Z M3190 0 3448 -687H3663L3921 0H3730L3689 -119H3415L3374 0ZM3458 -253H3645L3596 -398Q3592 -409 3586.5 -425.5Q3581 -442 3575.5 -460.5Q3570 -479 3565.0 -498.0Q3560 -517 3555 -531H3548Q3544 -512 3536.5 -488.0Q3529 -464 3521.5 -440.0Q3514 -416 3508 -398Z M4003 0V-687H4264L4347 -381Q4352 -365 4359.0 -337.5Q4366 -310 4373.0 -280.0Q4380 -250 4385 -226H4393Q4397 -245 4403.0 -271.5Q4409 -298 4416.0 -327.5Q4423 -357 4429 -382L4513 -687H4767V0H4593V-293Q4593 -336 4593.5 -380.0Q4594 -424 4595.0 -460.0Q4596 -496 4596 -512H4588Q4585 -497 4578.5 -468.5Q4572 -440 4564.5 -409.5Q4557 -379 4551 -357L4451 0H4307L4206 -357Q4201 -377 4194.0 -405.0Q4187 -433 4180.5 -462.0Q4174 -491 4169 -511H4161Q4162 -485 4163.0 -447.5Q4164 -410 4165.0 -369.5Q4166 -329 4166 -293V0Z" fill="#0A4A7C"/><path d="M 1383.00 -698.27 A 358 358 0 0 0 1383.00 11.27 L 1383.00 -156.56 A 193 193 0 0 1 1383.00 -530.44 Z" fill="#0A4A7C"/><path d="M 1479.00 -698.27 A 358 358 0 0 1 1479.00 11.27 L 1479.00 -156.56 A 193 193 0 0 0 1479.00 -530.44 Z" fill="#D0342A"/></svg>
+      <div class="kopf-adresse">
+        <strong>Isoteam Suljejmani GmbH</strong><br>Gerliswilstrasse 68<br>6020 Emmenbrücke
+      </div>
+    </header>
+    <div class="kopf-linie"></div>
+    <div class="leistungen">Wärme &middot; Kälte &middot; Lüftungsisolationen &middot; Brandschutz</div>
+    <div class="empfaenger">
+      Muster AG<br>Frau Muster<br>Musterstrasse 1<br>6000 Luzern
+    </div>
+    <div class="inhalt">
+      <h1 class="dok">Offerte 2026-0087</h1>
+      <div class="meta">
+        <div><strong>Datum</strong>14. September 2026</div>
+        <div><strong>Objekt</strong>[BAUSTELLE]</div>
+        <div><strong>Gültig bis</strong>14. Oktober 2026</div>
+      </div>
+      <table class="positionen">
+        <thead>
+          <tr><th class="num">Pos</th><th>Bezeichnung</th><th class="num">Menge</th>
+              <th>Einheit</th><th class="num">Ansatz</th><th class="num">Betrag CHF</th></tr>
+        </thead>
+        <tbody><tr><td class='num'>1</td><td>Rohrisolation DN 80, Steinwolle 40 mm,<br><span class='detail'>Ummantelung Aluminiumblech, Untergeschoss</span></td><td class='num'>86.00</td><td>Lfm</td><td class='num'>42.50</td><td class='num'>3 655.00</td></tr><tr><td class='num'>2</td><td>Lüftungskanal-Isolation 30 mm,<br><span class='detail'>aluminiumkaschiert, Technikzentrale</span></td><td class='num'>42.50</td><td>m²</td><td class='num'>58.00</td><td class='num'>2 465.00</td></tr><tr><td class='num'>3</td><td>Brandschutzmanschette DN 110,<br><span class='detail'>inkl. Montage und Kennzeichnung</span></td><td class='num'>6</td><td>Stk</td><td class='num'>78.00</td><td class='num'>468.00</td></tr><tr><td class='num'>4</td><td>Regiearbeiten Monteur</td><td class='num'>4.50</td><td>Std</td><td class='num'>92.00</td><td class='num'>414.00</td></tr></tbody>
+      </table>
+      <table class="summen">
+        <tr><td>Zwischentotal</td><td class="num">7 002.00</td></tr>
+        <tr><td>MWST 8.1 %</td><td class="num">567.15</td></tr>
+        <tr class="total"><td>Total CHF</td><td class="num">7 569.15</td></tr>
+      </table>
+      <div class="konditionen">
+        Preise in Schweizer Franken, exklusive MWST ausgewiesen.
+        Ausführung nach Absprache. Die Offerte ist 30 Tage gültig.
+      </div>
+    </div>
+    <footer class="fuss">
+      <div><strong>Isoteam Suljejmani GmbH</strong><br>Gerliswilstrasse 68, 6020 Emmenbrücke</div>
+      <div>079 616 89 75 / 076 574 25 82<br>info@isoteam-suljejmani.ch</div>
+      <div>CHE-305.978.601 MWST<br>Raiffeisenbank Emmenbrücke</div>
+    </footer>
+
+  </div>
+  <div class="bogen mit-qr">
+    <header class="kopf">
+      <svg class="logo" viewBox="75 -699 4692 711" style="height:11mm;width:72.59mm" role="img" aria-label="IsoTeam"><path d="M75 0V-687H254V0Z M689 12Q624 12 567.0 0.5Q510 -11 466.5 -37.0Q423 -63 398.0 -105.5Q373 -148 373 -210Q373 -214 373.0 -219.0Q373 -224 374 -227H547Q547 -224 546.5 -219.5Q546 -215 546 -212Q546 -180 562.5 -160.5Q579 -141 609.0 -132.5Q639 -124 679 -124Q701 -124 720.0 -126.0Q739 -128 754.0 -133.0Q769 -138 780.5 -145.5Q792 -153 797.5 -163.5Q803 -174 803 -188Q803 -211 785.5 -226.0Q768 -241 738.5 -251.0Q709 -261 672.0 -270.0Q635 -279 595.0 -289.0Q555 -299 518.0 -314.0Q481 -329 451.5 -352.0Q422 -375 404.5 -409.5Q387 -444 387 -493Q387 -547 410.0 -586.5Q433 -626 473.5 -651.0Q514 -676 567.0 -687.5Q620 -699 680 -699Q739 -699 790.5 -687.0Q842 -675 882.0 -649.5Q922 -624 944.5 -585.5Q967 -547 968 -493V-481H796V-488Q796 -511 783.5 -528.5Q771 -546 746.0 -556.5Q721 -567 684 -567Q647 -567 621.5 -560.0Q596 -553 582.5 -540.0Q569 -527 569 -509Q569 -487 586.5 -473.0Q604 -459 634.0 -449.0Q664 -439 701.0 -430.5Q738 -422 777.5 -412.5Q817 -403 854.0 -388.5Q891 -374 921.0 -351.5Q951 -329 968.5 -296.0Q986 -263 986 -216Q986 -134 947.5 -84.0Q909 -34 841.5 -11.0Q774 12 689 12Z M2055 0V-540H1832V-687H2457V-540H2234V0Z M2560 0V-687H3127V-547H2739V-418H3078V-281H2739V-140H3134V0Z M3190 0 3448 -687H3663L3921 0H3730L3689 -119H3415L3374 0ZM3458 -253H3645L3596 -398Q3592 -409 3586.5 -425.5Q3581 -442 3575.5 -460.5Q3570 -479 3565.0 -498.0Q3560 -517 3555 -531H3548Q3544 -512 3536.5 -488.0Q3529 -464 3521.5 -440.0Q3514 -416 3508 -398Z M4003 0V-687H4264L4347 -381Q4352 -365 4359.0 -337.5Q4366 -310 4373.0 -280.0Q4380 -250 4385 -226H4393Q4397 -245 4403.0 -271.5Q4409 -298 4416.0 -327.5Q4423 -357 4429 -382L4513 -687H4767V0H4593V-293Q4593 -336 4593.5 -380.0Q4594 -424 4595.0 -460.0Q4596 -496 4596 -512H4588Q4585 -497 4578.5 -468.5Q4572 -440 4564.5 -409.5Q4557 -379 4551 -357L4451 0H4307L4206 -357Q4201 -377 4194.0 -405.0Q4187 -433 4180.5 -462.0Q4174 -491 4169 -511H4161Q4162 -485 4163.0 -447.5Q4164 -410 4165.0 -369.5Q4166 -329 4166 -293V0Z" fill="#0A4A7C"/><path d="M 1383.00 -698.27 A 358 358 0 0 0 1383.00 11.27 L 1383.00 -156.56 A 193 193 0 0 1 1383.00 -530.44 Z" fill="#0A4A7C"/><path d="M 1479.00 -698.27 A 358 358 0 0 1 1479.00 11.27 L 1479.00 -156.56 A 193 193 0 0 0 1479.00 -530.44 Z" fill="#D0342A"/></svg>
+      <div class="kopf-adresse">
+        <strong>Isoteam Suljejmani GmbH</strong><br>Gerliswilstrasse 68<br>6020 Emmenbrücke
+      </div>
+    </header>
+    <div class="kopf-linie"></div>
+    <div class="leistungen">Wärme &middot; Kälte &middot; Lüftungsisolationen &middot; Brandschutz</div>
+    <div class="empfaenger">
+      Muster AG<br>Frau Muster<br>Musterstrasse 1<br>6000 Luzern
+    </div>
+    <div class="inhalt">
+      <h1 class="dok">Rechnung 2026-0142</h1>
+      <div class="meta">
+        <div><strong>Datum</strong>14. September 2026</div>
+        <div><strong>Objekt</strong>[BAUSTELLE]</div>
+        <div><strong>Fällig</strong>14. Oktober 2026</div>
+      </div>
+      <table class="positionen">
+        <thead>
+          <tr><th class="num">Pos</th><th>Bezeichnung</th><th class="num">Menge</th>
+              <th>Einheit</th><th class="num">Ansatz</th><th class="num">Betrag CHF</th></tr>
+        </thead>
+        <tbody><tr><td class='num'>1</td><td>Rohrisolation DN 80, Steinwolle 40 mm,<br><span class='detail'>Ummantelung Aluminiumblech, Untergeschoss</span></td><td class='num'>86.00</td><td>Lfm</td><td class='num'>42.50</td><td class='num'>3 655.00</td></tr><tr><td class='num'>2</td><td>Lüftungskanal-Isolation 30 mm,<br><span class='detail'>aluminiumkaschiert, Technikzentrale</span></td><td class='num'>42.50</td><td>m²</td><td class='num'>58.00</td><td class='num'>2 465.00</td></tr><tr><td class='num'>3</td><td>Brandschutzmanschette DN 110,<br><span class='detail'>inkl. Montage und Kennzeichnung</span></td><td class='num'>6</td><td>Stk</td><td class='num'>78.00</td><td class='num'>468.00</td></tr><tr><td class='num'>4</td><td>Regiearbeiten Monteur</td><td class='num'>4.50</td><td>Std</td><td class='num'>92.00</td><td class='num'>414.00</td></tr></tbody>
+      </table>
+      <table class="summen">
+        <tr><td>Zwischentotal</td><td class="num">7 002.00</td></tr>
+        <tr><td>MWST 8.1 %</td><td class="num">567.15</td></tr>
+        <tr class="total"><td>Total CHF</td><td class="num">7 569.15</td></tr>
+      </table>
+      <div class="konditionen">
+        Zahlungskonditionen: 10 Tage 2 % Skonto, 30 Tage netto.<br>
+        CHE-305.978.601 MWST
+      </div>
+    </div>
+
+    <section class="qr-bereich">
+      <div class="schere">Vor der Einzahlung abzutrennen</div>
+      <div class="qr-raster">
+        <div class="empfangsschein">
+          <div class="qr-titel">Empfangsschein</div>
+          <div class="qr-block">
+            <div class="qr-h6">Konto / Zahlbar an</div>
+            <div class="qr-v8">CH57 8080 8009 7723 8862 6<br>Isoteam Suljejmani GmbH<br>Gerliswilstrasse 68<br>6020 Emmenbrücke</div>
+            <div class="qr-h6 abstand">Zahlbar durch</div>
+            <div class="qr-v8">Muster AG<br>Musterstrasse 1<br>6000 Luzern</div>
+          </div>
+          <div class="qr-betrag-zeile">
+            <div><div class="qr-h6">Währung</div><div class="qr-v8">CHF</div></div>
+            <div><div class="qr-h6">Betrag</div><div class="qr-v8">7 569.15</div></div>
+          </div>
+          <div class="qr-annahme">Annahmestelle</div>
+        </div>
+
+        <div class="zahlteil">
+          <div class="qr-titel">Zahlteil</div>
+          <div class="zahlteil-spalten">
+            <div class="zahlteil-links">
+              <div class="qr-code"><svg viewBox="0 0 61 61" width="46mm" height="46mm" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Swiss QR Code"><path d="M0 0h7v1h-7zM8 0h3v1h-3zM12 0h2v1h-2zM16 0h1v1h-1zM20 0h3v1h-3zM26 0h1v1h-1zM30 0h3v1h-3zM36 0h1v1h-1zM40 0h1v1h-1zM42 0h3v1h-3zM49 0h1v1h-1zM51 0h2v1h-2zM54 0h7v1h-7zM0 1h1v1h-1zM6 1h1v1h-1zM9 1h1v1h-1zM11 1h2v1h-2zM15 1h3v1h-3zM19 1h3v1h-3zM23 1h5v1h-5zM33 1h1v1h-1zM36 1h2v1h-2zM40 1h6v1h-6zM48 1h2v1h-2zM51 1h2v1h-2zM54 1h1v1h-1zM60 1h1v1h-1zM0 2h1v1h-1zM2 2h3v1h-3zM6 2h1v1h-1zM9 2h1v1h-1zM12 2h2v1h-2zM16 2h1v1h-1zM18 2h2v1h-2zM26 2h3v1h-3zM30 2h1v1h-1zM32 2h4v1h-4zM38 2h2v1h-2zM43 2h1v1h-1zM45 2h2v1h-2zM50 2h3v1h-3zM54 2h1v1h-1zM56 2h3v1h-3zM60 2h1v1h-1zM0 3h1v1h-1zM2 3h3v1h-3zM6 3h1v1h-1zM8 3h1v1h-1zM10 3h2v1h-2zM13 3h1v1h-1zM15 3h3v1h-3zM19 3h1v1h-1zM23 3h1v1h-1zM25 3h8v1h-8zM34 3h3v1h-3zM38 3h1v1h-1zM40 3h2v1h-2zM45 3h1v1h-1zM47 3h1v1h-1zM49 3h2v1h-2zM52 3h1v1h-1zM54 3h1v1h-1zM56 3h3v1h-3zM60 3h1v1h-1zM0 4h1v1h-1zM2 4h3v1h-3zM6 4h1v1h-1zM8 4h3v1h-3zM13 4h1v1h-1zM17 4h3v1h-3zM26 4h7v1h-7zM36 4h2v1h-2zM41 4h3v1h-3zM45 4h1v1h-1zM49 4h3v1h-3zM54 4h1v1h-1zM56 4h3v1h-3zM60 4h1v1h-1zM0 5h1v1h-1zM6 5h1v1h-1zM8 5h2v1h-2zM12 5h3v1h-3zM16 5h8v1h-8zM25 5h1v1h-1zM27 5h2v1h-2zM32 5h2v1h-2zM36 5h2v1h-2zM39 5h2v1h-2zM43 5h1v1h-1zM46 5h1v1h-1zM49 5h2v1h-2zM54 5h1v1h-1zM60 5h1v1h-1zM0 6h7v1h-7zM8 6h1v1h-1zM10 6h1v1h-1zM12 6h1v1h-1zM14 6h1v1h-1zM16 6h1v1h-1zM18 6h1v1h-1zM20 6h1v1h-1zM22 6h1v1h-1zM24 6h1v1h-1zM26 6h1v1h-1zM28 6h1v1h-1zM30 6h1v1h-1zM32 6h1v1h-1zM34 6h1v1h-1zM36 6h1v1h-1zM38 6h1v1h-1zM40 6h1v1h-1zM42 6h1v1h-1zM44 6h1v1h-1zM46 6h1v1h-1zM48 6h1v1h-1zM50 6h1v1h-1zM52 6h1v1h-1zM54 6h7v1h-7zM8 7h4v1h-4zM17 7h1v1h-1zM22 7h1v1h-1zM26 7h3v1h-3zM32 7h2v1h-2zM37 7h3v1h-3zM43 7h1v1h-1zM45 7h1v1h-1zM47 7h4v1h-4zM52 7h1v1h-1zM0 8h1v1h-1zM4 8h1v1h-1zM6 8h4v1h-4zM13 8h2v1h-2zM16 8h1v1h-1zM18 8h1v1h-1zM23 8h1v1h-1zM28 8h5v1h-5zM34 8h1v1h-1zM36 8h7v1h-7zM46 8h2v1h-2zM50 8h1v1h-1zM52 8h6v1h-6zM60 8h1v1h-1zM0 9h1v1h-1zM3 9h2v1h-2zM7 9h2v1h-2zM12 9h1v1h-1zM14 9h3v1h-3zM20 9h8v1h-8zM30 9h1v1h-1zM32 9h1v1h-1zM36 9h3v1h-3zM40 9h1v1h-1zM43 9h1v1h-1zM46 9h1v1h-1zM49 9h5v1h-5zM55 9h2v1h-2zM58 9h3v1h-3zM2 10h1v1h-1zM4 10h1v1h-1zM6 10h1v1h-1zM9 10h1v1h-1zM11 10h3v1h-3zM16 10h1v1h-1zM19 10h2v1h-2zM22 10h1v1h-1zM24 10h1v1h-1zM26 10h4v1h-4zM34 10h2v1h-2zM40 10h3v1h-3zM45 10h4v1h-4zM51 10h1v1h-1zM55 10h3v1h-3zM60 10h1v1h-1zM1 11h2v1h-2zM5 11h1v1h-1zM10 11h3v1h-3zM16 11h1v1h-1zM19 11h1v1h-1zM22 11h1v1h-1zM24 11h1v1h-1zM26 11h1v1h-1zM29 11h1v1h-1zM33 11h1v1h-1zM37 11h1v1h-1zM40 11h3v1h-3zM46 11h4v1h-4zM51 11h2v1h-2zM55 11h2v1h-2zM59 11h2v1h-2zM0 12h1v1h-1zM2 12h3v1h-3zM6 12h2v1h-2zM9 12h2v1h-2zM12 12h2v1h-2zM18 12h1v1h-1zM22 12h2v1h-2zM29 12h2v1h-2zM34 12h1v1h-1zM36 12h2v1h-2zM39 12h1v1h-1zM42 12h3v1h-3zM48 12h4v1h-4zM55 12h2v1h-2zM58 12h3v1h-3zM0 13h1v1h-1zM2 13h2v1h-2zM5 13h1v1h-1zM9 13h3v1h-3zM15 13h3v1h-3zM20 13h1v1h-1zM22 13h1v1h-1zM24 13h2v1h-2zM28 13h3v1h-3zM32 13h1v1h-1zM40 13h2v1h-2zM44 13h3v1h-3zM48 13h2v1h-2zM55 13h1v1h-1zM60 13h1v1h-1zM3 14h7v1h-7zM11 14h1v1h-1zM13 14h1v1h-1zM15 14h5v1h-5zM26 14h1v1h-1zM28 14h2v1h-2zM34 14h1v1h-1zM36 14h1v1h-1zM39 14h1v1h-1zM41 14h4v1h-4zM46 14h2v1h-2zM49 14h1v1h-1zM51 14h1v1h-1zM56 14h3v1h-3zM60 14h1v1h-1zM2 15h1v1h-1zM7 15h1v1h-1zM10 15h11v1h-11zM22 15h3v1h-3zM26 15h1v1h-1zM29 15h2v1h-2zM32 15h1v1h-1zM35 15h1v1h-1zM39 15h2v1h-2zM44 15h1v1h-1zM46 15h4v1h-4zM51 15h1v1h-1zM55 15h1v1h-1zM58 15h2v1h-2zM0 16h2v1h-2zM3 16h2v1h-2zM6 16h4v1h-4zM11 16h1v1h-1zM13 16h2v1h-2zM17 16h5v1h-5zM23 16h1v1h-1zM28 16h4v1h-4zM35 16h1v1h-1zM37 16h1v1h-1zM40 16h1v1h-1zM42 16h1v1h-1zM44 16h1v1h-1zM47 16h4v1h-4zM54 16h1v1h-1zM56 16h1v1h-1zM58 16h3v1h-3zM0 17h1v1h-1zM2 17h1v1h-1zM4 17h2v1h-2zM8 17h1v1h-1zM14 17h1v1h-1zM18 17h2v1h-2zM21 17h1v1h-1zM23 17h4v1h-4zM28 17h1v1h-1zM31 17h1v1h-1zM38 17h1v1h-1zM41 17h4v1h-4zM48 17h6v1h-6zM55 17h2v1h-2zM59 17h2v1h-2zM0 18h4v1h-4zM6 18h1v1h-1zM8 18h1v1h-1zM10 18h1v1h-1zM12 18h1v1h-1zM17 18h1v1h-1zM20 18h1v1h-1zM22 18h2v1h-2zM25 18h7v1h-7zM34 18h1v1h-1zM36 18h1v1h-1zM38 18h1v1h-1zM40 18h5v1h-5zM46 18h2v1h-2zM49 18h1v1h-1zM51 18h1v1h-1zM53 18h4v1h-4zM0 19h1v1h-1zM3 19h3v1h-3zM7 19h1v1h-1zM9 19h2v1h-2zM12 19h1v1h-1zM17 19h1v1h-1zM21 19h2v1h-2zM24 19h1v1h-1zM26 19h1v1h-1zM29 19h1v1h-1zM33 19h1v1h-1zM37 19h1v1h-1zM39 19h4v1h-4zM44 19h2v1h-2zM47 19h3v1h-3zM51 19h1v1h-1zM53 19h2v1h-2zM56 19h1v1h-1zM58 19h3v1h-3zM4 20h3v1h-3zM8 20h1v1h-1zM10 20h1v1h-1zM12 20h1v1h-1zM15 20h10v1h-10zM28 20h3v1h-3zM32 20h1v1h-1zM34 20h1v1h-1zM37 20h4v1h-4zM44 20h1v1h-1zM46 20h4v1h-4zM57 20h1v1h-1zM59 20h1v1h-1zM2 21h1v1h-1zM4 21h2v1h-2zM10 21h1v1h-1zM13 21h3v1h-3zM18 21h1v1h-1zM25 21h2v1h-2zM28 21h1v1h-1zM30 21h1v1h-1zM32 21h1v1h-1zM42 21h3v1h-3zM48 21h1v1h-1zM53 21h3v1h-3zM58 21h1v1h-1zM60 21h1v1h-1zM0 22h2v1h-2zM3 22h1v1h-1zM6 22h1v1h-1zM9 22h3v1h-3zM14 22h1v1h-1zM16 22h5v1h-5zM23 22h1v1h-1zM26 22h3v1h-3zM32 22h1v1h-1zM34 22h1v1h-1zM37 22h1v1h-1zM40 22h1v1h-1zM46 22h1v1h-1zM50 22h5v1h-5zM56 22h2v1h-2zM1 23h2v1h-2zM5 23h1v1h-1zM7 23h1v1h-1zM10 23h1v1h-1zM14 23h1v1h-1zM16 23h2v1h-2zM19 23h2v1h-2zM22 23h1v1h-1zM24 23h1v1h-1zM26 23h1v1h-1zM29 23h1v1h-1zM40 23h2v1h-2zM43 23h1v1h-1zM45 23h1v1h-1zM51 23h3v1h-3zM59 23h2v1h-2zM0 24h1v1h-1zM3 24h1v1h-1zM5 24h6v1h-6zM12 24h2v1h-2zM15 24h5v1h-5zM24 24h1v1h-1zM26 24h1v1h-1zM28 24h3v1h-3zM32 24h1v1h-1zM34 24h1v1h-1zM37 24h3v1h-3zM42 24h3v1h-3zM48 24h3v1h-3zM52 24h1v1h-1zM54 24h2v1h-2zM57 24h1v1h-1zM59 24h1v1h-1zM0 25h1v1h-1zM5 25h1v1h-1zM7 25h1v1h-1zM10 25h1v1h-1zM12 25h1v1h-1zM16 25h2v1h-2zM19 25h1v1h-1zM23 25h1v1h-1zM25 25h6v1h-6zM32 25h3v1h-3zM37 25h1v1h-1zM40 25h6v1h-6zM48 25h1v1h-1zM51 25h1v1h-1zM54 25h4v1h-4zM59 25h2v1h-2zM1 26h1v1h-1zM3 26h6v1h-6zM11 26h2v1h-2zM14 26h1v1h-1zM16 26h1v1h-1zM18 26h1v1h-1zM22 26h3v1h-3zM26 26h2v1h-2zM29 26h2v1h-2zM33 26h2v1h-2zM39 26h5v1h-5zM46 26h1v1h-1zM50 26h3v1h-3zM54 26h2v1h-2zM57 26h1v1h-1zM59 26h2v1h-2zM4 27h1v1h-1zM11 27h2v1h-2zM14 27h1v1h-1zM16 27h1v1h-1zM18 27h1v1h-1zM21 27h1v1h-1zM24 27h1v1h-1zM26 27h2v1h-2zM30 27h2v1h-2zM34 27h1v1h-1zM36 27h1v1h-1zM38 27h2v1h-2zM41 27h1v1h-1zM43 27h1v1h-1zM45 27h1v1h-1zM47 27h1v1h-1zM50 27h2v1h-2zM53 27h1v1h-1zM55 27h1v1h-1zM59 27h1v1h-1zM0 28h1v1h-1zM4 28h5v1h-5zM11 28h2v1h-2zM14 28h2v1h-2zM18 28h1v1h-1zM20 28h5v1h-5zM28 28h5v1h-5zM35 28h6v1h-6zM42 28h1v1h-1zM45 28h3v1h-3zM49 28h1v1h-1zM52 28h5v1h-5zM59 28h2v1h-2zM0 29h3v1h-3zM4 29h1v1h-1zM8 29h1v1h-1zM10 29h1v1h-1zM12 29h1v1h-1zM14 29h1v1h-1zM16 29h4v1h-4zM21 29h3v1h-3zM26 29h1v1h-1zM28 29h1v1h-1zM32 29h1v1h-1zM34 29h1v1h-1zM36 29h2v1h-2zM40 29h1v1h-1zM42 29h2v1h-2zM45 29h1v1h-1zM49 29h2v1h-2zM52 29h1v1h-1zM56 29h1v1h-1zM58 29h1v1h-1zM60 29h1v1h-1zM0 30h5v1h-5zM6 30h1v1h-1zM8 30h2v1h-2zM13 30h1v1h-1zM17 30h1v1h-1zM19 30h1v1h-1zM21 30h5v1h-5zM28 30h1v1h-1zM30 30h1v1h-1zM32 30h2v1h-2zM36 30h1v1h-1zM39 30h3v1h-3zM43 30h4v1h-4zM48 30h3v1h-3zM52 30h1v1h-1zM54 30h1v1h-1zM56 30h2v1h-2zM60 30h1v1h-1zM1 31h2v1h-2zM4 31h1v1h-1zM8 31h3v1h-3zM12 31h3v1h-3zM16 31h1v1h-1zM19 31h1v1h-1zM22 31h3v1h-3zM27 31h2v1h-2zM32 31h1v1h-1zM34 31h2v1h-2zM38 31h1v1h-1zM44 31h2v1h-2zM47 31h2v1h-2zM52 31h1v1h-1zM56 31h1v1h-1zM59 31h1v1h-1zM0 32h1v1h-1zM3 32h7v1h-7zM11 32h2v1h-2zM17 32h2v1h-2zM23 32h2v1h-2zM26 32h1v1h-1zM28 32h5v1h-5zM37 32h1v1h-1zM40 32h1v1h-1zM43 32h2v1h-2zM48 32h3v1h-3zM52 32h5v1h-5zM58 32h1v1h-1zM1 33h1v1h-1zM3 33h3v1h-3zM7 33h1v1h-1zM11 33h1v1h-1zM15 33h1v1h-1zM17 33h1v1h-1zM19 33h4v1h-4zM24 33h10v1h-10zM35 33h4v1h-4zM41 33h1v1h-1zM43 33h4v1h-4zM49 33h2v1h-2zM52 33h1v1h-1zM57 33h1v1h-1zM59 33h2v1h-2zM1 34h1v1h-1zM4 34h4v1h-4zM13 34h2v1h-2zM16 34h2v1h-2zM19 34h1v1h-1zM21 34h5v1h-5zM28 34h4v1h-4zM33 34h1v1h-1zM35 34h1v1h-1zM37 34h1v1h-1zM39 34h4v1h-4zM44 34h1v1h-1zM46 34h4v1h-4zM51 34h1v1h-1zM56 34h3v1h-3zM60 34h1v1h-1zM4 35h2v1h-2zM7 35h3v1h-3zM13 35h1v1h-1zM17 35h5v1h-5zM24 35h1v1h-1zM26 35h1v1h-1zM29 35h2v1h-2zM32 35h2v1h-2zM38 35h1v1h-1zM40 35h1v1h-1zM42 35h2v1h-2zM45 35h1v1h-1zM47 35h1v1h-1zM50 35h4v1h-4zM58 35h2v1h-2zM1 36h1v1h-1zM4 36h3v1h-3zM9 36h1v1h-1zM12 36h3v1h-3zM16 36h1v1h-1zM18 36h4v1h-4zM24 36h1v1h-1zM28 36h1v1h-1zM30 36h2v1h-2zM34 36h1v1h-1zM36 36h2v1h-2zM44 36h1v1h-1zM46 36h4v1h-4zM54 36h3v1h-3zM58 36h1v1h-1zM1 37h5v1h-5zM8 37h1v1h-1zM10 37h2v1h-2zM15 37h4v1h-4zM20 37h3v1h-3zM26 37h1v1h-1zM28 37h3v1h-3zM35 37h4v1h-4zM40 37h4v1h-4zM49 37h2v1h-2zM52 37h1v1h-1zM54 37h3v1h-3zM60 37h1v1h-1zM0 38h1v1h-1zM2 38h3v1h-3zM6 38h2v1h-2zM10 38h1v1h-1zM13 38h1v1h-1zM17 38h1v1h-1zM19 38h1v1h-1zM28 38h4v1h-4zM34 38h2v1h-2zM37 38h1v1h-1zM39 38h1v1h-1zM41 38h2v1h-2zM46 38h4v1h-4zM51 38h1v1h-1zM53 38h1v1h-1zM55 38h1v1h-1zM57 38h3v1h-3zM3 39h3v1h-3zM7 39h1v1h-1zM9 39h2v1h-2zM13 39h2v1h-2zM16 39h1v1h-1zM22 39h1v1h-1zM25 39h1v1h-1zM28 39h3v1h-3zM34 39h2v1h-2zM37 39h2v1h-2zM44 39h1v1h-1zM46 39h1v1h-1zM49 39h1v1h-1zM51 39h1v1h-1zM55 39h2v1h-2zM58 39h2v1h-2zM0 40h3v1h-3zM5 40h2v1h-2zM11 40h2v1h-2zM16 40h1v1h-1zM20 40h1v1h-1zM23 40h5v1h-5zM29 40h1v1h-1zM31 40h1v1h-1zM37 40h4v1h-4zM42 40h1v1h-1zM44 40h1v1h-1zM48 40h2v1h-2zM51 40h1v1h-1zM53 40h3v1h-3zM60 40h1v1h-1zM3 41h3v1h-3zM12 41h5v1h-5zM19 41h3v1h-3zM24 41h1v1h-1zM26 41h1v1h-1zM28 41h1v1h-1zM32 41h1v1h-1zM34 41h1v1h-1zM36 41h3v1h-3zM40 41h1v1h-1zM43 41h3v1h-3zM51 41h2v1h-2zM56 41h2v1h-2zM60 41h1v1h-1zM0 42h2v1h-2zM4 42h1v1h-1zM6 42h1v1h-1zM8 42h2v1h-2zM11 42h1v1h-1zM17 42h1v1h-1zM20 42h2v1h-2zM28 42h1v1h-1zM32 42h1v1h-1zM34 42h1v1h-1zM37 42h1v1h-1zM39 42h1v1h-1zM45 42h1v1h-1zM47 42h2v1h-2zM54 42h1v1h-1zM57 42h2v1h-2zM60 42h1v1h-1zM1 43h3v1h-3zM5 43h1v1h-1zM10 43h5v1h-5zM16 43h3v1h-3zM23 43h1v1h-1zM27 43h3v1h-3zM31 43h1v1h-1zM33 43h3v1h-3zM38 43h1v1h-1zM43 43h1v1h-1zM49 43h2v1h-2zM52 43h4v1h-4zM59 43h1v1h-1zM1 44h1v1h-1zM5 44h4v1h-4zM10 44h2v1h-2zM14 44h2v1h-2zM21 44h1v1h-1zM25 44h1v1h-1zM27 44h2v1h-2zM30 44h4v1h-4zM37 44h3v1h-3zM42 44h3v1h-3zM48 44h3v1h-3zM54 44h4v1h-4zM59 44h1v1h-1zM2 45h3v1h-3zM8 45h1v1h-1zM14 45h2v1h-2zM23 45h1v1h-1zM25 45h1v1h-1zM29 45h4v1h-4zM36 45h3v1h-3zM41 45h3v1h-3zM45 45h1v1h-1zM54 45h1v1h-1zM58 45h3v1h-3zM4 46h4v1h-4zM9 46h2v1h-2zM13 46h4v1h-4zM18 46h1v1h-1zM22 46h2v1h-2zM25 46h3v1h-3zM30 46h2v1h-2zM34 46h1v1h-1zM41 46h2v1h-2zM44 46h2v1h-2zM47 46h3v1h-3zM51 46h2v1h-2zM57 46h1v1h-1zM59 46h1v1h-1zM1 47h1v1h-1zM3 47h1v1h-1zM5 47h1v1h-1zM7 47h1v1h-1zM15 47h1v1h-1zM17 47h3v1h-3zM24 47h1v1h-1zM27 47h4v1h-4zM34 47h3v1h-3zM39 47h2v1h-2zM44 47h1v1h-1zM46 47h2v1h-2zM53 47h2v1h-2zM56 47h5v1h-5zM2 48h1v1h-1zM6 48h7v1h-7zM16 48h3v1h-3zM20 48h1v1h-1zM24 48h1v1h-1zM28 48h2v1h-2zM31 48h1v1h-1zM34 48h7v1h-7zM42 48h1v1h-1zM45 48h2v1h-2zM50 48h1v1h-1zM54 48h1v1h-1zM56 48h2v1h-2zM0 49h2v1h-2zM9 49h3v1h-3zM13 49h1v1h-1zM19 49h3v1h-3zM25 49h2v1h-2zM30 49h2v1h-2zM36 49h1v1h-1zM43 49h1v1h-1zM45 49h1v1h-1zM48 49h4v1h-4zM55 49h3v1h-3zM59 49h1v1h-1zM2 50h7v1h-7zM10 50h3v1h-3zM14 50h2v1h-2zM18 50h1v1h-1zM22 50h3v1h-3zM27 50h2v1h-2zM30 50h1v1h-1zM34 50h1v1h-1zM40 50h1v1h-1zM43 50h1v1h-1zM45 50h2v1h-2zM51 50h3v1h-3zM56 50h2v1h-2zM0 51h3v1h-3zM4 51h1v1h-1zM7 51h5v1h-5zM13 51h3v1h-3zM17 51h5v1h-5zM23 51h1v1h-1zM28 51h5v1h-5zM35 51h1v1h-1zM38 51h2v1h-2zM41 51h2v1h-2zM44 51h4v1h-4zM50 51h1v1h-1zM54 51h1v1h-1zM56 51h1v1h-1zM60 51h1v1h-1zM0 52h4v1h-4zM6 52h4v1h-4zM11 52h1v1h-1zM13 52h3v1h-3zM17 52h1v1h-1zM19 52h1v1h-1zM22 52h1v1h-1zM25 52h1v1h-1zM27 52h6v1h-6zM36 52h2v1h-2zM42 52h1v1h-1zM44 52h1v1h-1zM46 52h1v1h-1zM48 52h2v1h-2zM51 52h6v1h-6zM58 52h3v1h-3zM8 53h3v1h-3zM12 53h1v1h-1zM14 53h1v1h-1zM17 53h3v1h-3zM23 53h1v1h-1zM25 53h2v1h-2zM28 53h1v1h-1zM32 53h2v1h-2zM36 53h3v1h-3zM41 53h1v1h-1zM44 53h7v1h-7zM52 53h1v1h-1zM56 53h1v1h-1zM59 53h2v1h-2zM0 54h7v1h-7zM8 54h2v1h-2zM16 54h1v1h-1zM20 54h1v1h-1zM22 54h2v1h-2zM28 54h1v1h-1zM30 54h1v1h-1zM32 54h2v1h-2zM35 54h3v1h-3zM40 54h3v1h-3zM45 54h1v1h-1zM48 54h2v1h-2zM51 54h2v1h-2zM54 54h1v1h-1zM56 54h3v1h-3zM60 54h1v1h-1zM0 55h1v1h-1zM6 55h1v1h-1zM10 55h4v1h-4zM15 55h2v1h-2zM28 55h1v1h-1zM32 55h1v1h-1zM34 55h2v1h-2zM38 55h1v1h-1zM40 55h5v1h-5zM46 55h1v1h-1zM49 55h1v1h-1zM51 55h2v1h-2zM56 55h1v1h-1zM58 55h3v1h-3zM0 56h1v1h-1zM2 56h3v1h-3zM6 56h1v1h-1zM8 56h3v1h-3zM13 56h1v1h-1zM19 56h2v1h-2zM27 56h6v1h-6zM35 56h1v1h-1zM37 56h1v1h-1zM44 56h1v1h-1zM47 56h1v1h-1zM49 56h8v1h-8zM58 56h1v1h-1zM0 57h1v1h-1zM2 57h3v1h-3zM6 57h1v1h-1zM12 57h7v1h-7zM20 57h1v1h-1zM22 57h2v1h-2zM26 57h1v1h-1zM28 57h2v1h-2zM31 57h1v1h-1zM34 57h1v1h-1zM37 57h2v1h-2zM41 57h4v1h-4zM49 57h3v1h-3zM54 57h3v1h-3zM60 57h1v1h-1zM0 58h1v1h-1zM2 58h3v1h-3zM6 58h1v1h-1zM9 58h3v1h-3zM13 58h2v1h-2zM17 58h1v1h-1zM22 58h6v1h-6zM29 58h5v1h-5zM36 58h2v1h-2zM41 58h2v1h-2zM46 58h1v1h-1zM48 58h2v1h-2zM51 58h3v1h-3zM55 58h2v1h-2zM59 58h1v1h-1zM0 59h1v1h-1zM6 59h1v1h-1zM9 59h2v1h-2zM15 59h1v1h-1zM18 59h1v1h-1zM20 59h3v1h-3zM26 59h3v1h-3zM31 59h1v1h-1zM38 59h2v1h-2zM41 59h2v1h-2zM44 59h1v1h-1zM50 59h2v1h-2zM53 59h2v1h-2zM56 59h4v1h-4zM0 60h7v1h-7zM8 60h1v1h-1zM10 60h5v1h-5zM16 60h4v1h-4zM21 60h2v1h-2zM24 60h1v1h-1zM28 60h1v1h-1zM30 60h2v1h-2zM36 60h2v1h-2zM39 60h2v1h-2zM42 60h1v1h-1zM44 60h1v1h-1zM48 60h2v1h-2zM52 60h1v1h-1zM54 60h2v1h-2zM59 60h2v1h-2z" fill="#000000"/><rect x="24.930" y="24.930" width="11.139" height="11.139" fill="#FFFFFF"/><rect x="25.859" y="25.859" width="9.283" height="9.283" fill="#000000"/><rect x="29.638" y="27.583" width="1.724" height="5.835" fill="#FFFFFF"/><rect x="27.583" y="29.638" width="5.835" height="1.724" fill="#FFFFFF"/></svg></div>
+              <div class="qr-betrag-zeile gross">
+                <div><div class="qr-h8">Währung</div><div class="qr-v10">CHF</div></div>
+                <div><div class="qr-h8">Betrag</div><div class="qr-v10">7 569.15</div></div>
+              </div>
+            </div>
+            <div class="zahlteil-rechts">
+              <div class="qr-h8">Konto / Zahlbar an</div>
+              <div class="qr-v10">CH57 8080 8009 7723 8862 6<br>Isoteam Suljejmani GmbH<br>Gerliswilstrasse 68<br>6020 Emmenbrücke</div>
+              <div class="qr-h8 abstand">Zusätzliche Informationen</div>
+              <div class="qr-v10">Rechnung 2026-0142 vom 14.09.2026</div>
+              <div class="qr-h8 abstand">Zahlbar durch</div>
+              <div class="qr-v10">Muster AG<br>Musterstrasse 1<br>6000 Luzern</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+  <div class="bogen ">
+    <header class="kopf">
+      <svg class="logo" viewBox="75 -699 4692 711" style="height:11mm;width:72.59mm" role="img" aria-label="IsoTeam"><path d="M75 0V-687H254V0Z M689 12Q624 12 567.0 0.5Q510 -11 466.5 -37.0Q423 -63 398.0 -105.5Q373 -148 373 -210Q373 -214 373.0 -219.0Q373 -224 374 -227H547Q547 -224 546.5 -219.5Q546 -215 546 -212Q546 -180 562.5 -160.5Q579 -141 609.0 -132.5Q639 -124 679 -124Q701 -124 720.0 -126.0Q739 -128 754.0 -133.0Q769 -138 780.5 -145.5Q792 -153 797.5 -163.5Q803 -174 803 -188Q803 -211 785.5 -226.0Q768 -241 738.5 -251.0Q709 -261 672.0 -270.0Q635 -279 595.0 -289.0Q555 -299 518.0 -314.0Q481 -329 451.5 -352.0Q422 -375 404.5 -409.5Q387 -444 387 -493Q387 -547 410.0 -586.5Q433 -626 473.5 -651.0Q514 -676 567.0 -687.5Q620 -699 680 -699Q739 -699 790.5 -687.0Q842 -675 882.0 -649.5Q922 -624 944.5 -585.5Q967 -547 968 -493V-481H796V-488Q796 -511 783.5 -528.5Q771 -546 746.0 -556.5Q721 -567 684 -567Q647 -567 621.5 -560.0Q596 -553 582.5 -540.0Q569 -527 569 -509Q569 -487 586.5 -473.0Q604 -459 634.0 -449.0Q664 -439 701.0 -430.5Q738 -422 777.5 -412.5Q817 -403 854.0 -388.5Q891 -374 921.0 -351.5Q951 -329 968.5 -296.0Q986 -263 986 -216Q986 -134 947.5 -84.0Q909 -34 841.5 -11.0Q774 12 689 12Z M2055 0V-540H1832V-687H2457V-540H2234V0Z M2560 0V-687H3127V-547H2739V-418H3078V-281H2739V-140H3134V0Z M3190 0 3448 -687H3663L3921 0H3730L3689 -119H3415L3374 0ZM3458 -253H3645L3596 -398Q3592 -409 3586.5 -425.5Q3581 -442 3575.5 -460.5Q3570 -479 3565.0 -498.0Q3560 -517 3555 -531H3548Q3544 -512 3536.5 -488.0Q3529 -464 3521.5 -440.0Q3514 -416 3508 -398Z M4003 0V-687H4264L4347 -381Q4352 -365 4359.0 -337.5Q4366 -310 4373.0 -280.0Q4380 -250 4385 -226H4393Q4397 -245 4403.0 -271.5Q4409 -298 4416.0 -327.5Q4423 -357 4429 -382L4513 -687H4767V0H4593V-293Q4593 -336 4593.5 -380.0Q4594 -424 4595.0 -460.0Q4596 -496 4596 -512H4588Q4585 -497 4578.5 -468.5Q4572 -440 4564.5 -409.5Q4557 -379 4551 -357L4451 0H4307L4206 -357Q4201 -377 4194.0 -405.0Q4187 -433 4180.5 -462.0Q4174 -491 4169 -511H4161Q4162 -485 4163.0 -447.5Q4164 -410 4165.0 -369.5Q4166 -329 4166 -293V0Z" fill="#0A4A7C"/><path d="M 1383.00 -698.27 A 358 358 0 0 0 1383.00 11.27 L 1383.00 -156.56 A 193 193 0 0 1 1383.00 -530.44 Z" fill="#0A4A7C"/><path d="M 1479.00 -698.27 A 358 358 0 0 1 1479.00 11.27 L 1479.00 -156.56 A 193 193 0 0 0 1479.00 -530.44 Z" fill="#D0342A"/></svg>
+      <div class="kopf-adresse">
+        <strong>Isoteam Suljejmani GmbH</strong><br>Gerliswilstrasse 68<br>6020 Emmenbrücke
+      </div>
+    </header>
+    <div class="kopf-linie"></div>
+    <div class="leistungen">Wärme &middot; Kälte &middot; Lüftungsisolationen &middot; Brandschutz</div>
+
+    <div class="inhalt">
+      <h1 class="dok">Baustellenrapport</h1>
+      <div class="meta">
+        <div><strong>Datum</strong>14. September 2026</div>
+        <div><strong>Baustelle</strong>[BAUSTELLE]</div>
+        <div><strong>Auftrag</strong>[AUFTRAGSNUMMER]</div>
+      </div>
+      <table class="rapport">
+        <thead><tr><th>Mitarbeitende</th><th>Tätigkeit</th><th class="num">Stunden</th></tr></thead>
+        <tbody>
+          <tr><td>[NAME]</td><td>Rohrisolation Untergeschoss</td><td class="num">8.50</td></tr>
+          <tr><td>[NAME]</td><td>Rohrisolation Untergeschoss</td><td class="num">8.50</td></tr>
+          <tr><td>[NAME]</td><td>Brandschutzmanschetten Steigzone</td><td class="num">4.00</td></tr>
+          <tr><td></td><td><strong>Total Stunden</strong></td><td class="num"><strong>21.00</strong></td></tr>
+        </tbody>
+      </table>
+      <table class="rapport">
+        <thead><tr><th>Material</th><th class="num">Menge</th><th>Einheit</th></tr></thead>
+        <tbody>
+          <tr><td>Steinwolle-Rohrschale 40 mm</td><td class="num">86.00</td><td>Lfm</td></tr>
+          <tr><td>Aluminiumblech 0.6 mm</td><td class="num">24.00</td><td>m²</td></tr>
+          <tr><td>Brandschutzmanschette DN 110</td><td class="num">6</td><td>Stk</td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:3.1mm;color:var(--grau)">Bemerkungen</p>
+      <div style="border-bottom:0.2mm solid var(--linie);height:7mm"></div>
+      <div style="border-bottom:0.2mm solid var(--linie);height:7mm"></div>
+      <div class="unterschriften">
+        <div class="unterschrift">Monteur</div>
+        <div class="unterschrift">Bauleitung</div>
+      </div>
+    </div>
+    <footer class="fuss">
+      <div><strong>Isoteam Suljejmani GmbH</strong><br>Gerliswilstrasse 68, 6020 Emmenbrücke</div>
+      <div>079 616 89 75 / 076 574 25 82<br>info@isoteam-suljejmani.ch</div>
+      <div>CHE-305.978.601 MWST<br>Raiffeisenbank Emmenbrücke</div>
+    </footer>
+
+  </div>
+  <div class="hinweis">
+    <h2>Einbau in IsoPilot</h2>
+    <ul>
+      <li>Die Seiten sind reines HTML mit Millimeterangaben und <code>@page { size: A4; margin: 0 }</code>.
+          Sie lassen sich mit Puppeteer oder Playwright direkt zu PDF rendern, mit
+          <code>printBackground: true</code>.</li>
+      <li>Alles in eckigen Klammern ist Platzhalter. Die Positionen, Beträge und die Muster AG
+          sind Beispieldaten, damit du das Layout beurteilen kannst.</li>
+      <li>Das Logo steckt als Pfad im HTML, es braucht also keine installierte Schrift.
+          Für den Text laden Archivo und Barlow von Google Fonts. Wenn IsoPilot offline
+          rendert, lege die Schriften lokal ab und ersetze den Link.</li>
+      <li><strong>QR-Rechnung:</strong> der Zahlteil hier zeigt das korrekte Layout und trägt einen
+          echten, gültigen Datensatz. Für den Produktivbetrieb nimm die Bibliothek
+          <code>swissqrbill</code>, sie erzeugt den Zahlteil samt Validierung.</li>
+      <li><strong>Referenzart:</strong> eure IBAN ist keine QR-IBAN, die Institutsnummer 80808 liegt
+          ausserhalb des Bereichs 30000 bis 31999. Erlaubt sind darum nur NON oder SCOR,
+          nicht QRR. Hier ist NON gesetzt, die Rechnungsnummer steht in den zusätzlichen
+          Informationen.</li>
+      <li>Prüfe die erste echte Rechnung einmal über das offizielle Validierungsportal und
+          drucke sie zur Kontrolle aus, bevor ihr damit fakturiert.</li>
+    </ul>
+  </div>
+</body>
+</html>

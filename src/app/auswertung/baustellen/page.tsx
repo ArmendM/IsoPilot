@@ -11,6 +11,7 @@ import {
 } from "@/server/auswertung-read";
 import { baustellen } from "@/server/sites-read";
 import { ZeitraumWahl } from "@/components/auswertung/zeitraum-wahl";
+import { Kopfleiste } from "@/components/marke/kopfleiste";
 
 /* Auswertung Baustellen. Eine Baustelle auf einmal oder alle als
  * Übersicht, getrennt von der Auswertung Mitarbeitende: die eine fragt,
@@ -76,7 +77,7 @@ export default async function AuswertungBaustellenPage({
 
   return (
     <main className="mx-auto w-full max-w-5xl flex-1 p-6">
-      <nav className="flex gap-4 text-sm">
+      <Kopfleiste>
         <Link href="/" className="text-black/60 underline dark:text-white/60">
           Übersicht
         </Link>
@@ -89,7 +90,7 @@ export default async function AuswertungBaustellenPage({
         >
           Auswertung Mitarbeitende
         </Link>
-      </nav>
+      </Kopfleiste>
 
       <h1 className="mt-4 text-2xl font-semibold tracking-tight">
         Auswertung Baustellen
