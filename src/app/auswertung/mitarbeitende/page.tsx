@@ -44,6 +44,17 @@ export default async function AuswertungPersonPage({
 
   const zeitraum = zeitraumAus({ art, monat, jahr, von, bis });
 
+  /* Der Knopf für die Mappe trägt dieselben Angaben wie die Ansicht.
+   * Der Export rechnet damit über denselben Weg, statt eine zweite
+   * Rechnung aufzumachen, die irgendwann etwas anderes ergibt. */
+  const excelAdresse = new URLSearchParams({ person: personId, art });
+  if (art === "monat") excelAdresse.set("monat", monat);
+  if (art === "jahr") excelAdresse.set("jahr", jahr);
+  if (art === "spanne") {
+    excelAdresse.set("von", von);
+    excelAdresse.set("bis", bis);
+  }
+
   /* Eine fremde Kennung in der Adresse ist kein Absturz, sondern eine
    * Auskunft. Geprüft wird trotzdem im Lesezugriff, nicht hier. */
   const erlaubt = personen.some((p) => p.id === personId);
@@ -130,9 +141,19 @@ export default async function AuswertungPersonPage({
 
       {a && (
         <section className="mt-8">
-          <h2 className="text-lg font-semibold tracking-tight">
-            {a.person.name}, {a.zeitraum.bezeichnung}
-          </h2>
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <h2 className="text-lg font-semibold tracking-tight">
+              {a.person.name}, {a.zeitraum.bezeichnung}
+            </h2>
+            {/* Ein gewöhnlicher Link, kein Formular: die Mappe ist eine
+                Auskunft und ändert nichts. */}
+            <a
+              href={`/auswertung/mitarbeitende/excel?${excelAdresse}`}
+              className="h-9 rounded-md border border-black/15 px-3 py-1.5 text-sm dark:border-white/20"
+            >
+              Als Excel herunterladen
+            </a>
+          </div>
 
           <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <Kachel titel="Nettostunden" wert={formatHours(a.nettostunden)} />
@@ -268,7 +289,9 @@ export default async function AuswertungPersonPage({
           )}
 
           <p className="mt-8 text-xs text-black/50 dark:text-white/50">
-            Ausgabe als Excel und PDF kommt mit dem nächsten Stück.
+            Die Mappe enthält die Einzelpositionen immer, auch wenn sie
+            hier ausgeblendet sind. Die Ausgabe als PDF kommt mit den
+            Firmeneinstellungen, sie braucht Logo und Firmenzeile.
           </p>
         </section>
       )}
