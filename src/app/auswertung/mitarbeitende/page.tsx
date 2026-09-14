@@ -40,7 +40,11 @@ export default async function AuswertungPersonPage({
   const jahr = text(q.jahr) || String(new Date().getUTCFullYear());
   const von = text(q.von);
   const bis = text(q.bis);
-  const mitPositionen = q.positionen === "1";
+  /* Einzelpositionen sind ab Werk sichtbar. Ein leeres Kästchen schickt
+   * über GET nichts mit, deshalb trägt das Formular ein verstecktes
+   * Feld: ohne das liesse sich "noch nichts gewählt" nicht von
+   * "abgewählt" unterscheiden, und das Kästchen wäre nicht abwählbar. */
+  const mitPositionen = q.gesendet ? q.positionen === "1" : true;
 
   const zeitraum = zeitraumAus({ art, monat, jahr, von, bis });
 
@@ -106,6 +110,8 @@ export default async function AuswertungPersonPage({
 
         <ZeitraumWahl art={art} monat={monat} jahr={jahr} von={von} bis={bis} />
 
+        <input type="hidden" name="gesendet" value="1" />
+
         <label className="flex h-10 items-center gap-2 text-sm">
           <input
             type="checkbox"
@@ -145,14 +151,22 @@ export default async function AuswertungPersonPage({
             <h2 className="text-lg font-semibold tracking-tight">
               {a.person.name}, {a.zeitraum.bezeichnung}
             </h2>
-            {/* Ein gewöhnlicher Link, kein Formular: die Mappe ist eine
-                Auskunft und ändert nichts. */}
-            <a
-              href={`/auswertung/mitarbeitende/excel?${excelAdresse}`}
-              className="h-9 rounded-md border border-black/15 px-3 py-1.5 text-sm dark:border-white/20"
-            >
-              Als Excel herunterladen
-            </a>
+            {/* Gewöhnliche Links, keine Formulare: beide Dateien sind
+                Auskunft und ändern nichts. */}
+            <div className="flex gap-2">
+              <a
+                href={`/auswertung/mitarbeitende/excel?${excelAdresse}`}
+                className="h-9 rounded-md border border-black/15 px-3 py-1.5 text-sm dark:border-white/20"
+              >
+                Excel
+              </a>
+              <a
+                href={`/auswertung/mitarbeitende/pdf?${excelAdresse}`}
+                className="h-9 rounded-md border border-black/15 px-3 py-1.5 text-sm dark:border-white/20"
+              >
+                PDF
+              </a>
+            </div>
           </div>
 
           <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -289,9 +303,10 @@ export default async function AuswertungPersonPage({
           )}
 
           <p className="mt-8 text-xs text-black/50 dark:text-white/50">
-            Die Mappe enthält die Einzelpositionen immer, auch wenn sie
-            hier ausgeblendet sind. Die Ausgabe als PDF kommt mit den
-            Firmeneinstellungen, sie braucht Logo und Firmenzeile.
+            Excel und PDF enthalten die Einzelpositionen immer, auch wenn
+            sie hier ausgeblendet sind, und beide rechnen über denselben
+            Weg wie diese Ansicht. Das PDF trägt die Firmenzeile, das Logo
+            kommt mit den Firmeneinstellungen dazu.
           </p>
         </section>
       )}

@@ -450,11 +450,10 @@ Rückfall, `/abschluss` Monatsabschluss.
 
 - M4a Auswertung Mitarbeitende, Ansicht: **fertig**
 - M4b Auswertung Baustellen, Ansicht: **fertig**
-- M4c Export Excel für beide: **fertig**
-- M4d Firmeneinstellungen mit Logo-Upload: **als Nächstes**, das PDF
-  braucht Logo und Firmenzeile
-- M4e Export PDF für beide: offen, nach M4d
-- M4f Aufbewahrungsjob für Login-Protokolle: offen
+- M4c Export Excel und PDF für beide: **fertig**
+- M4d Firmeneinstellungen mit Logo-Upload: **als Nächstes**. Das PDF
+  trägt die Firmenzeile bereits aus `Company`, es fehlt nur das Bild.
+- M4e Aufbewahrungsjob für Login-Protokolle: offen
 
 Dazu **Sollstunden und Zeitsaldo**, siehe den eigenen Abschnitt weiter
 unten: dafür fehlt das Datenmodell noch ganz, und es stehen fachliche
@@ -728,13 +727,51 @@ auseinander, sobald jemand eine Spalte anders formatiert.
 - **Zahlen bleiben Zahlen, nicht Text.** In der Mappe soll weitergerechnet
   werden können, genau dafür wird sie geholt. Stunden stehen als
   Dezimalzahl und nicht als Uhrzeit, 8,25 Stunden sind keine 8 Uhr 25.
-- Die Mappe zur Auswertung Mitarbeitende enthält die Einzelpositionen
-  **immer**, anders als die Ansicht: eine Mappe wird abgelegt und später
-  hervorgeholt, und dann ist die Frage nach dem einzelnen Tag längst
-  gestellt.
+- **Die Einzelpositionen sind überall dabei.** In der Auswertung
+  Mitarbeitende ist das Kästchen ab Werk angehakt und bleibt abwählbar,
+  die Auswertung Baustellen zeigt die einzelnen Zeiteinträge mit Person
+  und Tag zusätzlich zur Summe je Person. Excel und PDF enthalten sie
+  immer, auch wenn die Ansicht sie ausblendet: eine Datei wird abgelegt
+  und später hervorgeholt, und dann ist die Frage nach dem einzelnen Tag
+  längst gestellt.
+- Ein leeres Kästchen schickt über GET nichts mit. Das Formular trägt
+  deshalb ein verstecktes Feld, sonst liesse sich "noch nichts gewählt"
+  nicht von "abgewählt" unterscheiden und das Kästchen wäre nicht
+  abwählbar.
 
-Das PDF fehlt noch und kommt nach den Firmeneinstellungen, es braucht
-Logo und Firmenzeile.
+**Das PDF liegt in `src/server/pdf.ts` und rendert dieselbe
+Beschreibung.** `src/server/auswertung-blaetter.ts` baut sie einmal,
+Excel und PDF machen daraus nur noch eine Datei. Das ist keine Frage der
+Sorgfalt, sondern des Aufbaus: baute jeder Weg seine Tabellen selbst,
+unterschieden sie sich früher oder später, und niemand merkte es, weil
+niemand beide Dateien nebeneinander legt. Genau das verlangt auch
+`docs/CLAUDE-CODE-TASKS.md` mit "Excel und PDF enthalten die gleichen
+geprueften Werte".
+
+- **pdfkit statt eines Browsers.** Auf zwei vCPU und 4 GB RAM ist ein
+  Headless-Chrome je Bericht kein Werkzeug, sondern ein Risiko. pdfkit
+  schreibt in einen Puffer und bringt Helvetica mit, das die Umlaute über
+  WinAnsi deckt. Eine Schriftdatei braucht es nicht.
+- **`serverExternalPackages: ["pdfkit"]` in `next.config.ts`.** pdfkit
+  liest seine Schriftmetriken zur Laufzeit als `.afm`-Dateien aus dem
+  eigenen Paket, gebündelt fände es sie nicht mehr. Auf der Liste, die
+  Next von sich aus ausnimmt, steht es nicht.
+- **Ab sieben Spalten wird quer gedruckt.** Die Baustellenübersicht hat
+  neun, auf A4 hoch wäre sie unlesbar.
+- **Der Kopf steht auf jeder Seite**, Firmenzeile, Titel und Blattname,
+  dazu die Titelzeile der Tabelle nach jedem Umbruch. Ein Blatt Papier
+  ohne Firmenzeile lässt sich nicht zuordnen.
+- **Das Logo kommt aus `Company.logoPath`** und fehlt heute, weil noch
+  nichts hochlädt. Eine fehlende oder unlesbare Datei übergeht der
+  Bericht, statt abzubrechen: sonst steht jemand vor einer leeren Seite,
+  weil ein Bild fehlt.
+
+Geprüft wurde nicht nur mit Vitest, sondern gegen einen
+**Produktionsbuild mit `output: "standalone"`** und einer eingesetzten
+Sitzung: alle vier Routen liefern 200 mit dem richtigen Inhaltstyp, ohne
+Sitzung 307, bei unsinnigem Zeitraum 400, bei fremder Kennung 403. Der
+Bündelungsfehler mit den `.afm`-Dateien wäre in keinem Vitest-Lauf
+aufgefallen.
 
 ### Offen: alte Lagerbewegungen kennen ihre Baustelle nicht
 

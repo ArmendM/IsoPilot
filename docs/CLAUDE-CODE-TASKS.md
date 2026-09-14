@@ -72,8 +72,9 @@ Sie ist die teuerste und hat bisher die echten Fehler gefunden.
 
 Quelle: Auswertungen in `CLAUDE.md`. Beide Auswertungen stehen seit M4a
 und M4b unter `/auswertung/mitarbeitende` und `/auswertung/baustellen`,
-beide mit Excel-Ausgabe (M4c). Es fehlen die Firmeneinstellungen fuer Logo
-und Firmenzeile und darauf aufbauend die PDF-Ausgabe.
+beide mit Excel- und PDF-Ausgabe (M4c). Es fehlen die Firmeneinstellungen,
+also der Upload des Logos; die Firmenzeile im PDF kommt bereits aus
+`Company`.
 
 Akzeptanzkriterien:
 
@@ -86,9 +87,10 @@ Akzeptanzkriterien:
   und enthaelt Soll, Ist, Differenz, Materialkosten, VSI, Partner und Zeitraum.
   **Erfuellt mit M4b**, gedeckt durch `tests/server/auswertung-baustellen.test.ts`.
 - Excel und PDF enthalten die gleichen geprueften Werte; PDF enthaelt Logo und
-  Firmenangaben. **Excel erfuellt mit M4c**, Ansicht und Mappe rechnen ueber
-  denselben Lesezugriff. Das PDF fehlt und braucht zuerst die
-  Firmeneinstellungen.
+  Firmenangaben. **Erfuellt mit M4c**: beide rendern dieselbe Beschreibung aus
+  `src/server/auswertung-blaetter.ts`, ein zweiter Bau je Ausgabeweg ist damit
+  ausgeschlossen. Das PDF traegt die Firmenangaben; das Logo bleibt leer, bis
+  die Firmeneinstellungen es hochladen.
 - Geld bleibt `Decimal`, Berechtigungen liegen in Server Actions.
 
 Validierung: Berechtigungs- und Summen-Tests sowie ein Export-Smoke-Test.

@@ -7,6 +7,7 @@ import {
   auswertungAlleBaustellen,
   auswertungBaustelle,
   type MaterialPosition,
+  type ZeitPosition,
 } from "@/server/auswertung-read";
 import { baustellen } from "@/server/sites-read";
 import { ZeitraumWahl } from "@/components/auswertung/zeitraum-wahl";
@@ -137,12 +138,18 @@ export default async function AuswertungBaustellenPage({
       )}
 
       {(einzeln || uebersicht) && (
-        <div className="mt-6 flex justify-end">
+        <div className="mt-6 flex justify-end gap-2">
           <a
             href={`/auswertung/baustellen/excel?${adresse}`}
             className="h-9 rounded-md border border-black/15 px-3 py-1.5 text-sm dark:border-white/20"
           >
-            Als Excel herunterladen
+            Excel
+          </a>
+          <a
+            href={`/auswertung/baustellen/pdf?${adresse}`}
+            className="h-9 rounded-md border border-black/15 px-3 py-1.5 text-sm dark:border-white/20"
+          >
+            PDF
           </a>
         </div>
       )}
@@ -312,6 +319,8 @@ export default async function AuswertungBaustellenPage({
             </div>
           )}
 
+          <Zeitpositionen positionen={einzeln.zeitPositionen} summe={einzeln.istImZeitraum} />
+
           <Positionen
             titel="Material"
             positionen={einzeln.materialPositionen}
@@ -326,6 +335,79 @@ export default async function AuswertungBaustellenPage({
         </section>
       )}
     </main>
+  );
+}
+
+/* Die einzelnen Zeiteinträge, nicht nur die Summe je Person. Wer eine
+ * Baustelle gegenüber dem Auftraggeber belegen muss, braucht den
+ * einzelnen Tag und nicht eine Monatszahl. */
+function Zeitpositionen({
+  positionen,
+  summe,
+}: {
+  positionen: ZeitPosition[];
+  summe: number;
+}) {
+  return (
+    <>
+      <h3 className="mt-8 text-sm font-medium">
+        Stunden im Einzelnen, {positionen.length}
+      </h3>
+      {positionen.length === 0 ? (
+        <p className="mt-2 text-sm text-black/50 dark:text-white/50">
+          Keine Zeiteinträge in diesem Zeitraum.
+        </p>
+      ) : (
+        <div className="mt-2 overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="text-xs text-black/60 dark:text-white/60">
+              <tr>
+                <th className="py-2 pr-3 font-medium">Datum</th>
+                <th className="py-2 pr-3 font-medium">Person</th>
+                <th className="py-2 pr-3 font-medium">Von</th>
+                <th className="py-2 pr-3 font-medium">Bis</th>
+                <th className="py-2 pr-3 text-right font-medium">Pause</th>
+                <th className="py-2 pr-3 text-right font-medium">Netto</th>
+                <th className="py-2 pr-3 font-medium">Verrechnung</th>
+                <th className="py-2 font-medium">Notiz</th>
+              </tr>
+            </thead>
+            <tbody>
+              {positionen.map((p, i) => (
+                <tr
+                  key={`${p.datum}-${i}`}
+                  className="border-t border-black/10 dark:border-white/15"
+                >
+                  <td className="py-2 pr-3 whitespace-nowrap tabular-nums">
+                    {datumDE(p.datum)}
+                  </td>
+                  <td className="py-2 pr-3">{p.person}</td>
+                  <td className="py-2 pr-3 tabular-nums">{p.von ?? "–"}</td>
+                  <td className="py-2 pr-3 tabular-nums">{p.bis ?? "läuft"}</td>
+                  <td className="py-2 pr-3 text-right tabular-nums">{p.pause} min</td>
+                  <td className="py-2 pr-3 text-right tabular-nums">
+                    {formatHours(p.netto)}
+                  </td>
+                  <td className="py-2 pr-3 text-black/60 dark:text-white/60">
+                    {p.istRegie ? "Regie" : "Pauschal"}
+                  </td>
+                  <td className="py-2 text-black/60 dark:text-white/60">{p.notiz}</td>
+                </tr>
+              ))}
+              <tr className="border-t border-black/20 font-medium dark:border-white/30">
+                <td className="py-2 pr-3" colSpan={5}>
+                  Zusammen
+                </td>
+                <td className="py-2 pr-3 text-right tabular-nums">
+                  {formatHours(summe)}
+                </td>
+                <td colSpan={2} />
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+    </>
   );
 }
 

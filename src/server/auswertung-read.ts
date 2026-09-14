@@ -210,6 +210,18 @@ export type MaterialPosition = {
 
 export type PersonAnteil = { personId: string; name: string; stunden: number };
 
+/** Ein einzelner Zeiteintrag auf der Baustelle, mit der Person dazu. */
+export type ZeitPosition = {
+  datum: string;
+  person: string;
+  von: string | null;
+  bis: string | null;
+  pause: number;
+  netto: number;
+  istRegie: boolean;
+  notiz: string | null;
+};
+
 export type BaustellenAuswertung = {
   baustelle: {
     id: string;
@@ -232,6 +244,8 @@ export type BaustellenAuswertung = {
   materialPositionen: MaterialPosition[];
   vsiPositionen: MaterialPosition[];
   proPerson: PersonAnteil[];
+  /** Die einzelnen Zeiteinträge im Zeitraum, nicht nur die Summe je Person. */
+  zeitPositionen: ZeitPosition[];
 };
 
 export type BaustellenZeile = {
@@ -281,8 +295,10 @@ export async function auswertungBaustelle(
   const [imZeitraum, gesamt, buchungen] = await Promise.all([
     db.timeEntry.findMany({
       where: { siteId, deletedAt: null, workDate: { gte: von, lte: bis } },
+      orderBy: [{ workDate: "asc" }, { startedAt: "asc" }],
       select: {
-        startedAt: true, endedAt: true, breakMinutes: true,
+        workDate: true, startedAt: true, endedAt: true, breakMinutes: true,
+        billingMode: true, note: true,
         user: { select: { id: true, name: true } },
       },
     }),
@@ -330,6 +346,17 @@ export async function auswertungBaustelle(
   const materialPositionen = buchungen.filter((b) => b.kind === "CATALOG").map(alsPosition);
   const vsiPositionen = buchungen.filter((b) => b.kind === "VSI").map(alsPosition);
 
+  const zeitPositionen: ZeitPosition[] = imZeitraum.map((e) => ({
+    datum: isoUtc(e.workDate),
+    person: e.user.name,
+    von: hhmm(e.startedAt, "Europe/Zurich"),
+    bis: hhmm(e.endedAt, "Europe/Zurich"),
+    pause: e.breakMinutes,
+    netto: netHours(e.startedAt, e.endedAt, e.breakMinutes),
+    istRegie: e.billingMode === "REGIE",
+    notiz: e.note,
+  }));
+
   const istImZeitraum = runde(
     imZeitraum.reduce((s, e) => s + netHours(e.startedAt, e.endedAt, e.breakMinutes), 0),
   );
@@ -357,6 +384,7 @@ export async function auswertungBaustelle(
     proPerson: [...proPerson.values()]
       .map((p) => ({ ...p, stunden: runde(p.stunden) }))
       .sort((a, b) => b.stunden - a.stunden),
+    zeitPositionen,
   };
 }
 

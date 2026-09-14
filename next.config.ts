@@ -4,6 +4,11 @@ const nextConfig: NextConfig = {
   // Erzeugt ein schlankes Image für den Container
   output: "standalone",
   poweredByHeader: false,
+  /* pdfkit liest seine Schriftmetriken zur Laufzeit als Dateien aus dem
+   * eigenen Paket. Gebündelt findet es sie nicht mehr, deshalb wird es
+   * vom Bündeln ausgenommen und wie gewohnt über require geladen. Auf
+   * der Liste, die Next von sich aus ausnimmt, steht es nicht. */
+  serverExternalPackages: ["pdfkit"],
   // Hinweis: experimental.trustHostHeader gibt es seit Next 16 nicht mehr.
   // nginx setzt X-Forwarded-Proto und X-Forwarded-Host, Next wertet diese
   // hinter einem Proxy von sich aus aus.
