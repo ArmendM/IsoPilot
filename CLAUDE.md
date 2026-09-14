@@ -761,6 +761,21 @@ geprueften Werte".
 - **Der Kopf steht auf jeder Seite**, Firmenzeile, Titel und Blattname,
   dazu die Titelzeile der Tabelle nach jedem Umbruch. Ein Blatt Papier
   ohne Firmenzeile lässt sich nicht zuordnen.
+- **Alle Zellen einer Zeile werden gegen dieselbe gemerkte Höhe
+  gezeichnet.** pdfkit rückt nach jedem `text` um die Zeilenhöhe der
+  Schrift vor, und die ist nicht die Zeilenhöhe der Tabelle. Wer das mit
+  einem festen Betrag ausgleicht, verschiebt jede weitere Zelle um die
+  Differenz, und die Zeile läuft über die Spalten hinweg schräg aus dem
+  Raster. Genau so stand die Titelzeile einmal mitten in der Überschrift.
+
+**Geprüft wird die Anordnung, nicht nur der Inhalt.**
+`tests/einheit/pdf.test.ts` liest die Textmatrizen aus dem Inhaltsstrom
+aus und prüft, dass alle Zellen einer Zeile dieselbe Höhe haben, dass die
+Blöcke in der richtigen Reihenfolge von oben nach unten stehen und dass
+zwischen Überschrift und Titelzeile Luft bleibt. Ein Test, der nur fragt,
+ob ein Text vorkommt, hätte den schrägen Kopf nie gefunden: inhaltlich
+war alles da, im Bericht stand es übereinander. In den Textmatrizen wird
+`y` nach unten kleiner, weiter oben heisst also grösseres `y`.
 - **Das Logo kommt aus `Company.logoPath`** und fehlt heute, weil noch
   nichts hochlädt. Eine fehlende oder unlesbare Datei übergeht der
   Bericht, statt abzubrechen: sonst steht jemand vor einer leeren Seite,

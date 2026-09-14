@@ -8,7 +8,7 @@ import type { Bericht } from "@/server/auswertung-blaetter";
  * erst beim Öffnen auf. */
 
 const firma: Firmenkopf = {
-  name: "Isoteam Suljejmani GmbH",
+  name: "IsoTeam Suljejmani GmbH",
   strasse: "Gerliswilstrasse 68",
   ort: "6020 Emmenbrücke",
   mwst: "CHE-190.604.537",
@@ -71,6 +71,131 @@ function textVon(b: Buffer): string {
   return text;
 }
 
+/**
+ * Wo welcher Text steht: aus den Textmatrizen des Inhaltsstroms.
+ *
+ * Ohne das prüft kein Test die Anordnung, und genau dort lag der Fehler:
+ * die Titelzeile lief über die Spalten hinweg schräg nach oben und
+ * landete in der Überschrift. Inhaltlich war alles da, im Bericht stand
+ * es übereinander.
+ */
+function stellen(b: Buffer): { x: number; y: number; text: string }[] {
+  const roh = b.toString("latin1");
+  const gefunden: { x: number; y: number; text: string }[] = [];
+  const muster = /stream\r?\n/g;
+  let treffer: RegExpExecArray | null;
+  while ((treffer = muster.exec(roh)) !== null) {
+    const start = treffer.index + treffer[0].length;
+    const ende = roh.indexOf("endstream", start);
+    if (ende < 0) continue;
+    let inhalt: string;
+    try {
+      inhalt = inflateSync(Buffer.from(roh.slice(start, ende), "latin1")).toString("latin1");
+    } catch {
+      continue;
+    }
+    // "1 0 0 1 X Y Tm" setzt den Textanfang, danach folgen die Hexstücke.
+    const abschnitte = /1 0 0 1 ([\d.]+) ([\d.]+) Tm([\s\S]*?)ET/g;
+    let a: RegExpExecArray | null;
+    while ((a = abschnitte.exec(inhalt)) !== null) {
+      const text = (a[3].match(/<[0-9a-fA-F]+>/g) ?? [])
+        .map((h) => Buffer.from(h.slice(1, -1), "hex").toString("latin1"))
+        .join("");
+      if (text) gefunden.push({ x: Number(a[1]), y: Number(a[2]), text });
+    }
+  }
+  return gefunden;
+}
+
+describe("Anordnung", () => {
+  const tabelle: Bericht = {
+    titel: "Auswertung Mitarbeitende: Test User",
+    untertitel: ["Zeitraum: September 2026"],
+    blaetter: [
+      {
+        name: "Einzelpositionen",
+        spalten: [
+          { titel: "Datum", art: "datum" },
+          { titel: "Von", breite: 8 },
+          { titel: "Bis", breite: 8 },
+          { titel: "Pause", art: "zahl", breite: 10 },
+          { titel: "Netto", art: "stunden", breite: 10 },
+          { titel: "Baustelle", breite: 34 },
+          { titel: "Verrechnung", breite: 12 },
+          { titel: "Notiz", breite: 30 },
+        ],
+        zeilen: [
+          ["2026-09-01", "07:00", "17:00", 30, 9.5, "MFH Mattenhof", "Pauschal", null],
+          ["2026-09-02", "07:00", "17:00", 30, 9.5, "MFH Mattenhof", "Pauschal", null],
+        ],
+        summe: ["Zusammen", null, null, 60, 19, null, null, null],
+      },
+    ],
+  };
+
+  /* Der eigentliche Fehler: pdfkit rückt nach jedem Text um die
+   * Zeilenhöhe der Schrift vor. Wird das mit einem festen Betrag
+   * ausgeglichen statt mit der gemerkten Höhe, wandert jede weitere
+   * Zelle nach oben. */
+  it("setzt alle Zellen der Titelzeile auf dieselbe Höhe", async () => {
+    const gefunden = stellen(await pdf(tabelle, firma));
+    const titel = ["Datum", "Von", "Bis", "Pause", "Netto", "Baustelle", "Verrechnung", "Notiz"];
+    const hoehen = titel.map((t) => gefunden.find((g) => g.text === t)?.y);
+
+    expect(hoehen.every((h) => h !== undefined)).toBe(true);
+    expect(new Set(hoehen).size).toBe(1);
+  });
+
+  it("setzt auch die Zellen einer Datenzeile auf dieselbe Höhe", async () => {
+    const gefunden = stellen(await pdf(tabelle, firma));
+    const hoehen = ["01.09.2026", "MFH Mattenhof"].map(
+      (t) => gefunden.find((g) => g.text === t)?.y,
+    );
+
+    expect(new Set(hoehen).size).toBe(1);
+  });
+
+  /* Von oben nach unten: Firmenzeile, Titel, Blattname, Titelzeile,
+   * Datenzeilen, Summe.
+   *
+   * In den Textmatrizen wird y nach unten kleiner, pdfkit hebt seine
+   * eigene Spiegelung innerhalb von BT und ET wieder auf. Weiter oben
+   * heisst also grösseres y. */
+  it("hält die Reihenfolge von oben nach unten ein", async () => {
+    const gefunden = stellen(await pdf(tabelle, firma));
+    const y = (t: string) => gefunden.find((g) => g.text.startsWith(t))!.y;
+    const ueber = (oben: string, unten: string) =>
+      expect(y(oben), `${oben} muss über ${unten} stehen`).toBeGreaterThan(y(unten));
+
+    ueber("IsoTeam", "Auswertung Mitarbeitende");
+    ueber("Auswertung Mitarbeitende", "Zeitraum: September 2026");
+    ueber("Zeitraum: September 2026", "Einzelpositionen");
+    ueber("Einzelpositionen", "Datum");
+    ueber("Datum", "01.09.2026");
+    ueber("01.09.2026", "02.09.2026");
+    ueber("02.09.2026", "Zusammen");
+  });
+
+  /* Der Kern des Fehlers aus dem Bericht: die Titelzeile stand nicht
+   * mehr unter der Überschrift, sondern mitten darin. Ein Abstand von
+   * wenigen Punkten reicht dafür schon. */
+  it("lässt zwischen Überschrift und Titelzeile genug Luft", async () => {
+    const gefunden = stellen(await pdf(tabelle, firma));
+    const y = (t: string) => gefunden.find((g) => g.text.startsWith(t))!.y;
+
+    expect(y("Einzelpositionen") - y("Datum")).toBeGreaterThan(10);
+  });
+
+  it("setzt die Spalten von links nach rechts nebeneinander", async () => {
+    const gefunden = stellen(await pdf(tabelle, firma));
+    const x = (t: string) => gefunden.find((g) => g.text === t)!.x;
+
+    expect(x("Datum")).toBeLessThan(x("Von"));
+    expect(x("Von")).toBeLessThan(x("Baustelle"));
+    expect(x("Baustelle")).toBeLessThan(x("Notiz"));
+  });
+});
+
 describe("pdf", () => {
   it("erzeugt eine Datei, die als PDF beginnt und endet", async () => {
     const b = await pdf(bericht, firma);
@@ -83,7 +208,7 @@ describe("pdf", () => {
   it("trägt Firmenzeile, Titel und Blattnamen", async () => {
     const t = textVon(await pdf(bericht, firma));
 
-    expect(t).toContain("Isoteam Suljejmani GmbH");
+    expect(t).toContain("IsoTeam Suljejmani GmbH");
     expect(t).toContain("CHE-190.604.537");
     expect(t).toContain("Auswertung Mitarbeitende: Liridon");
     expect(t).toContain("Zeitraum: September 2026");

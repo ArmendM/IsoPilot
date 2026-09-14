@@ -132,34 +132,38 @@ function tabelle(
   const zeilenhoehe = 14;
   const untenGrenze = doc.page.height - RAND - zeilenhoehe;
 
-  const titelzeile = () => {
-    doc.font("Helvetica-Bold").fontSize(8).fillColor("black");
-    blatt.spalten.forEach((s, i) => {
-      doc.text(s.titel, x[i], doc.y, {
-        width: breiten[i] - 4,
-        align: s.art && s.art !== "text" ? "right" : "left",
-        lineBreak: false,
-      });
-      if (i < blatt.spalten.length - 1) doc.y -= zeilenhoehe;
-    });
-    doc.y += 2;
-    doc.moveTo(RAND, doc.y).lineTo(rechts, doc.y).strokeColor(LINIE).lineWidth(0.5).stroke();
-    doc.y += 3;
-  };
-
+  /* Eine Zeile, alle Zellen auf derselben Höhe.
+   *
+   * Entscheidend ist, dass `oben` einmal gemerkt und vor jeder Zelle
+   * wiederhergestellt wird. pdfkit rückt nach jedem `text` um die
+   * Zeilenhöhe der Schrift vor, und die ist nicht die Zeilenhöhe dieser
+   * Tabelle. Wer stattdessen einen festen Betrag abzieht, verschiebt
+   * jede Zelle um die Differenz, und die Zeile läuft über die Spalten
+   * hinweg schräg nach oben aus dem Raster. Genau so lief die Titelzeile
+   * in die Überschrift. */
   const zeile = (werte: Zelle[], fett: boolean) => {
     doc.font(fett ? "Helvetica-Bold" : "Helvetica").fontSize(8).fillColor("black");
     const oben = doc.y;
     blatt.spalten.forEach((s, i) => {
+      doc.y = oben;
       doc.text(alsText(werte[i] ?? null, s.art), x[i], oben, {
         width: breiten[i] - 4,
         align: s.art && s.art !== "text" ? "right" : "left",
         lineBreak: false,
         ellipsis: true,
       });
-      if (i < blatt.spalten.length - 1) doc.y = oben;
     });
     doc.y = oben + zeilenhoehe;
+  };
+
+  const titelzeile = () => {
+    zeile(
+      blatt.spalten.map((s) => s.titel),
+      true,
+    );
+    doc.y -= 2;
+    doc.moveTo(RAND, doc.y).lineTo(rechts, doc.y).strokeColor(LINIE).lineWidth(0.5).stroke();
+    doc.y += 3;
   };
 
   doc.y += 4;
