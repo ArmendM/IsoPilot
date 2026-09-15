@@ -32,9 +32,36 @@ export const KRANKHEITSNOTIZ_MONATE = 18;
 
 /** Geschäftsdaten nach OR 958f, in Jahren. **Mindestens** so lange
  *  aufbewahren. Danach ist Wegräumen zulässig, aber nichts tut es von
- *  selbst: `TimeEntry.keepUntil` trägt diese Frist und ist Auskunft,
- *  kein Auftrag. */
+ *  selbst, siehe `aufbewahrenBis`. */
 export const GESCHAEFTSDATEN_JAHRE = 10;
+
+/**
+ * Bis wann eine Geschäftsunterlage aufzubewahren ist.
+ *
+ * **Auskunft, kein Auftrag.** Nichts im Code löscht auf diesen Wert hin,
+ * und das soll so bleiben: wer alte Unterlagen wegräumen will,
+ * entscheidet das im Betrieb, nicht ein nächtlicher Job.
+ *
+ * Eine Funktion und kein Feld an `TimeEntry`. Der Wert ist eine reine
+ * Rechnung aus dem Arbeitstag, ein gespeicherter wäre eine zweite
+ * Wahrheit daneben. Als generierte Spalte in Postgres war er das zwar
+ * nicht, dafür legte er sich mit Prisma an: das kennt generierte Spalten
+ * nicht und schrieb in jede weitere Migration eine Anweisung, die an ihr
+ * scheitert.
+ *
+ * Gerechnet auf dem Kalendertag, nicht auf dem Zeitstempel: `workDate`
+ * ist ein `@db.Date` und steht auf UTC-Mitternacht, wie überall in
+ * dieser Anwendung.
+ */
+export function aufbewahrenBis(arbeitstag: Date): Date {
+  return new Date(
+    Date.UTC(
+      arbeitstag.getUTCFullYear() + GESCHAEFTSDATEN_JAHRE,
+      arbeitstag.getUTCMonth(),
+      arbeitstag.getUTCDate(),
+    ),
+  );
+}
 
 /**
  * Welche Einträge im Audit-Log ein Anmeldeprotokoll sind und damit nach

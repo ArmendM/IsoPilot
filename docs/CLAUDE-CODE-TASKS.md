@@ -140,10 +140,11 @@ Monatsabschluesse und muessen bleiben.
 
 Der Job wendet nur Loeschpflichten an. Die zehn Jahre nach OR 958f sind
 eine Aufbewahrungspflicht: sie sagen, wie lange etwas dableiben muss,
-nicht wann es weg soll, und nichts loescht darauf hin. Am Zeiteintrag
-steht die Frist als `TimeEntry.keepUntil`, als Auskunft. Sie war bis M4f
-gar nicht befuellt, obwohl das Schema sie beschrieb; jetzt ist es eine
-generierte Spalte.
+nicht wann es weg soll, und nichts loescht darauf hin. Bis wann
+aufzubewahren ist, sagt `aufbewahrenBis` in `src/lib/aufbewahrung.ts`,
+als Rechnung und nicht als Feld: ein gespeicherter Wert waere eine
+zweite Wahrheit daneben, und als generierte Spalte legte er sich mit
+Prisma an.
 
 ## Bewusst zurueckgestellt
 

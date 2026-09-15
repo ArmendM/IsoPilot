@@ -420,21 +420,16 @@ model TimeEntry {
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime? // Soft Delete, damit Korrekturen nachvollziehbar bleiben
 
-  /* Bis wann der Eintrag aufzubewahren ist: 10 Jahre nach OR 958f.
+  /* Aufbewahrung 10 Jahre nach OR 958f. Das steht hier bewusst **nicht**
+   * als Spalte: der Wert ist `workDate` plus zehn Jahre und damit eine
+   * reine Rechnung, `aufbewahrenBis` in `src/lib/aufbewahrung.ts`.
    *
-   * **Eine Frist, kein Auftrag.** OR 958f sagt, wie lange etwas dableiben
-   * muss, nicht wann es weg soll. Nichts löscht auf diesen Wert hin, und
-   * das soll auch so bleiben: wer Geschäftsunterlagen wegräumen will,
-   * entscheidet das im Betrieb, nicht ein nächtlicher Job. Die Spalte
-   * sagt nur, ab wann das überhaupt zulässig wäre.
+   * Es war einmal eine generierte Spalte. Prisma kennt die nicht und
+   * schrieb in jede weitere Migration eine Anweisung, die an ihr
+   * scheitert. Siehe die Migration `keepuntil_als_regel_statt_spalte`.
    *
-   * Eine generierte Spalte, angelegt in der Migration
-   * `zeiteintrag_aufbewahrung_generiert`:
-   *   GENERATED ALWAYS AS (("workDate" + INTERVAL '10 years')::date) STORED
-   * Prisma kennt das nicht und führt sie als gewöhnliche Spalte. Sie wird
-   * deshalb nie geschrieben, nur gelesen, und der Wert ergibt sich aus
-   * `workDate`, auch auf Zeilen, die längst da waren. */
-  keepUntil DateTime? @db.Date
+   * Und gelöscht wird darauf ohnehin nicht: zehn Jahre sind eine
+   * Aufbewahrungspflicht, keine Löschpflicht. */
 
   user      User  @relation("EntryOwner", fields: [userId], references: [id])
   createdBy User  @relation("EntryAuthor", fields: [createdById], references: [id])
@@ -444,7 +439,6 @@ model TimeEntry {
   // aufgeteilt werden kann. Die Überschneidungsprüfung erfolgt im Service.
   @@index([userId, workDate])
   @@index([siteId, workDate])
-  @@index([keepUntil])
 }
 
 // ─────────────────────────────────────────────────────────────
