@@ -484,9 +484,15 @@ Mailpit-Oberfläche: http://localhost:8025
 
 ## Roadmap und Stand
 
-Stand 14.09.2026. Dieser Abschnitt ist die Antwort auf "wo stehen wir und
+Stand 15.09.2026. Dieser Abschnitt ist die Antwort auf "wo stehen wir und
 was kommt als Nächstes". Er wird bei jedem abgeschlossenen Stück
 nachgeführt.
+
+**Offen auf GitHub: PR #46**, Briefkopf nach Handbuch in PDF und Excel,
+grün, wartet auf Armends Durchsicht. Alles andere ist auf `main`.
+
+**Tests:** 195 in `tests/einheit`, 128 in `tests/server`, beide Schichten
+in der CI.
 
 **M1 Fundament — fertig**
 Next.js 16, Prisma 7, Schema, Anmeldung über Infomaniak mit Warteraum,
@@ -517,9 +523,15 @@ Rückfall, `/abschluss` Monatsabschluss.
 - M4a Auswertung Mitarbeitende, Ansicht: **fertig**
 - M4b Auswertung Baustellen, Ansicht: **fertig**
 - M4c Export Excel und PDF für beide: **fertig**
-- M4d Firmeneinstellungen mit Logo-Upload: **als Nächstes**. Das PDF
-  trägt die Firmenzeile bereits aus `Company`, es fehlt nur das Bild.
-- M4e Aufbewahrungsjob für Login-Protokolle: offen
+- M4d Briefkopf und Marke in beiden Ausgaben: **fertig, in PR #46**
+- M4e Firmeneinstellungen mit Logo-Upload: **als Nächstes**. Der Bericht
+  nimmt heute die Wortmarke aus `public/marke`, wenn unter
+  `Company.logoPath` nichts steht. Mit dem Upload fällt diese letzte fest
+  verdrahtete Stelle weg. Betroffen: eine neue Seite oder ein Abschnitt
+  unter `/personen`, Ablage der Datei, `Company.logoPath`, und die
+  übrigen Firmenangaben zum Bearbeiten, die heute nur der Seed setzt.
+- M4f Aufbewahrungsjob für Login-Protokolle: offen, siehe
+  `docs/CLAUDE-CODE-TASKS.md`, dort als P1 mit Akzeptanzkriterien
 
 Dazu **Sollstunden und Zeitsaldo**, siehe den eigenen Abschnitt weiter
 unten: dafür fehlt das Datenmodell noch ganz, und es stehen fachliche
@@ -700,6 +712,18 @@ sieben Artikel bei bis zu -115 standen. Beides steht jetzt im
 zurück. Eine Bewegung entsteht dazu nicht: `StockMovement` braucht eine
 Person, und beim Seed gibt es noch keine.
 
+### Offen: was beim Durchklicken zu prüfen bleibt
+
+Nichts davon ist im Browser angesehen worden, alles nur über HTTP, Tests
+und ausgelesene Dateien geprüft:
+
+- Wareneingang und Lagerverlauf, `/material` und `/lager`
+- Lagerberechtigung unter `/personen`, dazu der Wareneingang aus der
+  Sicht einer Person, die nur diese Berechtigung hat
+- Inventur je Artikel, und dass der Bestand im Artikelformular fehlt
+- Beide Auswertungen samt der Knöpfe für Excel und PDF
+- Die Wortmarke rechts oben auf allen elf Seiten
+
 ### Offen: zwei Konventionen im Lagerverlauf
 
 Beim Bauen der Inventur aufgefallen, und es ist ein Entscheid, kein Fehler
@@ -857,6 +881,65 @@ Sitzung: alle vier Routen liefern 200 mit dem richtigen Inhaltstyp, ohne
 Sitzung 307, bei unsinnigem Zeitraum 400, bei fremder Kennung 403. Der
 Bündelungsfehler mit den `.afm`-Dateien wäre in keinem Vitest-Lauf
 aufgefallen.
+
+### Briefkopf und Marke in den Ausgaben (fertig)
+
+PDF und Excel folgen dem Markenhandbuch. Es ist **ein** Briefkopf, derselbe
+wie auf Brief, Offerte und Rechnung: einen zweiten für die Auswertungen zu
+bauen hiesse, dass zwei Blätter aus demselben Haus verschieden aussehen.
+
+Die Masse stammen aus der gelieferten Vorlage
+`docs/marke/vorlagen/briefpapier-vordruck.html`, nicht aus dem Fliesstext
+des Handbuchs. Wo beide sich widersprechen, gilt die Vorlage: sie ist das
+Blatt, das alle gesehen haben. Der einzige Fall ist der Seitenrand, 18
+Millimeter im Handbuch gegen 20 in der Vorlage.
+
+**PDF**, `src/server/pdf.ts`: Rand 20 Millimeter seitlich und 16 oben,
+Wortmarke oben links auf 11 Millimeter Höhe, Adresse oben rechts und
+rechtsbündig, Trennlinie 0.55 Millimeter in Tiefblau, darunter die
+Leistungszeile in Versalien. Der Fuss ist dreispaltig: Adresse, Kontakt,
+UID und Bank, alles aus `Company`. Kopf und Fuss stehen auf jeder Seite.
+Die Titelzeile der Tabelle steht in Versalien über einer Linie in
+Tiefblau.
+
+- **Archivo und Barlow sind eingebettet**, die Dateien liegen unter
+  `public/schriften` samt ihren OFL-Lizenztexten. pdfkit bringt nur
+  Helvetica mit, und `next/font` legt die Dateien unter `.next` ab,
+  worauf sich ein Bericht nicht verlassen kann. Fehlt eine Datei, fällt
+  der Bericht auf Helvetica zurück: einer in der falschen Schrift ist
+  besser als keiner.
+- **Der Fuss setzt den unteren Rand vorübergehend auf null.** pdfkit
+  fängt von sich aus eine neue Seite an, sobald Text unter den unteren
+  Rand geriete, und ein Fuss steht genau dort. Ohne das landete er oben
+  auf einem leeren Blatt, und hinter jeder Seite stand eine zweite, fast
+  leere. Ein Test hält das fest.
+
+**Excel**, `src/server/excel.ts`: Wortmarke und Firmenzeile über der
+Tabelle, Titelzeile in Tiefblau auf Weiss. **Die Schrift wird dort nur
+benannt, nicht eingebettet**, wer Barlow nicht installiert hat, sieht die
+Ersatzschrift. Deshalb tragen in der Mappe Farbe und Wortmarke die Marke,
+nicht die Schriftwahl.
+
+### Das PDF wieder auslesen: `tests/einheit/pdf-lesen.ts`
+
+Mit eingebetteter Schrift steht im Inhaltsstrom nicht mehr der
+Zeichencode, sondern die Glyphennummer der zusammengestrichenen Schrift,
+und jede Schrift zählt ab eins. Die Tests, die die **Anordnung** prüfen,
+lasen damit nur noch Zahlen. Der Leser geht deshalb den kurzen Weg über
+den Objektbaum: Schriftname im Strom auf Schriftobjekt, Schriftobjekt auf
+seine ToUnicode-Tabelle.
+
+Drei Dinge, die dabei falsch waren und es nicht mehr sind:
+
+- Ein Strom gehört nur dann zu einem Objekt, wenn das Schlüsselwort
+  **unmittelbar hinter dem Wörterbuch** steht. Wer im Umkreis sucht,
+  findet den Strom des nächsten Objekts und überspringt beim Weiterlesen
+  alles dazwischen, hier die ToUnicode-Tabellen.
+- Die Länge des Stroms kommt aus `/Length`, nicht aus der Suche nach
+  `endstream`. In gepackten Daten steht diese Zeichenfolge irgendwann
+  zufällig.
+- **Die Schriftwahl steht im Strom hinter der Textmatrix**, also
+  innerhalb des Blocks. Wer sie davor sucht, findet sie nie.
 
 ### Offen: alte Lagerbewegungen kennen ihre Baustelle nicht
 

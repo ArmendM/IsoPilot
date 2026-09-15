@@ -1,7 +1,7 @@
-import { inflateSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
 import { pdf, type Firmenkopf } from "@/server/pdf";
 import type { Bericht } from "@/server/auswertung-blaetter";
+import { stellen, textVon } from "./pdf-lesen";
 
 /* Das PDF wird erzeugt und der Text wieder herausgelesen. Ein Bericht,
  * der eine kaputte Datei schreibt oder die Umlaute verliert, fällt sonst
@@ -36,77 +36,6 @@ const bericht: Bericht = {
   ],
 };
 
-/**
- * Der lesbare Text eines PDF.
- *
- * Zwei Schritte: pdfkit komprimiert die Inhaltsströme, und der Text
- * steht darin nicht als Klartext, sondern als Hexfolgen in TJ-Feldern,
- * durch die Unterschneidung in Stücke zerlegt. Beides wird hier
- * rückgängig gemacht.
- *
- * Die Kompression fürs Testen abzuschalten wäre der bequemere Weg und
- * würde etwas anderes prüfen als das, was ausgeliefert wird.
- */
-function textVon(b: Buffer): string {
-  const roh = b.toString("latin1");
-  let text = roh;
-  const muster = /stream\r?\n/g;
-  let treffer: RegExpExecArray | null;
-  while ((treffer = muster.exec(roh)) !== null) {
-    const start = treffer.index + treffer[0].length;
-    const ende = roh.indexOf("endstream", start);
-    if (ende < 0) continue;
-    let inhalt: string;
-    try {
-      inhalt = inflateSync(Buffer.from(roh.slice(start, ende), "latin1")).toString("latin1");
-    } catch {
-      continue; // kein Flate-Strom, etwa eine eingebettete Schrift
-    }
-    // Die Hexstücke in ihrer Reihenfolge aneinanderhängen: ein durch
-    // Unterschneidung zerteiltes Wort wird so wieder eines.
-    text += (inhalt.match(/<[0-9a-fA-F]+>/g) ?? [])
-      .map((h) => Buffer.from(h.slice(1, -1), "hex").toString("latin1"))
-      .join("");
-  }
-  return text;
-}
-
-/**
- * Wo welcher Text steht: aus den Textmatrizen des Inhaltsstroms.
- *
- * Ohne das prüft kein Test die Anordnung, und genau dort lag der Fehler:
- * die Titelzeile lief über die Spalten hinweg schräg nach oben und
- * landete in der Überschrift. Inhaltlich war alles da, im Bericht stand
- * es übereinander.
- */
-function stellen(b: Buffer): { x: number; y: number; text: string }[] {
-  const roh = b.toString("latin1");
-  const gefunden: { x: number; y: number; text: string }[] = [];
-  const muster = /stream\r?\n/g;
-  let treffer: RegExpExecArray | null;
-  while ((treffer = muster.exec(roh)) !== null) {
-    const start = treffer.index + treffer[0].length;
-    const ende = roh.indexOf("endstream", start);
-    if (ende < 0) continue;
-    let inhalt: string;
-    try {
-      inhalt = inflateSync(Buffer.from(roh.slice(start, ende), "latin1")).toString("latin1");
-    } catch {
-      continue;
-    }
-    // "1 0 0 1 X Y Tm" setzt den Textanfang, danach folgen die Hexstücke.
-    const abschnitte = /1 0 0 1 ([\d.]+) ([\d.]+) Tm([\s\S]*?)ET/g;
-    let a: RegExpExecArray | null;
-    while ((a = abschnitte.exec(inhalt)) !== null) {
-      const text = (a[3].match(/<[0-9a-fA-F]+>/g) ?? [])
-        .map((h) => Buffer.from(h.slice(1, -1), "hex").toString("latin1"))
-        .join("");
-      if (text) gefunden.push({ x: Number(a[1]), y: Number(a[2]), text });
-    }
-  }
-  return gefunden;
-}
-
 describe("Anordnung", () => {
   const tabelle: Bericht = {
     titel: "Auswertung Mitarbeitende: Test User",
@@ -139,7 +68,8 @@ describe("Anordnung", () => {
    * Zelle nach oben. */
   it("setzt alle Zellen der Titelzeile auf dieselbe Höhe", async () => {
     const gefunden = stellen(await pdf(tabelle, firma));
-    const titel = ["Datum", "Von", "Bis", "Pause", "Netto", "Baustelle", "Verrechnung", "Notiz"];
+    // Die Titelzeile steht nach der Vorlage in Versalien.
+    const titel = ["DATUM", "VON", "BIS", "PAUSE", "NETTO", "BAUSTELLE", "VERRECHNUNG", "NOTIZ"];
     const hoehen = titel.map((t) => gefunden.find((g) => g.text === t)?.y);
 
     expect(hoehen.every((h) => h !== undefined)).toBe(true);
@@ -167,11 +97,11 @@ describe("Anordnung", () => {
     const ueber = (oben: string, unten: string) =>
       expect(y(oben), `${oben} muss über ${unten} stehen`).toBeGreaterThan(y(unten));
 
-    ueber("IsoTeam", "Auswertung Mitarbeitende");
+    ueber("IsoTeam Suljejmani GmbH", "Auswertung Mitarbeitende");
     ueber("Auswertung Mitarbeitende", "Zeitraum: September 2026");
     ueber("Zeitraum: September 2026", "Einzelpositionen");
-    ueber("Einzelpositionen", "Datum");
-    ueber("Datum", "01.09.2026");
+    ueber("Einzelpositionen", "DATUM");
+    ueber("DATUM", "01.09.2026");
     ueber("01.09.2026", "02.09.2026");
     ueber("02.09.2026", "Zusammen");
   });
@@ -183,16 +113,56 @@ describe("Anordnung", () => {
     const gefunden = stellen(await pdf(tabelle, firma));
     const y = (t: string) => gefunden.find((g) => g.text.startsWith(t))!.y;
 
-    expect(y("Einzelpositionen") - y("Datum")).toBeGreaterThan(10);
+    expect(y("Einzelpositionen") - y("DATUM")).toBeGreaterThan(10);
   });
 
   it("setzt die Spalten von links nach rechts nebeneinander", async () => {
     const gefunden = stellen(await pdf(tabelle, firma));
     const x = (t: string) => gefunden.find((g) => g.text === t)!.x;
 
-    expect(x("Datum")).toBeLessThan(x("Von"));
-    expect(x("Von")).toBeLessThan(x("Baustelle"));
-    expect(x("Baustelle")).toBeLessThan(x("Notiz"));
+    expect(x("DATUM")).toBeLessThan(x("VON"));
+    expect(x("VON")).toBeLessThan(x("BAUSTELLE"));
+    expect(x("BAUSTELLE")).toBeLessThan(x("NOTIZ"));
+  });
+});
+
+describe("Fuss", () => {
+  const mitAngaben = {
+    ...firma,
+    mwst: "CHE-305.978.601",
+    telefon: "079 616 89 75 / 076 574 25 82",
+    mail: "info@isoteam-suljejmani.ch",
+  };
+
+  /* Der Fuss trägt die Angaben, die auf ein Blatt gehören, das aus dem
+   * Haus geht. Sie kommen aus Company, nicht aus dem Code. */
+  it("nennt Adresse, Kontakt, UID und Bank", async () => {
+    const t = textVon(await pdf(bericht, mitAngaben));
+
+    expect(t).toContain("CHE-305.978.601 MWST");
+    expect(t).toContain("info@isoteam-suljejmani.ch");
+    expect(t).toContain("Raiffeisenbank");
+  });
+
+  it("stellt die drei Spalten nebeneinander und nach unten", async () => {
+    const gefunden = stellen(await pdf(bericht, mitAngaben));
+    const x = (t: string) => gefunden.find((g) => g.text.startsWith(t))!.x;
+    const y = (t: string) => gefunden.find((g) => g.text.startsWith(t))!.y;
+
+    // Die Fassung mit Komma steht nur im Fuss, im Kopf steht die Strasse
+    // allein. Ohne diese Unterscheidung fände die Suche den Kopf.
+    expect(x("079 616")).toBeGreaterThan(x("Gerliswilstrasse 68, 6020"));
+    expect(x("CHE-305")).toBeGreaterThan(x("079 616"));
+    // Unter der letzten Tabellenzeile, also wirklich am Blattfuss.
+    expect(y("CHE-305")).toBeLessThan(y("Nettostunden"));
+  });
+
+  /* Ohne Angaben bleibt die Spalte leer, statt "null" zu drucken. */
+  it("druckt keine Platzhalter, wenn Angaben fehlen", async () => {
+    const t = textVon(await pdf(bericht, { ...firma, mwst: null, telefon: null, mail: null }));
+
+    expect(t).not.toContain("null");
+    expect(t).not.toContain("undefined");
   });
 });
 
@@ -287,7 +257,7 @@ describe("pdf", () => {
     };
 
     const t = textVon(await pdf(lang, firma));
-    expect(t.split("Buchungsdatum").length - 1).toBeGreaterThan(1);
+    expect(t.split("BUCHUNGSDATUM").length - 1).toBeGreaterThan(1);
   });
 
   /* Ein Logo, das nicht lesbar ist, darf den Bericht nicht verhindern:
@@ -320,12 +290,23 @@ describe("Kopf mit Logo", () => {
     ],
   };
 
-  it("rückt die Firmenzeile neben das Logo, statt darüber", async () => {
-    const ohne = stellen(await pdf(bericht, firma));
+  /* Nach der Vorlage steht die Wortmarke links und die Adresse rechts,
+   * unabhängig davon, ob ein Logo da ist. Geprüft wird deshalb nicht mehr
+   * ein Versatz gegenüber dem Fall ohne Logo, sondern die Seite: die
+   * Adresse gehört in die rechte Blatthälfte, sonst läuft sie ins Logo. */
+  it("setzt die Firmenzeile in die rechte Blatthälfte", async () => {
     const mit = stellen(await pdf(bericht, { ...firma, logo: einPunkt }));
+    const zeile = mit.find((g) => g.text.startsWith("IsoTeam"))!;
 
-    const x = (s: typeof ohne) => s.find((g) => g.text.startsWith("IsoTeam"))!.x;
-    expect(x(mit)).toBeGreaterThan(x(ohne));
+    // A4 hoch ist 595 Punkt breit.
+    expect(zeile.x).toBeGreaterThan(595 / 2);
+  });
+
+  it("lässt die Firmenzeile auch ohne Logo rechts stehen", async () => {
+    const ohne = stellen(await pdf(bericht, firma));
+    const zeile = ohne.find((g) => g.text.startsWith("IsoTeam"))!;
+
+    expect(zeile.x).toBeGreaterThan(595 / 2);
   });
 
   /* Mit Logo braucht der Kopf mehr Höhe. Der Titel darf deswegen nicht

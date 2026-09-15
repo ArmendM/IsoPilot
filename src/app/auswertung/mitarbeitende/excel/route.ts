@@ -11,5 +11,5 @@ export async function GET(req: Request) {
   if (!user) return new Response("Nicht angemeldet.", { status: 401 });
 
   const r = await berichtMitarbeitende(req, user);
-  return r.ok ? alsExcel(r.bericht, r.dateiteile) : r.antwort;
+  return r.ok ? alsExcel(r.bericht, r.dateiteile, user) : r.antwort;
 }

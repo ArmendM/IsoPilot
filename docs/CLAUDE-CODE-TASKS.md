@@ -1,6 +1,6 @@
 # Claude-Code-Aufgaben
 
-Stand: 2026-09-14. Grundlage: `CLAUDE.md`, `docs/BETRIEB.md`,
+Stand: 2026-09-15. Grundlage: `CLAUDE.md`, `docs/BETRIEB.md`,
 `docs/lifecycle.md`, Git-Historie und `.next/dev/logs/next-development.log`.
 
 **Die Roadmap und der genaue Stand stehen in `CLAUDE.md`, Abschnitt
@@ -95,6 +95,25 @@ Akzeptanzkriterien:
 
 Validierung: Berechtigungs- und Summen-Tests sowie ein Export-Smoke-Test.
 
+### Erledigt, Ausgaben ans Markenhandbuch angeglichen
+
+Quelle: `docs/marke/MARKENHANDBUCH.md` und die gelieferte Vorlage
+`docs/marke/vorlagen/briefpapier-vordruck.html`. Umgesetzt in
+`src/server/pdf.ts` und `src/server/excel.ts`.
+
+Erfuellt: Raender, Stellung der Adresse, Trennlinie in Tiefblau,
+Leistungszeile in Versalien, dreispaltiger Fuss mit Adresse, Kontakt, UID und
+Bank aus `Company`, Kopf und Fuss auf jeder Seite. Archivo und Barlow sind als
+Schriftdateien unter `public/schriften` eingebettet, samt OFL-Lizenztexten.
+Excel traegt Wortmarke, Firmenzeile und eine Titelzeile in Tiefblau auf Weiss.
+
+Es ist ein einziger Briefkopf, derselbe wie auf Brief, Offerte und Rechnung.
+
+Geprueft ueber die Anordnung, nicht nur den Inhalt: `tests/einheit/pdf-lesen.ts`
+liest das erzeugte PDF wieder aus, samt ToUnicode-Tabellen je Schrift, und
+`tests/einheit/pdf.test.ts` prueft Stellung und Reihenfolge. Dazu Berichte aus
+einem Produktionsbuild, von Hand angesehen.
+
 ### P1, Aufbewahrung fuer Login-Protokolle vervollstaendigen
 
 Quelle: Aufbewahrung in `CLAUDE.md` und Cron in `docs/BETRIEB.md`.
@@ -123,9 +142,11 @@ Validierung: Retention-Tests mit eingefrorener Zeit und Cron-Smoke-Test.
 
 ## Pruefprotokoll
 
-- `npm run typecheck`: bestanden am 2026-09-14.
-- `npm run lint`: bestanden am 2026-09-14.
-- `npm test`: 117 bestanden am 2026-09-14.
-- `npm run test:server`: 74 bestanden am 2026-09-14.
+- `npm run typecheck`: bestanden am 2026-09-15.
+- `npm run lint`: bestanden am 2026-09-15.
+- `npm test`: 195 bestanden am 2026-09-15, auch mit `TZ=UTC`.
+- `npm run test:server`: 128 bestanden am 2026-09-15.
+- `npm run build`: bestanden am 2026-09-15, dazu ein Lauf des Standalone-Servers
+  mit eingesetzter Sitzung, alle vier Exportrouten mit 200.
 - `.next/dev/logs/next-development.log`: nur erfolgreiche Kompilierungen und
   React-DevTools-Hinweise, keine ungeloeste Exception im gelesenen Verlauf.
