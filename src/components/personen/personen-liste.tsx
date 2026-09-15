@@ -413,29 +413,46 @@ function Arbeitszeit({
         </button>
       </form>
 
-      <h3 className="mt-6 text-sm font-medium">Anfangssaldo</h3>
+      <h3 className="mt-6 text-sm font-medium">Zeitsaldo</h3>
       <p className="mt-1 text-xs text-black/50 dark:text-white/50">
-        Der Zeitsaldo aus dem alten Vorgehen, einmal eingetragen. Ab dem
-        Stichtag rechnet IsoPilot selbst: die Zeit davor steckt im Saldo und
-        wird nicht noch einmal gezählt. Beide Felder leeren hebt ihn auf.
+        Ohne dieses Datum rechnet IsoPilot keinen laufenden Saldo: es weiss
+        sonst nicht, ab wann die erfassten Stunden vollständig sind. Der
+        mitgebrachte Saldo aus dem alten Vorgehen ist freiwillig, wer bei
+        null anfängt lässt ihn leer. Das Datum leeren hebt beides auf.
       </p>
 
       <form
         className="mt-3 flex flex-wrap items-end gap-3"
         onSubmit={(ev) => {
           ev.preventDefault();
-          const leer = s.startBalance.trim() === "" && s.balanceFrom === "";
+          /* Ein leeres Saldofeld heisst "keiner mitgebracht", nicht
+             "null Stunden": `Number("")` wäre 0 und stünde nachher als
+             Anfangssaldo in der Anzeige, obwohl niemand etwas eingetragen
+             hat. Gerechnet wird mit null, angezeigt wird nichts. */
+          const saldo = s.startBalance.trim();
           lauf(() =>
             setAnfangssaldo({
               id: z.id,
-              startBalance: leer ? null : Number(s.startBalance),
-              balanceFrom: leer ? null : s.balanceFrom,
+              startBalance: saldo === "" ? null : Number(saldo),
+              balanceFrom: s.balanceFrom || null,
             }),
           );
         }}
       >
+        {/* Das Datum zuerst: es ist die Bedingung, der Saldo daneben die
+            Kür. Andersherum gelesen sah es aus, als ginge es ohne Saldo
+            gar nicht, und genau daran ist im Betrieb jemand
+            hängengeblieben. */}
         <label className="space-y-1">
-          <span className={bez}>Saldo in Stunden</span>
+          <span className={bez}>IsoPilot rechnet ab</span>
+          <DatumFeld
+            value={s.balanceFrom}
+            onChange={(e) => setS({ ...s, balanceFrom: e.target.value })}
+            className={`${feld} w-44`}
+          />
+        </label>
+        <label className="space-y-1">
+          <span className={bez}>mitgebrachter Saldo, freiwillig</span>
           {/* Ein gewöhnliches Feld, kein ZahlFeld: hier gehört ein Minus
               hinein, und ein Minus ist beim Tippen zwischendurch eine
               unvollständige Zahl. */}
@@ -444,15 +461,7 @@ function Arbeitszeit({
             placeholder="z. B. -4.5"
             value={s.startBalance}
             onChange={(e) => setS({ ...s, startBalance: e.target.value })}
-            className={`${feld} w-32`}
-          />
-        </label>
-        <label className="space-y-1">
-          <span className={bez}>gerechnet ab</span>
-          <DatumFeld
-            value={s.balanceFrom}
-            onChange={(e) => setS({ ...s, balanceFrom: e.target.value })}
-            className={`${feld} w-44`}
+            className={`${feld} w-40`}
           />
         </label>
         <button
@@ -460,11 +469,12 @@ function Arbeitszeit({
           disabled={laeuft}
           className="h-10 rounded-md border border-black/15 px-3 text-sm disabled:opacity-50 dark:border-white/20"
         >
-          Anfangssaldo speichern
+          Speichern
         </button>
-        {z.startBalance !== null && z.balanceFrom && (
+        {z.balanceFrom && (
           <span className="h-10 leading-10 text-sm text-black/60 dark:text-white/60">
-            Steht auf {saldoText(z.startBalance)} per {datumDE(z.balanceFrom)}
+            Rechnet ab {datumDE(z.balanceFrom)}
+            {z.startBalance !== null && `, mit ${saldoText(z.startBalance)}`}
           </span>
         )}
       </form>

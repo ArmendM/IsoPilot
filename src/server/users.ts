@@ -341,14 +341,23 @@ export async function setAnfangssaldo(raw: unknown): Promise<ActionResult> {
 
   const parsed = Anfangssaldo.safeParse(raw);
   if (!parsed.success)
-    return { ok: false, error: "Ein Saldo in Stunden und ein Stichtag, oder beides leer." };
+    return { ok: false, error: "Ein Datum, und wahlweise ein Saldo in Stunden." };
   const i = parsed.data;
 
-  // Ein Saldo ohne Stichtag wüsste nicht, ab wann IsoPilot selbst rechnet.
-  if ((i.startBalance === null) !== (i.balanceFrom === null))
+  /* **Der Stichtag allein reicht, der mitgebrachte Saldo ist freiwillig.**
+   * Wer bei null anfängt, soll nicht erst eine Null in ein Feld namens
+   * "Anfangssaldo" tippen müssen, nur damit IsoPilot zu rechnen beginnt.
+   * Genau daran ist im Betrieb jemand hängengeblieben: er setzte den
+   * Stichtag, das Formular verlangte stillschweigend auch einen Saldo,
+   * und es wurde gar nichts gespeichert.
+   *
+   * Umgekehrt geht es nicht: ein Saldo ohne Stichtag wüsste nicht, ab
+   * wann IsoPilot selbst rechnet. */
+  if (i.startBalance !== null && i.balanceFrom === null)
     return {
       ok: false,
-      error: "Saldo und Stichtag gehören zusammen. Beide ausfüllen oder beide leeren.",
+      error:
+        "Ohne Datum lässt sich ein mitgebrachter Saldo nicht einordnen. Trage ein, ab wann IsoPilot rechnet.",
     };
 
   try {

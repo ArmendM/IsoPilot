@@ -325,20 +325,45 @@ describe("Pensum pflegen", () => {
     expect(await db.workload.count()).toBe(1);
   });
 
-  it("verlangt Saldo und Stichtag zusammen", async () => {
-    // Ein Saldo ohne Stichtag wüsste nicht, ab wann IsoPilot selbst rechnet.
+  it("nimmt das Datum allein an, der mitgebrachte Saldo ist freiwillig", async () => {
+    /* Im Betrieb ist jemand daran hängengeblieben: er setzte das Datum,
+     * das Formular verlangte stillschweigend auch einen Saldo, und es
+     * wurde gar nichts gespeichert. Wer bei null anfängt, soll nicht
+     * erst eine Null eintippen müssen. */
+    const { daut, liridon } = await aufbau();
+
+    expect(
+      await setAnfangssaldo({ id: liridon.id, startBalance: null, balanceFrom: "2026-09-01" }),
+    ).toEqual({ ok: true });
+
+    const nachher = await db.user.findUniqueOrThrow({ where: { id: liridon.id } });
+    expect(nachher.balanceFrom?.toISOString().slice(0, 10)).toBe("2026-09-01");
+    expect(nachher.startBalance).toBeNull();
+
+    // Und damit rechnet die Tagesansicht auch wirklich.
+    const r = await zeitsaldo(daut.alsSitzung(), liridon.id, "2026-09-02");
+    expect(r.stunden).toBe(-16.8);
+  });
+
+  it("weist einen Saldo ohne Datum ab", async () => {
+    // Er wüsste nicht, ab wann IsoPilot selbst rechnet.
     const { liridon } = await aufbau();
     expect((await setAnfangssaldo({ id: liridon.id, startBalance: 12, balanceFrom: null })).ok).toBe(
       false,
     );
-    expect(
-      (await setAnfangssaldo({ id: liridon.id, startBalance: null, balanceFrom: "2026-01-01" })).ok,
-    ).toBe(false);
+  });
 
-    // Beide leer hebt ihn auf, das ist erlaubt.
+  it("hebt mit leerem Datum beides auf", async () => {
+    const { liridon } = await aufbau();
+    await setAnfangssaldo({ id: liridon.id, startBalance: 12, balanceFrom: "2026-09-01" });
+
     expect(
       await setAnfangssaldo({ id: liridon.id, startBalance: null, balanceFrom: null }),
     ).toEqual({ ok: true });
+
+    const nachher = await db.user.findUniqueOrThrow({ where: { id: liridon.id } });
+    expect(nachher.balanceFrom).toBeNull();
+    expect(nachher.startBalance).toBeNull();
   });
 });
 
@@ -355,7 +380,7 @@ describe("Laufender Saldo in der Tagesansicht", () => {
 
     const r = await zeitsaldo(daut.alsSitzung(), liridon.id, "2026-09-30");
     expect(r.stunden).toBeNull();
-    if (r.stunden === null) expect(r.grund).toMatch(/Anfangssaldo mit Stichtag/);
+    if (r.stunden === null) expect(r.grund).toMatch(/ab dem IsoPilot rechnet/);
   });
 
   it("rechnet ab dem Stichtag, auch ohne mitgebrachte Stunden", async () => {
@@ -461,7 +486,7 @@ describe("Der Fall aus dem Betrieb: Eintritt im Januar, Pensum ab September", ()
 
     const r = await zeitsaldo(daut.alsSitzung(), liridon.id, "2026-09-15");
     expect(r.stunden).toBeNull();
-    if (r.stunden === null) expect(r.grund).toMatch(/Anfangssaldo mit Stichtag/);
+    if (r.stunden === null) expect(r.grund).toMatch(/ab dem IsoPilot rechnet/);
   });
 
   it("rechnet, sobald der Stichtag steht, und zwar ab ihm", async () => {

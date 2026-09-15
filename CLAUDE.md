@@ -511,7 +511,7 @@ nachgeführt.
 **Nichts offen auf GitHub.** PR #46, Briefkopf nach Handbuch in PDF und
 Excel, ist gemergt. Alles liegt auf `main`.
 
-**Tests:** 254 in `tests/einheit`, 180 in `tests/server`, beide Schichten
+**Tests:** 254 in `tests/einheit`, 182 in `tests/server`, beide Schichten
 in der CI.
 
 **M1 Fundament — fertig**
@@ -1093,6 +1093,31 @@ sind: die Tests waren grün, die Zahl in der Datenbank stimmte, und über
 HTTP mit `curl` war ebenfalls alles richtig, weil der Zwischenspeicher
 des Browsers dabei gar nicht mitspielt. Gesehen hat es nur, wer im
 Browser geklickt hat.
+
+#### Das Feld muss heissen, wie die Meldung es nennt
+
+Und noch einmal gemeldet, nach beiden Behebungen: der Hinweis stehe
+weiter da. Im Protokoll standen vier `USER_WORKLOAD_SET` und kein
+einziges `USER_BALANCE_SET`. Gesetzt worden war das **Pensum**, nicht der
+Saldo.
+
+Kein Wunder. Der Abschnitt trug zwei Formulare mit "gültig ab" und
+"gerechnet ab", die Meldung verlangte einen **"Stichtag"**, und den gab
+es unter diesem Namen nirgends. Dazu zwang sie in ein Feld namens
+"Anfangssaldo", obwohl der Betrieb gar keinen mitbringt.
+
+Zwei Dinge daraus, beide umgesetzt:
+
+- **Eine Fehlermeldung nennt das Feld so, wie es beschriftet ist**, und
+  sagt, wo es steht. "Einzutragen unter Personen, Arbeitszeit und Saldo,
+  Feld IsoPilot rechnet ab" führt hin, "setze einen Stichtag" nicht.
+- **Was Bedingung ist, steht zuerst und allein.** Das Datum ist nötig,
+  der mitgebrachte Saldo daneben freiwillig. Vorher verlangte das
+  Formular stillschweigend beides, und wer nur das Datum eintrug,
+  speicherte gar nichts. Ein leeres Saldofeld heisst jetzt "keiner
+  mitgebracht", nicht "null Stunden": `Number("")` wäre 0 und stünde
+  nachher als Anfangssaldo in der Anzeige, ohne dass jemand etwas
+  eingetragen hätte.
 
 ### M4f, Aufbewahrung (fertig)
 

@@ -85,7 +85,7 @@ export async function zeitsaldo(
     return {
       stunden: null,
       grund:
-        "Für den laufenden Saldo fehlt ein Anfangssaldo mit Stichtag: erst ab dem sind die Stunden in IsoPilot vollständig. Zu setzen unter Personen.",
+        'Für den Saldo fehlt das Datum, ab dem IsoPilot rechnet: erst ab dann sind die Stunden hier vollständig. Einzutragen unter Personen, "Arbeitszeit und Saldo", Feld "IsoPilot rechnet ab".',
     };
 
   if (ab > bis)
