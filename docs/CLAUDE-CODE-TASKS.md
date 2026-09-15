@@ -114,7 +114,7 @@ liest das erzeugte PDF wieder aus, samt ToUnicode-Tabellen je Schrift, und
 `tests/einheit/pdf.test.ts` prueft Stellung und Reihenfolge. Dazu Berichte aus
 einem Produktionsbuild, von Hand angesehen.
 
-### P1, Aufbewahrung fuer Login-Protokolle vervollstaendigen
+### Erledigt, Aufbewahrung fuer Anmeldeprotokolle (war P1)
 
 Quelle: Aufbewahrung in `CLAUDE.md` und Cron in `docs/BETRIEB.md`.
 `src/app/api/cron/[job]/route.ts` bereinigt alte Sitzungen, Zeitdaten und
@@ -131,6 +131,19 @@ Akzeptanzkriterien:
 - Ein Test belegt die Fristen fuer Login, Krankheitstext und Zeiteintrag.
 
 Validierung: Retention-Tests mit eingefrorener Zeit und Cron-Smoke-Test.
+
+Erledigt in M4f. Die Fristen stehen in `src/lib/aufbewahrung.ts`, der Job
+in `src/server/aufbewahrung.ts`. Anmeldeprotokolle sind ueber eine
+ausgeschriebene Liste von Audit-Aktionen von den Geschaeftsdaten
+getrennt, nicht ueber ein Namensmuster: `LOCKED` und `UNLOCKED` sind
+Monatsabschluesse und muessen bleiben.
+
+Der Job wendet nur Loeschpflichten an. Die zehn Jahre nach OR 958f sind
+eine Aufbewahrungspflicht: sie sagen, wie lange etwas dableiben muss,
+nicht wann es weg soll, und nichts loescht darauf hin. Am Zeiteintrag
+steht die Frist als `TimeEntry.keepUntil`, als Auskunft. Sie war bis M4f
+gar nicht befuellt, obwohl das Schema sie beschrieb; jetzt ist es eine
+generierte Spalte.
 
 ## Bewusst zurueckgestellt
 

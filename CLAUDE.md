@@ -401,15 +401,35 @@ zweimal umgerechnet.
 
 ## Aufbewahrung
 
-| Daten | Frist |
-|---|---|
-| Zeiteinträge, Ferien, Audit-Log | 10 Jahre (OR 958f) |
-| Absenz "krank" als Tatsache | 10 Jahre |
-| Notiz oder Grund zur Krankheit | 18 Monate, danach automatisch geleert |
-| Sitzungen und Login-Protokolle | 90 Tage |
+**Es gibt hier zwei Arten von Frist, und sie zeigen in entgegengesetzte
+Richtungen.** Wer das verwechselt, baut einen Job, der Geschäftsunterlagen
+wegräumt, die aufzubewahren gewesen wären. Deshalb steht die Art in der
+Tabelle:
 
-Krankheitsnotizen sind besonders schützenswerte Personendaten nach revDSG
-und werden deshalb kürzer aufbewahrt als der Absenzeintrag selbst.
+| Daten | Frist | Art |
+|---|---|---|
+| Zeiteinträge, Ferien, Audit-Log | 10 Jahre (OR 958f) | mindestens aufbewahren |
+| Absenz "krank" als Tatsache | 10 Jahre | mindestens aufbewahren |
+| Notiz oder Grund zur Krankheit | 18 Monate | spätestens löschen |
+| Sitzungen und Anmeldeprotokolle | 90 Tage | spätestens löschen |
+
+**OR 958f ist eine Aufbewahrungspflicht, keine Löschpflicht.** Zehn Jahre
+sagen, wie lange Geschäftsunterlagen dableiben müssen, nicht wann sie weg
+sollen. **Nichts löscht sie automatisch**, und das soll so bleiben: wer
+alte Unterlagen wegräumen will, entscheidet das im Betrieb. Am Zeiteintrag
+steht die Frist als `TimeEntry.keepUntil`, und sie ist Auskunft, kein
+Auftrag.
+
+Krankheitsnotizen und Anmeldespuren zeigen andersherum. Sie sind
+besonders schützenswerte Personendaten nach revDSG und spätestens dann zu
+löschen, die Notiz deshalb kürzer als der Absenzeintrag selbst.
+
+Umgesetzt in `src/lib/aufbewahrung.ts` als Fristen und Regel, angewendet
+von `aufbewahrungAnwenden` in `src/server/aufbewahrung.ts`, nächtlich
+über `/api/cron/retention`. **Der Job wendet nur die Löschpflichten an.**
+Ändert jemand eine Zahl hier, fällt ein Test in
+`tests/einheit/aufbewahrung.test.ts`: die Fristen sind Recht, nicht
+Geschmack. Siehe M4f weiter unten.
 
 ## Sprache und Formulierung in der Oberfläche
 
@@ -491,7 +511,7 @@ nachgeführt.
 **Nichts offen auf GitHub.** PR #46, Briefkopf nach Handbuch in PDF und
 Excel, ist gemergt. Alles liegt auf `main`.
 
-**Tests:** 209 in `tests/einheit`, 141 in `tests/server`, beide Schichten
+**Tests:** 237 in `tests/einheit`, 150 in `tests/server`, beide Schichten
 in der CI.
 
 **M1 Fundament — fertig**
@@ -518,20 +538,23 @@ Rückfall, `/abschluss` Monatsabschluss.
 - M3h Lagerberechtigung als eigenes Merkmal an `User`: **fertig**
 - M3i Bestand nur noch über Bewegungen, Inventur: **fertig**
 
-**M4 Auswertung — angefangen**
+**M4 Auswertung — fertig**
 
 - M4a Auswertung Mitarbeitende, Ansicht: **fertig**
 - M4b Auswertung Baustellen, Ansicht: **fertig**
 - M4c Export Excel und PDF für beide: **fertig**
 - M4d Briefkopf und Marke in beiden Ausgaben: **fertig**
 - M4e Firmeneinstellungen mit Logo-Upload: **fertig**, siehe unten
-- M4f Aufbewahrungsjob für Login-Protokolle: **als Nächstes**, siehe
-  `docs/CLAUDE-CODE-TASKS.md`, dort als P1 mit Akzeptanzkriterien
+- M4f Aufbewahrungsjob für Anmeldeprotokolle: **fertig**, siehe unten.
+  Dabei ist aufgefallen, dass die Zehnjahresfrist nie am Zeiteintrag
+  stand. Sie steht jetzt dort, und **nichts löscht darauf hin**: zehn
+  Jahre sind eine Aufbewahrungspflicht, keine Löschpflicht.
 
 Dazu **Sollstunden und Zeitsaldo**, siehe den eigenen Abschnitt weiter
 unten: dafür fehlt das Datenmodell noch ganz, und es stehen fachliche
 Entscheide an. Die Auswertung Mitarbeitende ist der Ort, an dem der Saldo
-später als Spalte dazukommt.
+später als Spalte dazukommt. Das ist der nächste Brocken, sobald die
+Entscheide dort gefallen sind.
 
 **M5 Produktivstart**
 Seed mit echten Stammdaten, ein Monat Parallelbetrieb neben dem alten
@@ -915,6 +938,86 @@ Tabelle, Titelzeile in Tiefblau auf Weiss. **Die Schrift wird dort nur
 benannt, nicht eingebettet**, wer Barlow nicht installiert hat, sieht die
 Ersatzschrift. Deshalb tragen in der Mappe Farbe und Wortmarke die Marke,
 nicht die Schriftwahl.
+
+### M4f, Aufbewahrung (fertig)
+
+Ein Job, der die **Löschpflichten** aus der Tabelle oben anwendet, statt
+drei Stellen, die je eine kennen: `aufbewahrungAnwenden` in
+`src/server/aufbewahrung.ts`, aufgerufen nächtlich über
+`/api/cron/retention`.
+
+**Die zehn Jahre sind eine Aufbewahrungspflicht und stehen bewusst nicht
+im Job.** Ein erster Anlauf in M4f hat Zeiteinträge nach zehn Jahren
+gelöscht. Das war falsch: OR 958f sagt, wie lange Geschäftsunterlagen
+dableiben müssen, nicht wann sie weg sollen. Ein Job, der das
+verwechselt, erfindet eine Pflicht, die es nicht gibt, und tut es
+unwiederbringlich. Wann alte Stunden gehen, entscheidet der Betrieb.
+Ein Test hält das Nichtstun fest: ein Eintrag von 2006 steht nach dem
+Lauf noch.
+
+Gelöscht wird nur, wo revDSG es verlangt: die Notiz zu einer Krankheit
+nach 18 Monaten, Anmeldeprotokolle und Sitzungen nach 90 Tagen.
+
+**Dabei gefunden: die Frist stand nie am Zeiteintrag.**
+`prisma/schema.prisma` beschrieb das Feld seit dem ersten Tag als
+generierte Spalte und nannte sogar das SQL dazu, in der Migration stand
+aber nur eine gewöhnliche Spalte, und niemand hat sie je geschrieben:
+`is_generated` war NEVER und der Wert auf jeder Zeile null. Die Migration
+`zeiteintrag_aufbewahrung_generiert` holt das nach, die Spalte rechnet
+sich aus `workDate` und füllt auch die Zeilen, die schon da sind.
+
+**Sie heisst `keepUntil` und nicht mehr `deleteAfter`.** Der alte Name
+war der Grund für den falschen Anlauf: ein Feld, das "löschen ab" heisst,
+wird irgendwann von einem Job gelesen und befolgt. Jetzt sagt der Name,
+was der Wert ist, nämlich bis wann aufzubewahren ist, und der Rest ist
+eine Entscheidung im Betrieb.
+
+**Als generierte Spalte, nicht als Feld im Schreibpfad.** Ein Wert, den
+jeder Schreibpfad selbst setzen muss, wird irgendwo vergessen. Aus
+`workDate` abgeleitet gibt es nichts zu vergessen. Prisma kennt
+generierte Spalten nicht und führt sie als gewöhnliche: gelesen wird sie,
+geschrieben nie.
+
+**Welche Einträge im Audit-Log Anmeldeprotokolle sind, steht
+ausgeschrieben**, als `ANMELDEPROTOKOLLE` in `src/lib/aufbewahrung.ts`,
+ohne Prisma und ohne React. Bewusst keine Regel über den Namen: ein
+Muster wie "enthält LOCK" nähme `LOCKED` und `UNLOCKED` mit, und das
+sind die Monatsabschlüsse, also zehn Jahre aufzubewahrende
+Geschäftsdaten. Löschen ist die Richtung, in der ein Irrtum nicht zu
+heilen ist. Wer eine neue Anmeldung protokolliert, trägt sie von Hand
+nach; bis dahin bleibt der Eintrag stehen, und das ist die harmlosere
+Richtung.
+
+`USER_BOOTSTRAP` und `USER_SELF_CREATED` gehören ausdrücklich nicht
+dazu. Dass ein Konto entstanden ist, ist keine Anmeldung.
+
+**Der Lauf ist wiederholbar und merkt sich nichts.** Geräumt wird, was
+über einer Grenze liegt, nie "was seit dem letzten Mal dazukam". Ein
+Job, der sich merken muss, wo er stand, verliert genau das beim ersten
+Absturz. Deshalb steht auch `note: { not: null }` in der Bedingung für
+die Krankheitsnotiz: ohne das zählte jeder Lauf dieselben, längst
+geleerten Einträge mit, und die Zahl im Journal wüchse, ohne dass etwas
+geschähe.
+
+**Alles in einer Transaktion.** Ein halb gelaufener Job liesse sich
+später nicht mehr von einem vollständigen unterscheiden, und die Zählung
+stimmte nicht mit dem überein, was in der Datenbank steht.
+
+**Die Zeit wird hineingereicht**, `aufbewahrungAnwenden(jetzt)`. Ein
+Job, dem man das Jetzt sagen kann, braucht im Test keine gestellte Uhr.
+
+**`sessions` ist kein eigener Job mehr.** Die Adresse bleibt, weil sie in
+bereits ausgerollten systemd-Units steht, und ruft dieselbe Funktion.
+`deploy/systemd/isopilot-cron.service` hat nur noch eine Zeile dafür.
+
+Geprüft mit 28 Tests in `tests/einheit` und 9 in `tests/server`, dazu
+über HTTP: 403 ohne und mit falschem Geheimnis, 404 bei unbekanntem Job,
+200 mit der Zählung, und der zweite Lauf meldet überall null. Die
+Zählung steht als `[aufbewahrung]`-Zeile im Journal.
+
+**Gegengeprüft, indem jede Behebung einzeln zurückgenommen wurde:** mit
+der gewöhnlichen statt der generierten Spalte fällt der Test zur Frist am
+Eintrag, mit `LOCKED` in der Liste der Anmeldeprotokolle fallen zwei.
 
 ### M4e, Firmeneinstellungen mit Logo (fertig)
 

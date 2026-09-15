@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
 import { syncHolidays } from "@/lib/holidays";
 import { rolloverVacation } from "@/server/vacation";
+import { aufbewahrungAnwenden } from "@/server/aufbewahrung";
 
 export async function POST(
   req: Request,
@@ -18,25 +18,15 @@ export async function POST(
     case "vacation":
       return NextResponse.json(await rolloverVacation());
     case "retention":
-      return NextResponse.json(await applyRetention());
+      return NextResponse.json(await aufbewahrungAnwenden());
+    /* "sessions" war einmal ein eigener Job und ist jetzt Teil der
+     * Aufbewahrung: alle Fristen an einer Stelle, sonst kennt jede
+     * Stelle eine andere. Der Name bleibt, weil er in bereits
+     * ausgerollten systemd-Units steht. Zweimal aufgerufen schadet
+     * nichts, der Lauf ist wiederholbar. */
     case "sessions":
-      return NextResponse.json(
-        await db.session.deleteMany({ where: { expiresAt: { lt: new Date() } } }),
-      );
+      return NextResponse.json(await aufbewahrungAnwenden());
     default:
       return new NextResponse("unknown job", { status: 404 });
   }
-}
-
-/** 10 Jahre für Zeitdaten, 18 Monate für Krankheitsnotizen. */
-async function applyRetention() {
-  const today = new Date();
-  const [entries, notes] = await db.$transaction([
-    db.timeEntry.deleteMany({ where: { deleteAfter: { lt: today } } }),
-    db.absence.updateMany({
-      where: { type: "SICK", noteClearAt: { lt: today }, note: { not: null } },
-      data: { note: null, noteClearAt: null },
-    }),
-  ]);
-  return { deletedEntries: entries.count, clearedNotes: notes.count };
 }
