@@ -90,6 +90,28 @@ export function tagessoll(u: Tagesumstand): number {
  *  weiter oben, und ein negatives Soll ist keine sinnvolle Antwort. */
 const begrenzt = (anteil: number) => Math.min(1, Math.max(0, anteil));
 
+/** Ein Tag mit allem, was das Soll bestimmt, ausser dem Pensum. */
+export type Tagesangabe = Omit<Tagesumstand, "wochenstunden"> & { tag: string };
+
+/**
+ * Das Soll über viele Tage.
+ *
+ * Zwei Stellen fragen danach: die Auswertung über ihren Zeitraum und die
+ * Tagesansicht über den laufenden Saldo. **Beide summieren hier**, nicht
+ * jede in ihrer eigenen Schleife: die Regel ist dieselbe, und zwei
+ * Summen über dieselben Tage laufen früher oder später auseinander.
+ */
+export function sollSumme(
+  tage: Tagesangabe[],
+  pensen: Pensum[],
+  vorgabe: number,
+): number {
+  let summe = 0;
+  for (const t of tage)
+    summe += tagessoll({ ...t, wochenstunden: wochenstundenAm(t.tag, pensen, vorgabe) });
+  return runde(summe);
+}
+
 /**
  * Der Zeitsaldo: was mitgebracht wurde, plus geleistet, minus geschuldet.
  *

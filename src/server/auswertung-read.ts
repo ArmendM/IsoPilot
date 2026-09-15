@@ -10,7 +10,13 @@ import { netHours } from "@/lib/dates";
 import { holidayMap } from "@/lib/holidays";
 import type { SessionUser } from "@/lib/session";
 import { istWochenende, tageIn, type Zeitraum } from "@/lib/zeitraum";
-import { type Pensum, saldo as rechneSaldo, tagessoll, wochenstundenAm } from "@/lib/sollzeit";
+import {
+  type Pensum,
+  type Tagesangabe,
+  saldo as rechneSaldo,
+  sollSumme,
+  wochenstundenAm,
+} from "@/lib/sollzeit";
 
 const isoUtc = (d: Date) => d.toISOString().slice(0, 10);
 
@@ -194,7 +200,7 @@ export async function auswertungPerson(
   const austritt = person.employedUntil ? isoUtc(person.employedUntil) : null;
   const saldoAb = person.balanceFrom ? isoUtc(person.balanceFrom) : null;
 
-  let sollstunden = 0;
+  const sollTage: Tagesangabe[] = [];
   let istImSaldo = 0;
   const gesehenePensen = new Set<number>();
 
@@ -228,15 +234,9 @@ export async function auswertungPerson(
     const imSaldo = !saldoAb || tag >= saldoAb;
 
     if (imSaldo) {
-      const wochenstunden = wochenstundenAm(tag, pensen, vorgabe);
-      if (beschaeftigt && !wochenende && !feiertag) gesehenePensen.add(wochenstunden);
-      sollstunden += tagessoll({
-        wochenende,
-        feiertag,
-        absenzAnteil,
-        beschaeftigt,
-        wochenstunden,
-      });
+      if (beschaeftigt && !wochenende && !feiertag)
+        gesehenePensen.add(wochenstundenAm(tag, pensen, vorgabe));
+      sollTage.push({ tag, wochenende, feiertag, absenzAnteil, beschaeftigt });
       istImSaldo += istJeTag.get(tag) ?? 0;
     }
 
@@ -256,8 +256,9 @@ export async function auswertungPerson(
     if (!erfassteTage.has(tag) && !(absenz && !absenz.isHalfDay)) offeneTage += 1;
   }
 
+  const sollstunden = sollSumme(sollTage, pensen, vorgabe);
   const soll: Sollrechnung = {
-    sollstunden: runde(sollstunden),
+    sollstunden,
     iststunden: runde(istImSaldo),
     saldoZeitraum: rechneSaldo(0, istImSaldo, sollstunden),
     anfangssaldo: person.startBalance === null ? null : Number(person.startBalance),

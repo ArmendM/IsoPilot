@@ -24,6 +24,7 @@ vi.mock("@/lib/session", () => ({
 }));
 
 const { auswertungPerson } = await import("@/server/auswertung-read");
+const { zeitsaldo } = await import("@/server/saldo-read");
 const { setPensum, loeschePensum, setAnfangssaldo } = await import("@/server/users");
 
 const tag = (iso: string) => new Date(`${iso}T00:00:00Z`);
@@ -329,5 +330,95 @@ describe("Pensum pflegen", () => {
     expect(
       await setAnfangssaldo({ id: liridon.id, startBalance: null, balanceFrom: null }),
     ).toEqual({ ok: true });
+  });
+});
+
+describe("Laufender Saldo in der Tagesansicht", () => {
+  it("bleibt ohne Eintrittsdatum und ohne Anfangssaldo aus", async () => {
+    /* Ein erfundener Anfang wäre hier besonders schädlich: jeder Tag
+     * davor trüge ein Soll ohne Ist, und der Saldo stünde tief im Minus,
+     * ohne dass jemand etwas falsch gemacht hätte. Lieber keine Zahl als
+     * eine falsche. */
+    const { daut, liridon } = await aufbau();
+
+    const r = await zeitsaldo(daut.alsSitzung(), liridon.id, "2026-09-30");
+    expect(r.stunden).toBeNull();
+    if (r.stunden === null) expect(r.grund).toMatch(/Eintrittsdatum/);
+  });
+
+  it("rechnet ab dem Eintritt, wenn kein Anfangssaldo gesetzt ist", async () => {
+    const { daut, liridon } = await aufbau();
+    await db.user.update({
+      where: { id: liridon.id },
+      data: { employedFrom: tag("2026-09-01") },
+    });
+    await stunden(liridon.id, "2026-09-01", 8);
+
+    const r = await zeitsaldo(daut.alsSitzung(), liridon.id, "2026-09-02");
+    // Zwei Werktage Soll, 16.8, dagegen 8 Stunden Ist.
+    expect(r.stunden).toBe(-8.8);
+    if (r.stunden !== null) {
+      expect(r.ab).toBe("2026-09-01");
+      expect(r.anfangssaldo).toBeNull();
+    }
+  });
+
+  it("zählt den Anfangssaldo mit und rechnet ab dessen Stichtag", async () => {
+    const { daut, liridon } = await aufbau();
+    await db.user.update({
+      where: { id: liridon.id },
+      data: { employedFrom: tag("2020-01-01") },
+    });
+    await stunden(liridon.id, "2026-09-01", 8);
+
+    await setAnfangssaldo({
+      id: liridon.id,
+      startBalance: 20,
+      balanceFrom: "2026-09-01",
+    });
+
+    const r = await zeitsaldo(daut.alsSitzung(), liridon.id, "2026-09-02");
+    // 20 mitgebracht, plus 8 geleistet, minus 16.8 geschuldet.
+    expect(r.stunden).toBe(11.2);
+    if (r.stunden !== null) expect(r.ab).toBe("2026-09-01");
+  });
+
+  it("stimmt mit der Auswertung überein, wenn beide denselben Ausschnitt sehen", async () => {
+    /* Die eigentliche Gefahr an zwei Leseschichten: sie rechnen
+     * auseinander. Beide summieren deshalb über `sollSumme`. */
+    const { daut, liridon } = await aufbau();
+    await setAnfangssaldo({
+      id: liridon.id,
+      startBalance: 0,
+      balanceFrom: "2026-09-01",
+    });
+    await stunden(liridon.id, "2026-09-01", 8);
+    await stunden(liridon.id, "2026-09-05", 6); // ein Samstag
+
+    const r = await zeitsaldo(daut.alsSitzung(), liridon.id, "2026-09-30");
+    const a = await auswertungPerson(daut.alsSitzung(), liridon.id, SEPTEMBER);
+    expect(r.stunden).toBe(a.soll.saldoZeitraum);
+  });
+
+  it("lässt eine mitarbeitende Person nur an den eigenen Saldo", async () => {
+    const { c, liridon } = await aufbau();
+    const islom = await person(c.id, "Islom");
+    sitzung.user = liridon.alsSitzung();
+
+    await expect(zeitsaldo(liridon.alsSitzung(), islom.id, "2026-09-30")).rejects.toThrow(
+      "FORBIDDEN",
+    );
+  });
+
+  it("lässt einen Vorgesetzten nicht an eine fremde Firma", async () => {
+    // Die Rolle allein sagt nichts darüber, zu welcher Firma eine fremde
+    // Kennung gehört.
+    const { daut } = await aufbau();
+    const fremd = await firma("Fremde AG");
+    const fremder = await person(fremd.id, "Fremd");
+
+    await expect(zeitsaldo(daut.alsSitzung(), fremder.id, "2026-09-30")).rejects.toThrow(
+      "FORBIDDEN",
+    );
   });
 });

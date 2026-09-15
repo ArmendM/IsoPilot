@@ -10,6 +10,7 @@ import {
   auswaehlbarePersonen,
   eintraegeAmTag,
 } from "@/server/time-entries-read";
+import { zeitsaldo } from "@/server/saldo-read";
 import { ZeitenTag, type ZeileDaten } from "@/components/zeiten/zeiten-tag";
 import { Kopfleiste } from "@/components/marke/kopfleiste";
 
@@ -28,6 +29,9 @@ const lesbar = (tag: string) => {
   return `${WOCHENTAG[d.getUTCDay()]}, ${format(d, "dd.MM.yyyy")}`;
 };
 
+/** Ohne Wochentag, für den Nebensatz in der Saldozeile. */
+const lesbarKurz = (tag: string) => tag.split("-").reverse().join(".");
+
 export default async function ZeitenPage({ searchParams }: PageProps<"/zeiten">) {
   const user = await getSession();
   if (!user) redirect("/login");
@@ -43,13 +47,17 @@ export default async function ZeitenPage({ searchParams }: PageProps<"/zeiten">)
   const personId = personen.some((p) => p.id === gewuenscht) ? gewuenscht : user.id;
   const person = personen.find((p) => p.id === personId);
 
-  const [rows, baustellen, lock] = await Promise.all([
+  const [rows, baustellen, lock, saldo] = await Promise.all([
     eintraegeAmTag(user, personId, tag),
     auswaehlbareBaustellen(user.companyId),
     db.monthLock.findUnique({
       where: { companyId_month: { companyId: user.companyId, month: monthKey(tag) } },
       select: { isLocked: true },
     }),
+    /* Der Saldo immer bis heute, nicht bis zum angezeigten Tag. Er
+     * beantwortet "wie stehe ich gerade", und diese Antwort darf sich
+     * nicht ändern, nur weil jemand im Kalender zurückblättert. */
+    zeitsaldo(user, personId, todayISO()),
   ]);
 
   // Zeiten in Schweizer Zeit formatieren, damit der Browser nicht rechnet.
@@ -88,6 +96,33 @@ export default async function ZeitenPage({ searchParams }: PageProps<"/zeiten">)
       <p className="mt-1 text-sm text-black/60 dark:text-white/60">
         {lesbar(tag)}
         {istAdmin && person && person.id !== user.id && `, ${person.name}`}
+      </p>
+
+      {/* Der Zeitsaldo steht hier und nicht nur in der Auswertung: diese
+          Seite ist die, die täglich offen ist. Ein Saldo, den man suchen
+          muss, wird nicht gelesen. */}
+      <p className="mt-3 rounded-md border border-black/10 p-3 text-sm dark:border-white/15">
+        {saldo.stunden === null ? (
+          <span className="text-black/60 dark:text-white/60">{saldo.grund}</span>
+        ) : (
+          <>
+            <span className="font-medium">
+              Zeitsaldo {saldo.stunden > 0 ? "+" : ""}
+              {saldo.stunden.toLocaleString("de-CH", { maximumFractionDigits: 2 })} h
+            </span>
+            <span className="text-black/60 dark:text-white/60">
+              {" "}
+              bis heute, gerechnet ab {lesbarKurz(saldo.ab)}
+              {saldo.anfangssaldo !== null && " einschliesslich Anfangssaldo"}.{" "}
+              <Link
+                href={`/auswertung/mitarbeitende?person=${personId}&art=monat&monat=${monthKey(tag)}`}
+                className="underline"
+              >
+                Im Einzelnen
+              </Link>
+            </span>
+          </>
+        )}
       </p>
 
       <form method="get" className="mt-4 flex flex-wrap items-end gap-3">

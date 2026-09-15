@@ -511,7 +511,7 @@ nachgeführt.
 **Nichts offen auf GitHub.** PR #46, Briefkopf nach Handbuch in PDF und
 Excel, ist gemergt. Alles liegt auf `main`.
 
-**Tests:** 254 in `tests/einheit`, 166 in `tests/server`, beide Schichten
+**Tests:** 254 in `tests/einheit`, 172 in `tests/server`, beide Schichten
 in der CI.
 
 **M1 Fundament — fertig**
@@ -549,8 +549,8 @@ Rückfall, `/abschluss` Monatsabschluss.
   Dabei ist aufgefallen, dass die Zehnjahresfrist nie am Zeiteintrag
   stand. Sie steht jetzt als Rechnung da, und **nichts löscht darauf
   hin**: zehn Jahre sind eine Aufbewahrungspflicht, keine Löschpflicht.
-- M4g Sollstunden und Zeitsaldo, Datenmodell und Auswertung: **fertig**,
-  siehe unten. Offen bleibt die Saldozeile in `/zeiten` für einen selbst.
+- M4g Sollstunden und Zeitsaldo: **fertig**, siehe unten. Datenmodell,
+  Auswertung und die Saldozeile in `/zeiten`.
 
 **Nächster Brocken: M5 Produktivstart.** Der Saldo steht, das Pensum ist
 pflegbar, der Anfangssaldo für den Parallelbetrieb auch. Was fehlt, ist
@@ -998,7 +998,7 @@ nicht genau darstellen, und `Math.round` eines winzigen negativen Rests
 ist `-0`. In der Auswertung stünde dann "-0.00 h", und das sieht nach
 einem Fehler aus, wo gerade alles aufgeht. Deshalb das `+ 0` in `runde`.
 
-Geprüft mit 14 Tests in `tests/einheit` und 17 in `tests/server`, dazu
+Geprüft mit 14 Tests in `tests/einheit` und 23 in `tests/server`, dazu
 über HTTP gegen die Entwicklungsdaten: eine Person mit 22 Werktagen im
 September, einem Krankheitstag und acht Ferientagen kommt auf 13 mal 8.4
 gleich 109.2 Sollstunden, und der Bettag am 20. September senkt nichts,
@@ -1008,9 +1008,33 @@ weil er auf einen Sonntag fällt.
 Stichtagsgrenze fällt ein Test, ohne die Wochenend- und
 Feiertagsausnahme fallen sieben.
 
-Offen bleibt die **Saldozeile in `/zeiten`** für einen selbst, siehe den
-Vorschlag in CLAUDE.md weiter unten. In der Auswertung Mitarbeitende
-steht der Saldo, und über `auswertung-blaetter.ts` auch in Excel und PDF.
+**Der Saldo steht in der Tagesansicht, nicht nur in der Auswertung.**
+`/zeiten` ist die Seite, die täglich offen ist, die Auswertung ruft man
+einmal im Monat auf: ein Saldo, den man suchen muss, wird nicht gelesen.
+Mitarbeitende sehen dort ihren eigenen, Vorgesetzte den der angezeigten
+Person.
+
+- **Gerechnet wird immer bis heute**, nicht bis zum angezeigten Tag. Die
+  Zeile beantwortet "wie stehe ich gerade", und diese Antwort darf sich
+  nicht ändern, nur weil jemand im Kalender zurückblättert. Ein Test
+  hält das fest.
+- **Ohne Eintrittsdatum und ohne Anfangssaldo steht keine Zahl da**,
+  sondern der Hinweis, was fehlt. Ein erfundener Anfang wäre hier
+  besonders schädlich: jeder Tag davor trüge ein Soll ohne Ist, und der
+  Saldo stünde tief im Minus, ohne dass jemand etwas falsch gemacht
+  hätte. Lieber keine Zahl als eine falsche.
+- **Eine eigene Leseschicht**, `src/server/saldo-read.ts`. Die Auswertung
+  liefert zu ihrem Zeitraum auch Einzelpositionen und Baustellenanteile;
+  die Tagesansicht will eine Zahl, dafür über Jahre statt über einen
+  Monat. Dieselbe Funktion für beides hiesse, auf jeder Tagesansicht alle
+  Einträge seit dem Eintritt auszuformatieren, nur um sie wegzuwerfen.
+- **Die Regel teilen sie trotzdem**: beide summieren über `sollSumme` in
+  `lib/sollzeit.ts`. Zwei Summen über dieselben Tage laufen früher oder
+  später auseinander, und ein Test hält fest, dass beide auf demselben
+  Ausschnitt dasselbe ergeben.
+
+In der Auswertung Mitarbeitende steht der Saldo ebenfalls, und über
+`auswertung-blaetter.ts` auch in Excel und PDF.
 
 ### M4f, Aufbewahrung (fertig)
 
@@ -1207,8 +1231,9 @@ Samstag gebucht werden darf, ist eine andere Frage und erfüllt:
 Samstag trägt kein Soll, seine Stunden zählen aber voll. Wer das
 "flexibel machen" will, darf `workingDays` nicht anfassen.
 
-**Offen bleibt einzig die Saldozeile in `/zeiten`** für einen selbst.
-Vorgesetzte sehen den Saldo aller in der Auswertung, wie überall sonst.
+**Alles davon ist umgesetzt.** Der Saldo steht in der Tagesansicht und in
+der Auswertung Mitarbeitende, Vorgesetzte sehen ihn für alle, wie überall
+sonst.
 
 ### M3f, Materialbuchung verbessern (fertig)
 
