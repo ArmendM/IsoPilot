@@ -1447,7 +1447,38 @@ festgenagelt sind und beim Bauen erst durch die Tests auffielen:
 
 ## Offene Punkte
 
-Fachliche Entscheide, die niemand aus dem Code ableiten kann:
+### Der Knopf "Anzeigen" ist kontraproduktiv
+
+**Von Armend gemeldet, 15.09.2026.** Acht Seiten führen ein GET-Formular
+mit einem Knopf "Anzeigen": `/zeiten`, `/zeiten/monat`, `/absenzen`,
+`/material`, `/lager`, `/abschluss` und beide Auswertungen. Wer dort eine
+Person, einen Monat oder einen Filter ändert, sieht erst etwas, wenn er
+zusätzlich den Knopf drückt. Bis dahin steht die alte Antwort neben der
+neuen Frage.
+
+**Das kostet Zeit und stiftet Verwirrung, und zwar nachweislich.** Beim
+Suchen des Zeitsaldo-Fehlers ist genau daran mehrfach Zeit verloren
+gegangen: eine geänderte Auswahl sah aus wie ein Ergebnis, war aber noch
+die vorherige. Ein Knopf, der zwischen Frage und Antwort steht, macht
+jedes Nachschauen zu einem Hin und Her.
+
+**Zu entscheiden, wie es stattdessen laufen soll.** Der Knopf hat einen
+echten Vorteil, den ein Ersatz nicht verlieren darf: wer drei Felder
+nacheinander ändert, will nicht drei Ladevorgänge. Denkbar:
+
+- **Beim Ändern abschicken**, für Felder, die einzeln geändert werden:
+  eine Personenauswahl, ein Monat. Freie Zeitspannen mit Von und Bis
+  gehören nicht dazu, dort wird zweimal getippt.
+- **Den Knopf lassen, aber sichtbar machen, dass die Anzeige veraltet
+  ist**, sobald ein Feld geändert wurde. Billiger zu bauen, löst das
+  Grundproblem aber nur halb.
+
+Gehört an einer Stelle gelöst, nicht achtmal einzeln: die Formulare sind
+sich gleich genug für eine gemeinsame Komponente.
+
+### Fachliche Entscheide
+
+Was niemand aus dem Code ableiten kann:
 
 - **Übertrag der Ferientage ist nicht begrenzt.** Wer ein Jahr lang keine
   Ferien nimmt, trägt die vollen 25 Tage ins Folgejahr. Ob das so gewollt
@@ -1463,6 +1494,10 @@ Fachliche Entscheide, die niemand aus dem Code ableiten kann:
   versendet werden
 - Kundenspezifische Preislisten wären ein späterer Ausbauschritt. Heute
   gilt je Liste eine Fassung für alle Auftraggeber.
+- **Ab wann rechnet IsoPilot je Person?** Steht als `balanceFrom` an
+  jedem Konto und ist für Daut und Armend auf den 01.09.2026 gesetzt. Für
+  den Produktivstart gehört das für alle vier bewusst gewählt, zusammen
+  mit dem mitgebrachten Saldo aus dem alten Vorgehen. Siehe M4g.
 
 ## Was nicht gebaut wird
 
