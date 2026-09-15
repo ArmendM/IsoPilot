@@ -42,6 +42,11 @@ model Company {
   canton              String   @default("LU") // für die Feiertagsquelle
   defaultVacationDays Int      @default(25)
 
+  /* Sollarbeitszeit je Woche, die Vorgabe für alle. Wer weniger
+   * arbeitet, bekommt ein eigenes Pensum an `Workload`, keine Ausnahme
+   * im Code. */
+  weeklyHours Decimal @default(42) @db.Decimal(5, 2)
+
   // Regietarife nach Preisliste. Stundenansätze für Arbeiten im Stundenlohn.
   regieRateA     Decimal?  @db.Decimal(10, 2)
   regieRateB     Decimal?  @db.Decimal(10, 2)
@@ -105,6 +110,16 @@ model User {
   employedFrom  DateTime? @db.Date
   employedUntil DateTime? @db.Date
 
+  /* Zeitsaldo aus dem alten Vorgehen, einmal eingetragen für den
+   * Parallelbetrieb in M5. Ohne das fängt beim Umstieg jeder bei null
+   * an und die bisherigen Überstunden sind weg.
+   *
+   * Gerechnet wird ab `balanceFrom`: davor gilt der Saldo als in
+   * `startBalance` enthalten, danach kommt Ist minus Soll dazu. Ohne
+   * `balanceFrom` beginnt die Rechnung bei `employedFrom`. */
+  startBalance Decimal?  @db.Decimal(6, 2)
+  balanceFrom  DateTime? @db.Date
+
   // Anmeldung über Infomaniak als IdP (OIDC, Authorization Code mit PKCE).
   // oidcSub ist der einzige Schlüssel zur Person: Mailadressen ändern sich,
   // sub nicht. Deshalb gibt es hier auch kein eigenes email-Feld.
@@ -148,6 +163,8 @@ model User {
   monthLockActions  MonthLockEvent[]
   auditLogs         AuditLog[]
   vacationBalances  VacationBalance[]
+  workloads         Workload[]        @relation("WorkloadOwner")
+  createdWorkloads  Workload[]        @relation("WorkloadAuthor")
 
   @@index([companyId, isActive])
 }
@@ -627,6 +644,37 @@ model EmailLog {
 // ─────────────────────────────────────────────────────────────
 // Ferienanspruch pro Person und Jahr
 // ─────────────────────────────────────────────────────────────
+
+/* Das Pensum einer Person, ab einem Stichtag.
+ *
+ * **Eine eigene Zeile je Änderung, kein Feld an `User`.** Steigt jemand
+ * im Mai von 100 auf 80 Prozent, darf das die Monate davor nicht
+ * rückwirkend verändern: wer bis April 42 Stunden schuldete, schuldet
+ * sie auch nachher noch. Mit einem einzelnen Feld wäre der alte Wert
+ * weg, und der Saldo vergangener Monate verschöbe sich still.
+ *
+ * Genau deshalb braucht der Monatsabschluss den Saldo nicht
+ * einzufrieren: gerechnet wird mit dem Satz, der an diesem Tag galt.
+ *
+ * Steht für eine Person gar keine Zeile, gilt `Company.weeklyHours`.
+ * Ein Wechsel auf die Vorgabe zurück ist deshalb eine neue Zeile mit
+ * dem Vorgabewert, nicht das Löschen der alten. */
+model Workload {
+  id          String   @id @default(cuid())
+  userId      String
+  weeklyHours Decimal  @db.Decimal(5, 2)
+  validFrom   DateTime @db.Date
+
+  createdById String
+  createdAt   DateTime @default(now())
+
+  user      User @relation("WorkloadOwner", fields: [userId], references: [id], onDelete: Cascade)
+  createdBy User @relation("WorkloadAuthor", fields: [createdById], references: [id])
+
+  // Zwei Pensen am selben Stichtag wären nicht entscheidbar.
+  @@unique([userId, validFrom])
+  @@index([userId, validFrom])
+}
 
 model VacationBalance {
   id     String @id @default(cuid())

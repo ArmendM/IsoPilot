@@ -32,6 +32,11 @@ const STATUS: Record<string, string> = {
 
 const runde = (n: number) => Math.round(n * 100) / 100;
 
+/** "2026-01-01" als "01.01.2026". Ohne Stichtag ein Strich, damit die
+ *  Zeile nicht "per null" heisst. */
+const datumDE = (iso: string | null) =>
+  iso ? iso.split("-").reverse().join(".") : "Eintritt";
+
 /* ── Auswertung Mitarbeitende ──────────────────────────────── */
 
 export function berichtPerson(a: PersonAuswertung): Bericht {
@@ -46,6 +51,20 @@ export function berichtPerson(a: PersonAuswertung): Bericht {
     zeilen: [
       ["Nettostunden", a.nettostunden],
       ["Als Zeitangabe", formatHours(a.nettostunden)],
+      /* Soll und Saldo stehen direkt unter dem Ist, dort wird
+       * verglichen. Der Anfangssaldo bleibt eine eigene Zeile: er gehört
+       * nicht in diesen Zeitraum, sondern davor. */
+      ["Sollstunden im Zeitraum", a.soll.sollstunden],
+      ["Saldo im Zeitraum, Ist minus Soll", a.soll.saldoZeitraum],
+      ...(a.soll.anfangssaldo !== null
+        ? [
+            [
+              `Anfangssaldo per ${datumDE(a.soll.anfangssaldoAb)}`,
+              a.soll.anfangssaldo,
+            ] as (string | number)[],
+          ]
+        : []),
+      ["Sollarbeitszeit je Woche", a.soll.wochenstunden],
       ["Werktage im Zeitraum", a.werktage],
       ["Tage mit Erfassung", a.tageMitErfassung],
       ["Werktage ohne Eintrag und ohne Absenz", a.offeneTage],

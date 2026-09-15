@@ -511,7 +511,7 @@ nachgeführt.
 **Nichts offen auf GitHub.** PR #46, Briefkopf nach Handbuch in PDF und
 Excel, ist gemergt. Alles liegt auf `main`.
 
-**Tests:** 237 in `tests/einheit`, 150 in `tests/server`, beide Schichten
+**Tests:** 254 in `tests/einheit`, 166 in `tests/server`, beide Schichten
 in der CI.
 
 **M1 Fundament — fertig**
@@ -547,14 +547,15 @@ Rückfall, `/abschluss` Monatsabschluss.
 - M4e Firmeneinstellungen mit Logo-Upload: **fertig**, siehe unten
 - M4f Aufbewahrungsjob für Anmeldeprotokolle: **fertig**, siehe unten.
   Dabei ist aufgefallen, dass die Zehnjahresfrist nie am Zeiteintrag
-  stand. Sie steht jetzt dort, und **nichts löscht darauf hin**: zehn
-  Jahre sind eine Aufbewahrungspflicht, keine Löschpflicht.
+  stand. Sie steht jetzt als Rechnung da, und **nichts löscht darauf
+  hin**: zehn Jahre sind eine Aufbewahrungspflicht, keine Löschpflicht.
+- M4g Sollstunden und Zeitsaldo, Datenmodell und Auswertung: **fertig**,
+  siehe unten. Offen bleibt die Saldozeile in `/zeiten` für einen selbst.
 
-Dazu **Sollstunden und Zeitsaldo**, siehe den eigenen Abschnitt weiter
-unten: dafür fehlt das Datenmodell noch ganz, und es stehen fachliche
-Entscheide an. Die Auswertung Mitarbeitende ist der Ort, an dem der Saldo
-später als Spalte dazukommt. Das ist der nächste Brocken, sobald die
-Entscheide dort gefallen sind.
+**Nächster Brocken: M5 Produktivstart.** Der Saldo steht, das Pensum ist
+pflegbar, der Anfangssaldo für den Parallelbetrieb auch. Was fehlt, ist
+Betrieb: Server aufsetzen, Seed mit echten Stammdaten, Sicherung
+wiederherstellen üben.
 
 **M5 Produktivstart**
 Seed mit echten Stammdaten, ein Monat Parallelbetrieb neben dem alten
@@ -939,6 +940,78 @@ benannt, nicht eingebettet**, wer Barlow nicht installiert hat, sieht die
 Ersatzschrift. Deshalb tragen in der Mappe Farbe und Wortmarke die Marke,
 nicht die Schriftwahl.
 
+### M4g, Sollstunden und Zeitsaldo (fertig)
+
+Bis hierhin rechnete IsoPilot nur Ist-Stunden zusammen. Jetzt gibt es ein
+Soll und damit eine Antwort auf "wer hat Überstunden und wer ist im
+Minus". Die Rechnung steht in `src/lib/sollzeit.ts`, ohne Prisma und ohne
+React, festgenagelt in `tests/einheit/sollzeit.test.ts`.
+
+**Die vier fachlichen Entscheide, von Armend am 15.09.2026 getroffen:**
+
+- **Das Tagessoll ist gleichmässig**, 42 geteilt durch 5 sind 8.4 Stunden
+  an jedem Werktag. Ein Wochenmuster, freitags kürzer, gibt es bewusst
+  nicht: es bräuchte fünf Zahlen je Person, und Teilzeit ist so dieselbe
+  Rechnung mit einer kleineren Wochenzahl, 33.6 bei 80 Prozent.
+- **Anfangssaldo ja**, `User.startBalance` und `User.balanceFrom`. Für
+  den Parallelbetrieb in M5 bringen die vier einen Saldo aus dem alten
+  Vorgehen mit. Ohne ihn fienge beim Umstieg jeder bei null an.
+- **Der Monatsabschluss friert nichts ein.** Gerechnet wird bei jeder
+  Anzeige neu. Das geht auf, weil das Pensum ein Gültigkeitsdatum trägt:
+  siehe unten.
+- **Ein Feiertag, ein Ferientag und ein Krankheitstag senken das Soll**,
+  ein halber Tag zur Hälfte. Sonst baute jeder in den Ferien Minus auf.
+
+**Das Pensum ist eine eigene Zeile je Änderung**, `Workload` mit
+`validFrom`, kein Feld an `User`. Steigt jemand im Mai von 100 auf 80
+Prozent, schuldet er bis April weiterhin 42 Stunden. Mit einem einzelnen
+Feld wäre der alte Wert weg, und der Saldo vergangener Monate verschöbe
+sich still. **Genau deshalb braucht der Monatsabschluss den Saldo nicht
+einzufrieren**: die Vergangenheit rechnet sich immer gleich. Die beiden
+Entscheide hängen zusammen, wer den einen kippt, kippt den anderen mit.
+
+Steht für eine Person keine Zeile, gilt `Company.weeklyHours` mit 42. Auf
+die Vorgabe zurück ist deshalb eine **neue Zeile mit dem Vorgabewert**,
+nicht das Löschen der alten: sonst verschöbe sich rückwirkend auch die
+Zeit, in der das alte Pensum galt.
+
+**Das Soll läuft in der Tagesschleife der Auswertung mit**, nicht in
+einer zweiten daneben. Wochenende, Feiertag und Absenz sind dort schon
+bestimmt, und zwei Schleifen über dieselben Tage laufen früher oder
+später auseinander. Die Regel selbst steht trotzdem in `lib/sollzeit.ts`,
+damit sie ohne Datenbank zu prüfen ist.
+
+**Der Anfangssaldo deckt die Zeit vor seinem Stichtag ab.** Tage davor
+tragen weder Soll noch Ist, sonst stünde dieselbe Zeit zweimal in der
+Rechnung. Reicht der gewählte Zeitraum davor zurück, sagt die Auswertung
+das in einem Satz: sonst geht die Rechnung scheinbar nicht auf, weil die
+Nettostunden oben mehr zeigen als der Saldo verrechnet.
+
+**Nicht zu verwechseln mit `workingDays` in `lib/dates.ts`.** Das zählt,
+wie viele Ferientage eine Absenz verbraucht, liest dabei die
+Systemzeitzone und ist dafür nicht angefasst worden. `sollzeit.ts`
+rechnet auf Kalendertagen als Zeichenkette, wie der Zeitraum und die
+Auswertung.
+
+**Ein Saldo von null kam als minus null heraus.** 8.4 lässt sich binär
+nicht genau darstellen, und `Math.round` eines winzigen negativen Rests
+ist `-0`. In der Auswertung stünde dann "-0.00 h", und das sieht nach
+einem Fehler aus, wo gerade alles aufgeht. Deshalb das `+ 0` in `runde`.
+
+Geprüft mit 14 Tests in `tests/einheit` und 17 in `tests/server`, dazu
+über HTTP gegen die Entwicklungsdaten: eine Person mit 22 Werktagen im
+September, einem Krankheitstag und acht Ferientagen kommt auf 13 mal 8.4
+gleich 109.2 Sollstunden, und der Bettag am 20. September senkt nichts,
+weil er auf einen Sonntag fällt.
+
+**Gegengeprüft, indem jede Regel einzeln ausgehängt wurde:** ohne die
+Stichtagsgrenze fällt ein Test, ohne die Wochenend- und
+Feiertagsausnahme fallen sieben.
+
+Offen bleibt die **Saldozeile in `/zeiten`** für einen selbst, siehe den
+Vorschlag in CLAUDE.md weiter unten. In der Auswertung Mitarbeitende
+steht der Saldo, und über `auswertung-blaetter.ts` auch in Excel und PDF.
+
 ### M4f, Aufbewahrung (fertig)
 
 Ein Job, der die **Löschpflichten** aus der Tabelle oben anwendet, statt
@@ -1108,54 +1181,34 @@ erscheinen im Verlauf unter "Lager". Rückwirkend zuordnen hiesse über
 einen Namensvergleich raten. Bei den wenigen Testbewegungen lohnt es
 nicht, vor dem Produktivstart ist die Tabelle ohnehin leer.
 
-### Offen: Sollstunden und Zeitsaldo
+### Sollstunden und Zeitsaldo: was entschieden ist
 
-Heute rechnet IsoPilot nur Ist-Stunden zusammen. Es gibt **kein Soll**,
-also auch keine Antwort auf "wer hat Überstunden und wer ist im Minus".
-Weder `User` noch `Company` haben ein Feld dafür, `Company` kennt bisher
-nur `defaultVacationDays`.
+Die Fragen, die hier als offen standen, sind am 15.09.2026 beantwortet
+und in M4g umgesetzt. Sie stehen hier noch, weil sich an einer Antwort
+später etwas ändern kann und man dann wissen will, warum sie so lautete.
 
-Gewollt ist: 42 Stunden je Woche als Vorgabe, anpassbar, daraus je Person
-ein laufender Saldo aus Soll und Ist.
+| Frage | Antwort |
+|---|---|
+| Wo steht das Soll? | `Company.weeklyHours` mit 42, je Person `Workload` mit Stichtag |
+| Wie wird ein Tagessoll daraus? | gleichmässig, 42 durch 5 gleich 8.4 je Werktag, auch bei Teilzeit |
+| Was zählt als erfüllt? | Feiertag, Ferien- und Krankheitstag senken das Soll, halbe Tage halb |
+| Ab wann wird gerechnet? | ab `balanceFrom`, sonst ab `employedFrom` |
+| Anfangssaldo? | ja, `User.startBalance`, für den Parallelbetrieb in M5 |
+| Was bei einer Änderung? | eine neue `Workload`-Zeile, die alte bleibt stehen |
+| Was macht der Monatsabschluss? | nichts, gerechnet wird immer neu |
+| Wo steht der Saldo? | Auswertung Mitarbeitende, samt Excel und PDF |
 
-**Erst nicht verwechseln:** `workingDays` in `src/lib/dates.ts` zählt
-Arbeitstage **ohne Wochenenden und Feiertage** und rechnet damit, wie
-viele Ferientage eine Absenz verbraucht. Das muss so bleiben, niemand
-verbraucht am Sonntag einen Ferientag. Dass an einem Samstag gebucht
-werden darf, ist eine andere Frage und heute bereits erfüllt:
-`saveTimeEntry` kennt keine Wochenend- oder Feiertagssperre. Wer das
+**Nicht zu verwechseln, das gilt weiterhin:** `workingDays` in
+`src/lib/dates.ts` zählt Arbeitstage ohne Wochenenden und Feiertage und
+rechnet damit, wie viele Ferientage eine Absenz verbraucht. Das muss so
+bleiben, niemand verbraucht am Sonntag einen Ferientag. Dass an einem
+Samstag gebucht werden darf, ist eine andere Frage und erfüllt:
+`saveTimeEntry` kennt keine Wochenend- oder Feiertagssperre, und ein
+Samstag trägt kein Soll, seine Stunden zählen aber voll. Wer das
 "flexibel machen" will, darf `workingDays` nicht anfassen.
 
-Zu entscheiden, bevor mit dem Code begonnen wird:
-
-- **Wo steht das Soll?** Naheliegend im Muster, das schon da ist:
-  `Company.weeklyHours` mit 42 als Vorgabe und `User.weeklyHours` als
-  Ausnahme je Person, genau wie `defaultVacationDays` und `vacationDays`.
-- **Wie wird ein Tagessoll daraus?** 42 geteilt durch 5 sind 8,4 Stunden.
-  Gilt das für jeden Werktag gleich, oder gibt es ein Wochenmuster, etwa
-  freitags kürzer? Bei Teilzeit dieselbe Frage.
-- **Was zählt als erfüllt?** Ein Feiertag, ein Ferientag und ein
-  Krankheitstag senken das Soll, sonst baut jeder in den Ferien Minus auf.
-  Ein halber Ferientag entsprechend halb.
-- **Ab wann wird gerechnet?** Ab `employedFrom`, oder gibt es je Person
-  einen **Anfangssaldo**? Für den Parallelbetrieb in M5 braucht es fast
-  sicher einen: die vier bringen einen Saldo aus dem alten Vorgehen mit.
-- **Was passiert bei einer Änderung?** Steigt jemand von 100 auf 80
-  Prozent, darf das vergangene Monate nicht rückwirkend verändern. Das
-  Soll braucht also ein Gültigkeitsdatum, wie `regieValidFrom` es bei den
-  Regietarifen schon hat. Siehe auch `docs/lifecycle.md`: "Eine
-  Tariferhöhung darf alte Baustellen nicht rückwirkend verändern."
-- **Was macht der Monatsabschluss?** Ein gesperrter Monat sollte seinen
-  Saldo festhalten, sonst verschiebt eine spätere Sollkorrektur die
-  Vergangenheit.
-- **Wo steht der Saldo?** Vorschlag: als Zeile in `/zeiten` für einen
-  selbst, und in der Auswertung Mitarbeitende je Person mit Soll, Ist und
-  Differenz über den gewählten Zeitraum. Vorgesetzte sehen alle, wie
-  überall sonst.
-
-Gehört der Sache nach zu M4, die Auswertung Mitarbeitende ist der Ort, wo
-der Saldo sichtbar wird. Das Datenmodell dafür fehlt aber noch ganz und
-braucht eine Migration.
+**Offen bleibt einzig die Saldozeile in `/zeiten`** für einen selbst.
+Vorgesetzte sehen den Saldo aller in der Auswertung, wie überall sonst.
 
 ### M3f, Materialbuchung verbessern (fertig)
 
