@@ -2,7 +2,14 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { setZugang, setLagerrecht, setStammdaten } from "@/server/users";
+import {
+  setZugang,
+  setLagerrecht,
+  setStammdaten,
+  setPensum,
+  loeschePensum,
+  setAnfangssaldo,
+} from "@/server/users";
 import { DatumFeld, ZahlFeld } from "@/components/ui/eingabefelder";
 
 export type Zeile = {
@@ -16,6 +23,10 @@ export type Zeile = {
   regieTariff: "A" | "B";
   employedFrom: string | null;
   employedUntil: string | null;
+  startBalance: number | null;
+  balanceFrom: string | null;
+  pensen: { id: string; validFrom: string; weeklyHours: number }[];
+  wochenstunden: number;
   letzteAnmeldung: string | null;
   kontoSeit: string;
   istIchSelbst: boolean;
@@ -26,6 +37,11 @@ const feld =
 const bez = "block text-xs font-medium text-black/60 dark:text-white/60";
 
 const datumDE = (iso: string) => iso.split("-").reverse().join(".");
+const zahl = (n: number) => n.toLocaleString("de-CH", { maximumFractionDigits: 2 });
+
+/** Ein Saldo trägt sein Vorzeichen, auch das positive: "+12.5 h" sagt
+ *  Überstunden, "12.5 h" allein liesse offen, in welche Richtung. */
+const saldoText = (n: number) => `${n > 0 ? "+" : ""}${zahl(n)} h`;
 
 export function PersonenListe({ zeilen }: { zeilen: Zeile[] }) {
   const wartend = zeilen.filter((z) => !z.isActive);
@@ -67,6 +83,7 @@ function Karte({ z }: { z: Zeile }) {
   const [laeuft, start] = useTransition();
   const [fehler, setFehler] = useState("");
   const [offen, setOffen] = useState(false);
+  const [zeitOffen, setZeitOffen] = useState(false);
   const [f, setF] = useState({
     vacationDays: z.vacationDays,
     regieTariff: z.regieTariff,
@@ -123,7 +140,8 @@ function Karte({ z }: { z: Zeile }) {
       </div>
 
       <p className="mt-2 text-sm text-black/60 dark:text-white/60">
-        {z.vacationDays} Ferientage, Regieansatz {z.regieTariff}
+        {z.vacationDays} Ferientage, {zahl(z.wochenstunden)} Stunden je Woche,
+        Regieansatz {z.regieTariff}
         {z.role === "ADMIN"
           ? ", Lager über die Rolle"
           : z.canManageStock && ", mit Lagerberechtigung"}
@@ -206,6 +224,13 @@ function Karte({ z }: { z: Zeile }) {
         >
           {offen ? "Stammdaten schliessen" : "Stammdaten bearbeiten"}
         </button>
+        <button
+          type="button"
+          onClick={() => setZeitOffen(!zeitOffen)}
+          className="h-9 px-1 underline text-black/60 dark:text-white/60"
+        >
+          {zeitOffen ? "Arbeitszeit schliessen" : "Arbeitszeit und Saldo"}
+        </button>
       </div>
 
       {offen && (
@@ -278,6 +303,181 @@ function Karte({ z }: { z: Zeile }) {
           </button>
         </form>
       )}
+
+      {zeitOffen && <Arbeitszeit z={z} lauf={lauf} laeuft={laeuft} />}
     </li>
+  );
+}
+
+/**
+ * Pensum und Anfangssaldo.
+ *
+ * Ein eigener Abschnitt neben den Stammdaten, weil hier nicht ein Feld
+ * geändert, sondern eine Liste geführt wird: je Pensumsänderung eine
+ * Zeile mit Stichtag. Die alten Zeilen bleiben, sonst verschöbe sich der
+ * Saldo vergangener Monate rückwirkend.
+ */
+function Arbeitszeit({
+  z,
+  lauf,
+  laeuft,
+}: {
+  z: Zeile;
+  lauf: (fn: () => Promise<{ ok: boolean; error?: string }>) => void;
+  laeuft: boolean;
+}) {
+  const [p, setP] = useState({ weeklyHours: z.wochenstunden, validFrom: "" });
+  const [s, setS] = useState({
+    startBalance: z.startBalance === null ? "" : String(z.startBalance),
+    balanceFrom: z.balanceFrom ?? "",
+  });
+
+  return (
+    <div className="mt-4 border-t border-black/10 pt-4 dark:border-white/15">
+      <h3 className="text-sm font-medium">Sollarbeitszeit</h3>
+      <p className="mt-1 text-xs text-black/50 dark:text-white/50">
+        Ohne eigenes Pensum gilt die Vorgabe der Firma, zu ändern unter{" "}
+        <a href="/firma" className="underline">
+          Firma
+        </a>
+        . Ein neues Pensum gilt ab seinem Stichtag, die Zeit davor bleibt
+        gerechnet wie bisher.
+      </p>
+
+      {z.pensen.length > 0 && (
+        <ul className="mt-3 space-y-1 text-sm">
+          {z.pensen.map((x) => (
+            <li key={x.id} className="flex items-center gap-3">
+              <span className="tabular-nums">
+                ab {datumDE(x.validFrom)}: {zahl(x.weeklyHours)} Stunden je Woche
+              </span>
+              <button
+                type="button"
+                disabled={laeuft}
+                onClick={() => {
+                  if (
+                    confirm(
+                      `Pensum ab ${datumDE(x.validFrom)} entfernen? Das ändert den Saldo ab diesem Tag rückwirkend.`,
+                    )
+                  )
+                    lauf(() => loeschePensum({ id: z.id, pensumId: x.id }));
+                }}
+                className="text-xs underline text-black/50 dark:text-white/50"
+              >
+                entfernen
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <form
+        className="mt-3 flex flex-wrap items-end gap-3"
+        onSubmit={(ev) => {
+          ev.preventDefault();
+          lauf(() =>
+            setPensum({
+              id: z.id,
+              weeklyHours: Number(p.weeklyHours),
+              validFrom: p.validFrom,
+            }),
+          );
+        }}
+      >
+        <label className="space-y-1">
+          <span className={bez}>Stunden je Woche</span>
+          <ZahlFeld
+            min={0}
+            max={80}
+            step={0.1}
+            wert={p.weeklyHours}
+            onWert={(n) => setP({ ...p, weeklyHours: n })}
+            className={`${feld} w-32`}
+          />
+        </label>
+        <label className="space-y-1">
+          <span className={bez}>gültig ab</span>
+          <DatumFeld
+            required
+            value={p.validFrom}
+            onChange={(e) => setP({ ...p, validFrom: e.target.value })}
+            className={`${feld} w-44`}
+          />
+        </label>
+        <button
+          type="submit"
+          disabled={laeuft || !p.validFrom}
+          className="h-10 rounded-md border border-black/15 px-3 text-sm disabled:opacity-50 dark:border-white/20"
+        >
+          Pensum eintragen
+        </button>
+      </form>
+
+      <h3 className="mt-6 text-sm font-medium">Zeitsaldo</h3>
+      <p className="mt-1 text-xs text-black/50 dark:text-white/50">
+        Ohne dieses Datum rechnet IsoPilot keinen laufenden Saldo: es weiss
+        sonst nicht, ab wann die erfassten Stunden vollständig sind. Der
+        mitgebrachte Saldo aus dem alten Vorgehen ist freiwillig, wer bei
+        null anfängt lässt ihn leer. Das Datum leeren hebt beides auf.
+      </p>
+
+      <form
+        className="mt-3 flex flex-wrap items-end gap-3"
+        onSubmit={(ev) => {
+          ev.preventDefault();
+          /* Ein leeres Saldofeld heisst "keiner mitgebracht", nicht
+             "null Stunden": `Number("")` wäre 0 und stünde nachher als
+             Anfangssaldo in der Anzeige, obwohl niemand etwas eingetragen
+             hat. Gerechnet wird mit null, angezeigt wird nichts. */
+          const saldo = s.startBalance.trim();
+          lauf(() =>
+            setAnfangssaldo({
+              id: z.id,
+              startBalance: saldo === "" ? null : Number(saldo),
+              balanceFrom: s.balanceFrom || null,
+            }),
+          );
+        }}
+      >
+        {/* Das Datum zuerst: es ist die Bedingung, der Saldo daneben die
+            Kür. Andersherum gelesen sah es aus, als ginge es ohne Saldo
+            gar nicht, und genau daran ist im Betrieb jemand
+            hängengeblieben. */}
+        <label className="space-y-1">
+          <span className={bez}>IsoPilot rechnet ab</span>
+          <DatumFeld
+            value={s.balanceFrom}
+            onChange={(e) => setS({ ...s, balanceFrom: e.target.value })}
+            className={`${feld} w-44`}
+          />
+        </label>
+        <label className="space-y-1">
+          <span className={bez}>mitgebrachter Saldo, freiwillig</span>
+          {/* Ein gewöhnliches Feld, kein ZahlFeld: hier gehört ein Minus
+              hinein, und ein Minus ist beim Tippen zwischendurch eine
+              unvollständige Zahl. */}
+          <input
+            inputMode="decimal"
+            placeholder="z. B. -4.5"
+            value={s.startBalance}
+            onChange={(e) => setS({ ...s, startBalance: e.target.value })}
+            className={`${feld} w-40`}
+          />
+        </label>
+        <button
+          type="submit"
+          disabled={laeuft}
+          className="h-10 rounded-md border border-black/15 px-3 text-sm disabled:opacity-50 dark:border-white/20"
+        >
+          Speichern
+        </button>
+        {z.balanceFrom && (
+          <span className="h-10 leading-10 text-sm text-black/60 dark:text-white/60">
+            Rechnet ab {datumDE(z.balanceFrom)}
+            {z.startBalance !== null && `, mit ${saldoText(z.startBalance)}`}
+          </span>
+        )}
+      </form>
+    </div>
   );
 }

@@ -10,6 +10,13 @@ import { netHours } from "@/lib/dates";
 import { holidayMap } from "@/lib/holidays";
 import type { SessionUser } from "@/lib/session";
 import { istWochenende, tageIn, type Zeitraum } from "@/lib/zeitraum";
+import {
+  type Pensum,
+  type Tagesangabe,
+  saldo as rechneSaldo,
+  sollSumme,
+  wochenstundenAm,
+} from "@/lib/sollzeit";
 
 const isoUtc = (d: Date) => d.toISOString().slice(0, 10);
 
@@ -47,6 +54,32 @@ export type PersonAuswertung = {
   offeneTage: number;
   proBaustelle: BaustellenAnteil[];
   positionen: Einzelposition[];
+  /** Soll und Saldo. Siehe `lib/sollzeit.ts` für die Regeln. */
+  soll: Sollrechnung;
+};
+
+export type Sollrechnung = {
+  /** Geschuldete Stunden im Zeitraum, Absenzen und Feiertage abgezogen. */
+  sollstunden: number;
+  /** Geleistete Stunden, die dem Soll gegenüberstehen. Gleich den
+   *  Nettostunden, ausser der Zeitraum reicht vor den Stichtag des
+   *  Anfangssaldos zurück. */
+  iststunden: number;
+  /** Saldo im Zeitraum allein, ohne Anfangssaldo: Ist minus Soll. */
+  saldoZeitraum: number;
+  /** Anfangssaldo aus dem alten Vorgehen, null wenn keiner gesetzt ist. */
+  anfangssaldo: number | null;
+  /** Ab wann der Anfangssaldo gilt, null wenn keiner gesetzt ist. */
+  anfangssaldoAb: string | null;
+  /** Wochenstunden am letzten Tag des Zeitraums, für die Anzeige. */
+  wochenstunden: number;
+  /** Hat die Person im Zeitraum das Pensum gewechselt? */
+  pensumWechselt: boolean;
+  /** Reicht der Zeitraum vor den Stichtag des Anfangssaldos zurück?
+   *  Dann tragen die Tage davor weder Soll noch Ist: der Anfangssaldo
+   *  deckt sie schon ab, und sie zweimal zu zählen wäre falsch. Die
+   *  Anzeige sagt das, sonst geht die Rechnung scheinbar nicht auf. */
+  abStichtagGekuerzt: boolean;
 };
 
 const hhmm = (d: Date | null, zeit: string) =>
@@ -69,7 +102,20 @@ export async function auswertungPerson(
 
   const person = await db.user.findUnique({
     where: { id: personId },
-    select: { id: true, name: true, companyId: true },
+    select: {
+      id: true,
+      name: true,
+      companyId: true,
+      employedFrom: true,
+      employedUntil: true,
+      startBalance: true,
+      balanceFrom: true,
+      workloads: {
+        select: { validFrom: true, weeklyHours: true },
+        orderBy: { validFrom: "asc" },
+      },
+      company: { select: { weeklyHours: true } },
+    },
   });
   if (!person || person.companyId !== user.companyId) throw new Error("FORBIDDEN");
 
@@ -139,28 +185,90 @@ export async function auswertungPerson(
 
   const erfassteTage = new Set(eintraege.map((e) => isoUtc(e.workDate)));
 
+  /* Das Soll läuft in derselben Schleife mit, statt in einer zweiten
+   * daneben: Wochenende, Feiertag und Absenz sind hier schon bestimmt,
+   * und zwei Schleifen über dieselben Tage laufen früher oder später
+   * auseinander. Gerechnet wird über `tagessoll` in lib/sollzeit.ts,
+   * damit die Regel an einer Stelle steht und ohne Datenbank zu prüfen
+   * ist. */
+  const pensen: Pensum[] = person.workloads.map((w) => ({
+    validFrom: isoUtc(w.validFrom),
+    weeklyHours: Number(w.weeklyHours),
+  }));
+  const vorgabe = Number(person.company.weeklyHours);
+  const eintritt = person.employedFrom ? isoUtc(person.employedFrom) : null;
+  const austritt = person.employedUntil ? isoUtc(person.employedUntil) : null;
+  const saldoAb = person.balanceFrom ? isoUtc(person.balanceFrom) : null;
+
+  const sollTage: Tagesangabe[] = [];
+  let istImSaldo = 0;
+  const gesehenePensen = new Set<number>();
+
+  /* Ist je Tag, damit sich der Anfangssaldo auf denselben Ausschnitt
+   * bezieht wie das Soll. Wochenendstunden zählen voll mit: sie tragen
+   * kein Soll, sind aber geleistet. */
+  const istJeTag = new Map<string, number>();
+  for (const e of eintraege) {
+    const t = isoUtc(e.workDate);
+    istJeTag.set(t, (istJeTag.get(t) ?? 0) + netHours(e.startedAt, e.endedAt, e.breakMinutes));
+  }
+
   for (const tag of tageIn(zeitraum)) {
     const wochenende = istWochenende(tag);
     const feiertag = feiertage.has(tag);
+
+    const absenz = absenzen.find(
+      (a) => isoUtc(a.startDate) <= tag && isoUtc(a.endDate) >= tag,
+    );
+    const absenzAnteil = absenz ? (absenz.isHalfDay ? 0.5 : 1) : 0;
+
+    /* Vor dem Eintritt und nach dem Austritt gibt es kein Soll. Ohne
+     * Eintrittsdatum gilt der ganze Zeitraum, wie beim Ferienanspruch:
+     * dass es fehlt, meldet bereits `/personen`. */
+    const beschaeftigt =
+      (!eintritt || tag >= eintritt) && (!austritt || tag <= austritt);
+
+    /* Der Anfangssaldo deckt alles davor ab. Tage vor seinem Stichtag
+     * dürfen deshalb weder ins Soll noch ins Ist, sonst zählte dieselbe
+     * Zeit zweimal. */
+    const imSaldo = !saldoAb || tag >= saldoAb;
+
+    if (imSaldo) {
+      if (beschaeftigt && !wochenende && !feiertag)
+        gesehenePensen.add(wochenstundenAm(tag, pensen, vorgabe));
+      sollTage.push({ tag, wochenende, feiertag, absenzAnteil, beschaeftigt });
+      istImSaldo += istJeTag.get(tag) ?? 0;
+    }
+
     if (feiertag && !wochenende) feiertageImZeitraum += 1;
     if (wochenende || feiertag) continue;
 
     werktage += 1;
 
-    const absenz = absenzen.find(
-      (a) => isoUtc(a.startDate) <= tag && isoUtc(a.endDate) >= tag,
-    );
     if (absenz) {
-      const anteil = absenz.isHalfDay ? 0.5 : 1;
-      if (absenz.type === "VACATION") ferientage += anteil;
-      else if (absenz.type === "SICK") krankheitstage += anteil;
-      else uebrigeAbsenztage += anteil;
+      if (absenz.type === "VACATION") ferientage += absenzAnteil;
+      else if (absenz.type === "SICK") krankheitstage += absenzAnteil;
+      else uebrigeAbsenztage += absenzAnteil;
     }
 
     // Ein halber Absenztag deckt den Tag nicht ganz: die andere Hälfte
     // wurde gearbeitet und gehört erfasst.
     if (!erfassteTage.has(tag) && !(absenz && !absenz.isHalfDay)) offeneTage += 1;
   }
+
+  const sollstunden = sollSumme(sollTage, pensen, vorgabe);
+  const soll: Sollrechnung = {
+    sollstunden,
+    iststunden: runde(istImSaldo),
+    saldoZeitraum: rechneSaldo(0, istImSaldo, sollstunden),
+    anfangssaldo: person.startBalance === null ? null : Number(person.startBalance),
+    anfangssaldoAb: saldoAb,
+    // Das Pensum am letzten Tag des Zeitraums: danach fragt, wer wissen
+    // will, womit gerade gerechnet wird.
+    wochenstunden: wochenstundenAm(zeitraum.bis, pensen, vorgabe),
+    pensumWechselt: gesehenePensen.size > 1,
+    abStichtagGekuerzt: saldoAb !== null && saldoAb > zeitraum.von,
+  };
 
   return {
     person: { id: person.id, name: person.name },
@@ -178,6 +286,7 @@ export async function auswertungPerson(
       .map((b) => ({ ...b, stunden: runde(b.stunden) }))
       .sort((a, b) => b.stunden - a.stunden),
     positionen,
+    soll,
   };
 }
 

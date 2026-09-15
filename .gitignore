@@ -33,3 +33,7 @@ coverage/
 
 # Zwischenspeicher von Vitest, entsteht beim Lauf mit Berichtsausgabe.
 .vitest/
+
+# Playwright
+/test-results/
+/playwright-report/

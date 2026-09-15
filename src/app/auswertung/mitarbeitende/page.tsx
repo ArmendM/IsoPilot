@@ -173,6 +173,22 @@ export default async function AuswertungPersonPage({
           <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <Kachel titel="Nettostunden" wert={formatHours(a.nettostunden)} />
             <Kachel
+              titel="Sollstunden"
+              wert={formatHours(a.soll.sollstunden)}
+              hinweis={`${zahl(a.soll.wochenstunden)} Stunden je Woche${
+                a.soll.pensumWechselt ? ", im Zeitraum gewechselt" : ""
+              }`}
+            />
+            <Kachel
+              titel="Saldo im Zeitraum"
+              wert={saldoText(a.soll.saldoZeitraum)}
+              hinweis={
+                a.soll.anfangssaldo !== null
+                  ? `Dazu ${saldoText(a.soll.anfangssaldo)} Anfangssaldo per ${stichtag(a.soll.anfangssaldoAb)}`
+                  : "Ist minus Soll, ohne Anfangssaldo"
+              }
+            />
+            <Kachel
               titel="Tage mit Erfassung"
               wert={`${a.tageMitErfassung} von ${a.werktage} Werktagen`}
             />
@@ -189,6 +205,16 @@ export default async function AuswertungPersonPage({
               hinweis={`${a.feiertage} Feiertage im Zeitraum`}
             />
           </dl>
+
+          {a.soll.abStichtagGekuerzt && (
+            <p className="mt-4 rounded-md border border-black/10 p-3 text-sm text-black/60 dark:border-white/15 dark:text-white/60">
+              Soll und Saldo werden erst ab dem{" "}
+              {stichtag(a.soll.anfangssaldoAb)} gerechnet, dem Stichtag des
+              Anfangssaldos. Die Zeit davor steckt im Anfangssaldo und wäre
+              sonst doppelt gezählt. In den Nettostunden oben ist der ganze
+              Zeitraum enthalten, im Saldo {formatHours(a.soll.iststunden)}.
+            </p>
+          )}
 
           {a.offeneTage > 0 && (
             <p className="mt-4 rounded-md border border-amber-400 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200">
@@ -314,6 +340,15 @@ export default async function AuswertungPersonPage({
     </main>
   );
 }
+
+/** Ein Saldo trägt sein Vorzeichen, auch das positive: "+12.50 h" sagt
+ *  Überstunden, "12.50 h" allein liesse offen, in welche Richtung. */
+function saldoText(stunden: number): string {
+  return `${stunden > 0 ? "+" : ""}${zahl(stunden)} h`;
+}
+
+/** Ohne eigenen Stichtag gilt der Anfangssaldo ab dem Eintritt. */
+const stichtag = (iso: string | null) => (iso ? datumDE(iso) : "Eintritt");
 
 function Kachel({
   titel,
