@@ -420,17 +420,21 @@ model TimeEntry {
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime? // Soft Delete, damit Korrekturen nachvollziehbar bleiben
 
-  /* Aufbewahrung 10 Jahre nach OR 958f. Eine generierte Spalte, angelegt
-   * in der Migration `zeiteintrag_aufbewahrung_generiert`:
-   *   GENERATED ALWAYS AS (("workDate" + INTERVAL '10 years')::date) STORED
-   * Prisma kennt das nicht und führt sie als gewöhnliche Spalte. Sie
-   * wird deshalb nie geschrieben, nur gelesen, und braucht keine
-   * Schreibdisziplin: der Wert ergibt sich aus `workDate`.
+  /* Bis wann der Eintrag aufzubewahren ist: 10 Jahre nach OR 958f.
    *
-   * Bis M4f stand hier dasselbe als Absicht, das SQL dazu gab es aber
-   * nie. Die Spalte war auf jeder Zeile null und der Aufbewahrungsjob
-   * löschte still nichts. */
-  deleteAfter DateTime? @db.Date
+   * **Eine Frist, kein Auftrag.** OR 958f sagt, wie lange etwas dableiben
+   * muss, nicht wann es weg soll. Nichts löscht auf diesen Wert hin, und
+   * das soll auch so bleiben: wer Geschäftsunterlagen wegräumen will,
+   * entscheidet das im Betrieb, nicht ein nächtlicher Job. Die Spalte
+   * sagt nur, ab wann das überhaupt zulässig wäre.
+   *
+   * Eine generierte Spalte, angelegt in der Migration
+   * `zeiteintrag_aufbewahrung_generiert`:
+   *   GENERATED ALWAYS AS (("workDate" + INTERVAL '10 years')::date) STORED
+   * Prisma kennt das nicht und führt sie als gewöhnliche Spalte. Sie wird
+   * deshalb nie geschrieben, nur gelesen, und der Wert ergibt sich aus
+   * `workDate`, auch auf Zeilen, die längst da waren. */
+  keepUntil DateTime? @db.Date
 
   user      User  @relation("EntryOwner", fields: [userId], references: [id])
   createdBy User  @relation("EntryAuthor", fields: [createdById], references: [id])
@@ -440,7 +444,7 @@ model TimeEntry {
   // aufgeteilt werden kann. Die Überschneidungsprüfung erfolgt im Service.
   @@index([userId, workDate])
   @@index([siteId, workDate])
-  @@index([deleteAfter])
+  @@index([keepUntil])
 }
 
 // ─────────────────────────────────────────────────────────────

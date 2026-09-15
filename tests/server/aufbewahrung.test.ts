@@ -4,11 +4,10 @@ import { firma, person } from "./hilfen";
 
 /* Die Aufbewahrung, M4f, gegen ein echtes Postgres.
  *
- * Diese Schicht ist hier die einzige, die etwas beweist: die
- * Zehnjahresfrist am Zeiteintrag hängt an einer generierten Spalte in
- * Postgres, und die gibt es in keinem Test ohne Datenbank. Genau dort
- * lag der Fehler, den M4f gefunden hat: das Schema beschrieb die Spalte,
- * die Migration legte sie nie an, und der Job löschte still nichts.
+ * Der wichtigste Test hier ist der, der nachweist, dass **nichts**
+ * geschieht: ein Zeiteintrag von vor zwanzig Jahren bleibt stehen. Zehn
+ * Jahre nach OR 958f sind eine Pflicht zum Aufbewahren, nicht einer zum
+ * Löschen, und ein Job, der das verwechselt, tut es unwiederbringlich.
  *
  * Die Zeit wird nicht eingefroren, sondern als Wert hineingereicht:
  * `aufbewahrungAnwenden(jetzt)`. Ein Job, dem man das Jetzt sagen kann,
@@ -71,43 +70,50 @@ async function aufbau() {
 }
 
 describe("Zeiteinträge, zehn Jahre", () => {
-  it("löscht, was älter als zehn Jahre ist, und lässt den Rest stehen", async () => {
+  it("löscht nichts, auch wenn die Frist längst abgelaufen ist", async () => {
+    /* Der wichtigste Test dieser Datei, und er hält ein Nichtstun fest.
+     *
+     * OR 958f sagt, wie lange Geschäftsunterlagen dableiben müssen, nicht
+     * wann sie weg sollen. Ein Job, der nach zehn Jahren löscht, erfindet
+     * eine Pflicht, die es nicht gibt. Wann alte Stunden gehen,
+     * entscheidet der Betrieb.
+     *
+     * Ein früherer Anlauf in M4f hat genau das verwechselt und gelöscht. */
     const { liridon } = await aufbau();
 
-    // Genau an der Grenze: der Tag vor zehn Jahren und einem Tag ist weg,
-    // der Tag vor zehn Jahren minus einem Tag bleibt.
-    const weg = await zeiteintrag(liridon.id, "2016-09-14");
-    const bleibt = await zeiteintrag(liridon.id, "2016-09-16");
+    const uralt = await zeiteintrag(liridon.id, "2006-01-02");
+    const knappDrueber = await zeiteintrag(liridon.id, "2016-09-14");
     const heute = await zeiteintrag(liridon.id, "2026-09-14");
 
-    const lauf = await aufbewahrungAnwenden(HEUTE);
-    expect(lauf.zeiteintraege).toBe(1);
+    await aufbewahrungAnwenden(HEUTE);
 
-    expect(await db.timeEntry.findUnique({ where: { id: weg.id } })).toBeNull();
-    expect(await db.timeEntry.findUnique({ where: { id: bleibt.id } })).not.toBeNull();
-    expect(await db.timeEntry.findUnique({ where: { id: heute.id } })).not.toBeNull();
+    for (const e of [uralt, knappDrueber, heute])
+      expect(await db.timeEntry.findUnique({ where: { id: e.id } })).not.toBeNull();
+    expect(await db.timeEntry.count()).toBe(3);
   });
 
-  it("füllt die Frist von selbst, ohne dass sie jemand schreibt", async () => {
-    /* Der Kern des Befunds aus M4f. Vorher war `deleteAfter` eine
-     * gewöhnliche Spalte, die niemand setzte: sie stand auf jeder Zeile
-     * auf null, und die Bedingung des Jobs traf nie zu. Als generierte
-     * Spalte ergibt sie sich aus `workDate`, und es gibt keinen
-     * Schreibpfad, der sie vergessen kann. */
+  it("trägt die Frist von selbst am Eintrag, ohne dass sie jemand schreibt", async () => {
+    /* `keepUntil` sagt, bis wann aufzubewahren ist, und ist Auskunft,
+     * kein Auftrag. Als generierte Spalte ergibt sie sich aus
+     * `workDate`: es gibt keinen Schreibpfad, der sie vergessen kann.
+     *
+     * Bis M4f stand dasselbe nur als Absicht im Schema, das SQL dazu gab
+     * es nie, und die Spalte war auf jeder Zeile null. */
     const { liridon } = await aufbau();
     const e = await zeiteintrag(liridon.id, "2026-09-14");
 
     const frisch = await db.timeEntry.findUniqueOrThrow({ where: { id: e.id } });
-    expect(frisch.deleteAfter).not.toBeNull();
-    expect(frisch.deleteAfter?.toISOString().slice(0, 10)).toBe("2036-09-14");
+    expect(frisch.keepUntil).not.toBeNull();
+    expect(frisch.keepUntil?.toISOString().slice(0, 10)).toBe("2036-09-14");
   });
 });
 
 describe("Krankheitsnotizen, 18 Monate", () => {
   it("leert die Notiz und lässt den Eintrag stehen", async () => {
-    /* Dass jemand krank war, ist eine Tatsache und bleibt zehn Jahre.
-     * Warum er krank war, sind besonders schützenswerte Personendaten
-     * nach revDSG und gehen nach 18 Monaten. */
+    /* Dass jemand krank war, ist eine Tatsache und gehört zu den
+     * Geschäftsunterlagen. Warum er krank war, sind besonders
+     * schützenswerte Personendaten nach revDSG und gehen nach
+     * 18 Monaten. */
     const { liridon } = await aufbau();
     const alt = await krankmeldung(liridon.id, "2025-01-10", "2026-07-10");
     const neu = await krankmeldung(liridon.id, "2026-08-01", "2028-02-01");
@@ -200,7 +206,7 @@ describe("Sitzungen", () => {
 describe("Der Lauf als Ganzes", () => {
   it("ist wiederholbar: der zweite Lauf ändert nichts mehr", async () => {
     const { c, liridon } = await aufbau();
-    await zeiteintrag(liridon.id, "2016-01-01");
+    const alterEintrag = await zeiteintrag(liridon.id, "2016-01-01");
     await krankmeldung(liridon.id, "2025-01-10", "2026-07-10");
     await protokoll(c.id, liridon.id, "LOGIN_OIDC", "2026-01-01");
     await db.session.create({
@@ -213,18 +219,19 @@ describe("Der Lauf als Ganzes", () => {
     });
 
     expect(await aufbewahrungAnwenden(HEUTE)).toEqual({
-      zeiteintraege: 1,
       krankheitsnotizen: 1,
       anmeldeprotokolle: 1,
       sitzungen: 1,
     });
 
     expect(await aufbewahrungAnwenden(HEUTE)).toEqual({
-      zeiteintraege: 0,
       krankheitsnotizen: 0,
       anmeldeprotokolle: 0,
       sitzungen: 0,
     });
+
+    // Der alte Zeiteintrag steht auch nach zwei Läufen noch.
+    expect(await db.timeEntry.findUnique({ where: { id: alterEintrag.id } })).not.toBeNull();
   });
 
   it("lässt eine frische Datenbank unberührt", async () => {
@@ -234,7 +241,6 @@ describe("Der Lauf als Ganzes", () => {
     await protokoll(c.id, liridon.id, "LOGIN_OIDC", "2026-09-14");
 
     expect(await aufbewahrungAnwenden(HEUTE)).toEqual({
-      zeiteintraege: 0,
       krankheitsnotizen: 0,
       anmeldeprotokolle: 0,
       sitzungen: 0,

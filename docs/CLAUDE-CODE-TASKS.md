@@ -134,11 +134,16 @@ Validierung: Retention-Tests mit eingefrorener Zeit und Cron-Smoke-Test.
 
 Erledigt in M4f. Die Fristen stehen in `src/lib/aufbewahrung.ts`, der Job
 in `src/server/aufbewahrung.ts`. Anmeldeprotokolle sind ueber eine
-ausgeschriebene Liste von Audit-Aktionen von den zehnjaehrigen
-Geschaeftsdaten getrennt, nicht ueber ein Namensmuster: `LOCKED` und
-`UNLOCKED` sind Monatsabschluesse und muessen bleiben. Dabei kam heraus,
-dass `TimeEntry.deleteAfter` nie befuellt war und die Zehnjahresfrist
-darum nie gegriffen hat; die Spalte ist jetzt eine generierte Spalte.
+ausgeschriebene Liste von Audit-Aktionen von den Geschaeftsdaten
+getrennt, nicht ueber ein Namensmuster: `LOCKED` und `UNLOCKED` sind
+Monatsabschluesse und muessen bleiben.
+
+Der Job wendet nur Loeschpflichten an. Die zehn Jahre nach OR 958f sind
+eine Aufbewahrungspflicht: sie sagen, wie lange etwas dableiben muss,
+nicht wann es weg soll, und nichts loescht darauf hin. Am Zeiteintrag
+steht die Frist als `TimeEntry.keepUntil`, als Auskunft. Sie war bis M4f
+gar nicht befuellt, obwohl das Schema sie beschrieb; jetzt ist es eine
+generierte Spalte.
 
 ## Bewusst zurueckgestellt
 

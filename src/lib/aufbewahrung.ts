@@ -2,22 +2,38 @@
  * React. Verbindlich ist die Tabelle in CLAUDE.md, Abschnitt
  * "Aufbewahrung". Was hier steht, ist die Umsetzung davon.
  *
- * | Daten                                | Frist     |
- * |--------------------------------------|-----------|
- * | Zeiteinträge, Ferien, Audit-Log      | 10 Jahre  |
- * | Absenz "krank" als Tatsache          | 10 Jahre  |
- * | Notiz oder Grund zur Krankheit       | 18 Monate |
- * | Sitzungen und Anmeldeprotokolle      | 90 Tage   |
+ * **Zwei verschiedene Arten von Frist, und sie zeigen in entgegengesetzte
+ * Richtungen.** Das auseinanderzuhalten ist der ganze Punkt dieser Datei:
+ *
+ * | Daten                           | Frist     | Art                    |
+ * |---------------------------------|-----------|------------------------|
+ * | Zeiteinträge, Ferien, Audit-Log | 10 Jahre  | mindestens aufbewahren |
+ * | Absenz "krank" als Tatsache     | 10 Jahre  | mindestens aufbewahren |
+ * | Notiz oder Grund zur Krankheit  | 18 Monate | spätestens löschen     |
+ * | Sitzungen, Anmeldeprotokolle    | 90 Tage   | spätestens löschen     |
+ *
+ * OR 958f sagt, wie lange Geschäftsunterlagen dableiben **müssen**, nicht
+ * wann sie weg **sollen**. Ein Job, der nach zehn Jahren löscht, erfindet
+ * eine Pflicht, die es nicht gibt, und tut es unwiederbringlich. Wann
+ * alte Unterlagen gehen, entscheidet der Betrieb.
+ *
+ * revDSG zeigt andersherum: Gesundheitsdaten und Anmeldespuren sind
+ * spätestens dann zu löschen. Nur diese Fristen wendet
+ * `server/aufbewahrung.ts` von selbst an.
  */
 
-/** Anmeldeprotokolle und Sitzungen, in Tagen. */
+/** Anmeldeprotokolle und Sitzungen, in Tagen. Spätestens dann löschen. */
 export const ANMELDUNG_TAGE = 90;
 
 /** Krankheitsnotizen, in Monaten. Besonders schützenswerte Personendaten
- *  nach revDSG, deshalb kürzer als der Absenzeintrag selbst. */
+ *  nach revDSG, deshalb kürzer als der Absenzeintrag selbst.
+ *  Spätestens dann löschen. */
 export const KRANKHEITSNOTIZ_MONATE = 18;
 
-/** Geschäftsdaten nach OR 958f, in Jahren. */
+/** Geschäftsdaten nach OR 958f, in Jahren. **Mindestens** so lange
+ *  aufbewahren. Danach ist Wegräumen zulässig, aber nichts tut es von
+ *  selbst: `TimeEntry.keepUntil` trägt diese Frist und ist Auskunft,
+ *  kein Auftrag. */
 export const GESCHAEFTSDATEN_JAHRE = 10;
 
 /**

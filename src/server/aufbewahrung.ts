@@ -1,10 +1,21 @@
 import { db } from "@/lib/db";
 import { anmeldungGrenze, ANMELDEPROTOKOLLE } from "@/lib/aufbewahrung";
 
-/* Die Aufbewahrung, M4f. Ein Job, der alle Fristen aus CLAUDE.md
- * anwendet, und nicht vier Stellen, die je eine kennen.
+/* Die Aufbewahrung, M4f. Ein Job, der die Löschpflichten aus CLAUDE.md
+ * anwendet, und nicht drei Stellen, die je eine kennen.
  *
- * Er läuft jede Nacht und ist **wiederholbar**: gelöscht wird, was über
+ * **Er löscht nur, wo eine Pflicht zu löschen besteht.** Die zehn Jahre
+ * nach OR 958f sind das Gegenteil davon: sie sagen, wie lange
+ * Geschäftsunterlagen dableiben müssen, nicht wann sie weg sollen.
+ * Zeiteinträge, Absenzen als Tatsache und die fachlichen Einträge im
+ * Audit-Log rührt dieser Job deshalb nicht an, auch nach zehn Jahren
+ * nicht. Wann sie gehen, entscheidet der Betrieb, nicht eine Nacht.
+ * `TimeEntry.keepUntil` sagt nur, ab wann das überhaupt zulässig wäre.
+ *
+ * Gelöscht wird, wo revDSG es verlangt: die Notiz zu einer Krankheit
+ * nach 18 Monaten, und Anmeldeprotokolle und Sitzungen nach 90 Tagen.
+ *
+ * Er läuft jede Nacht und ist **wiederholbar**: geräumt wird, was über
  * einer Grenze liegt, nie "was seit dem letzten Mal dazugekommen ist".
  * Ein zweiter Lauf am selben Tag findet nichts mehr und ändert nichts.
  * Das ist der Grund, warum es keinen Merker für den letzten Lauf gibt:
@@ -13,12 +24,10 @@ import { anmeldungGrenze, ANMELDEPROTOKOLLE } from "@/lib/aufbewahrung";
  *
  * Die Zählung geht in die Antwort und in die Ausgabe. Der Cron-Aufruf
  * steht in `deploy/systemd/isopilot-cron.service`, die Ausgabe landet
- * damit im Journal: dort steht nachher, wie viel wann gelöscht wurde.
+ * damit im Journal: dort steht nachher, wie viel wann geräumt wurde.
  */
 
 export type Aufbewahrungslauf = {
-  /** Zeiteinträge, deren Zehnjahresfrist abgelaufen ist. */
-  zeiteintraege: number;
   /** Krankheitsnotizen, geleert nach 18 Monaten. Der Eintrag bleibt. */
   krankheitsnotizen: number;
   /** Anmeldeprotokolle im Audit-Log, gelöscht nach 90 Tagen. */
@@ -36,15 +45,11 @@ export async function aufbewahrungAnwenden(
    * liesse sich später nicht mehr von einem vollständigen
    * unterscheiden, und die Zählung in der Ausgabe stimmte nicht mehr
    * mit dem überein, was in der Datenbank steht. */
-  const [zeit, notizen, anmeldungen, sitzungen] = await db.$transaction([
-    /* Die Frist steht als generierte Spalte am Eintrag, abgeleitet aus
-     * `workDate`. Sie braucht deshalb keine Pflege beim Schreiben, und
-     * es gibt keinen Pfad, der sie vergessen kann. */
-    db.timeEntry.deleteMany({ where: { deleteAfter: { lt: jetzt } } }),
-
-    /* Nur die Notiz wird geleert, der Absenzeintrag bleibt zehn Jahre:
-     * dass jemand krank war, ist die Tatsache, warum er krank war sind
-     * besonders schützenswerte Personendaten nach revDSG.
+  const [notizen, anmeldungen, sitzungen] = await db.$transaction([
+    /* Nur die Notiz wird geleert, der Absenzeintrag bleibt: dass jemand
+     * krank war, ist die Tatsache und gehört zu den Geschäftsunterlagen,
+     * warum er krank war sind besonders schützenswerte Personendaten
+     * nach revDSG.
      *
      * `note: { not: null }` ist keine Zierde: ohne das zählte jeder Lauf
      * dieselben, längst geleerten Einträge noch einmal mit, und die
@@ -56,7 +61,7 @@ export async function aufbewahrungAnwenden(
 
     /* Anmeldeprotokolle nach 90 Tagen. Die Liste der Aktionen steht in
      * lib/aufbewahrung.ts und ist ausgeschrieben, nicht geraten: was
-     * hier zu viel stünde, wären zehn Jahre Geschäftsdaten, die niemand
+     * hier zu viel stünde, wären Geschäftsdaten, die niemand
      * zurückholen kann. */
     db.auditLog.deleteMany({
       where: { action: { in: [...ANMELDEPROTOKOLLE] }, createdAt: { lt: grenze } },
@@ -68,7 +73,6 @@ export async function aufbewahrungAnwenden(
   ]);
 
   const lauf: Aufbewahrungslauf = {
-    zeiteintraege: zeit.count,
     krankheitsnotizen: notizen.count,
     anmeldeprotokolle: anmeldungen.count,
     sitzungen: sitzungen.count,
