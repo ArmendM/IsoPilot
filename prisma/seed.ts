@@ -19,11 +19,11 @@ async function main() {
    * Es ist die massgebende Quelle, und diese Angaben stehen später auf
    * Offerten und Rechnungen.
    *
-   * Anders als beim Material stehen sie auch im update-Zweig: eine
-   * berichtigte UID soll ein erneuter Seed durchsetzen, sonst bleibt in
-   * einer laufenden Datenbank die falsche stehen. Gewachsene Zahlen wie
-   * der Lagerbestand werden davon nicht berührt, die stehen weiterhin
-   * nur im create-Zweig. */
+   * Nur im create-Zweig, wie der Lagerbestand. Seit M4e werden sie unter
+   * /firma gepflegt: stünden sie auch im update-Zweig, setzte der
+   * nächste Seed eine dort berichtigte Telefonnummer stillschweigend
+   * zurück, und niemand suchte den Grund beim Seed. Der Seed legt an,
+   * gepflegt wird in der Oberfläche. */
   const firmendaten = {
     name: "IsoTeam Suljejmani GmbH",
     street: "Gerliswilstrasse 68",
@@ -40,7 +40,7 @@ async function main() {
 
   const company = await db.company.upsert({
     where: { id: "isoteam" },
-    update: firmendaten,
+    update: {},
     create: {
       id: "isoteam",
       ...firmendaten,

@@ -7,6 +7,7 @@
  * Kein React und kein Prisma: die Beschreibung ist gewöhnliche Daten,
  * die Auswertungen füllen sie, diese Datei macht daraus eine Datei. */
 import ExcelJS from "exceljs";
+import { einpassen } from "@/lib/bildmass";
 import type { Firmenkopf } from "@/server/pdf";
 
 export type Spaltenart = "text" | "zahl" | "stunden" | "franken" | "datum";
@@ -104,7 +105,14 @@ export async function mappe(blaetter: Blatt[], firma?: Firmenkopf): Promise<Buff
   /* Das Bild einmal an die Mappe hängen und je Blatt einsetzen. Zweimal
    * hinzufügen legte es auch zweimal in die Datei. */
   let bildId: number | undefined;
-  if (firma?.logo) {
+  /* Die Box, in die das Logo kommt, in Punkten. Eingepasst wird darin
+   * nach dem Seitenverhältnis: exceljs richtet sich nicht selbst nach
+   * dem Bild, und ein festes Mass zöge ein hochkantes Logo in die Breite
+   * der Wortmarke. Das fällt erst auf dem gedruckten Blatt auf. */
+  const box = { breite: 200, hoehe: 30 };
+  let bild = box;
+
+  if (firma?.logo && firma.logoMass) {
     try {
       /* Die Umleitung über `unknown`: exceljs erwartet ein
        * `Buffer<ArrayBuffer>`, und `Buffer` ist in @types/node inzwischen
@@ -112,8 +120,10 @@ export async function mappe(blaetter: Blatt[], firma?: Firmenkopf): Promise<Buff
        * Objekt. */
       bildId = wb.addImage({
         buffer: firma.logo as unknown as Parameters<typeof wb.addImage>[0]["buffer"],
-        extension: "png",
+        // Die Endung aus den Bytes, nicht aus dem gemeldeten Typ.
+        extension: firma.logoMass.typ === "image/jpeg" ? "jpeg" : "png",
       });
+      bild = einpassen(firma.logoMass, box);
     } catch {
       bildId = undefined; // ein unbrauchbares Bild darf die Mappe nicht verhindern
     }
@@ -127,7 +137,10 @@ export async function mappe(blaetter: Blatt[], firma?: Firmenkopf): Promise<Buff
        * Reihenfolge wie im PDF. Die Wortmarke liegt über den Zellen und
        * verschiebt nichts, die Zeilen darunter halten den Platz frei. */
       if (bildId !== undefined)
-        ws.addImage(bildId, { tl: { col: 0, row: 0 }, ext: { width: 200, height: 30 } });
+        ws.addImage(bildId, {
+          tl: { col: 0, row: 0 },
+          ext: { width: bild.breite, height: bild.hoehe },
+        });
       ws.getRow(1).height = 26;
       const zeile2 = ws.addRow([firma.name]);
       zeile2.getCell(1).font = { name: SCHRIFT, bold: true, color: { argb: TINTE } };

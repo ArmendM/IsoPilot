@@ -26,7 +26,18 @@ model Company {
   vatNumber           String?
   phone               String?
   email               String?
-  logoPath            String? // Pfad im Objektspeicher, nicht die Datei selbst
+  /* Das Logo für Briefkopf, Bericht und Beleg, hochgeladen unter
+   * /firma. Es liegt als Bytes an der Firma und nicht als Datei auf dem
+   * Volume: `deploy/scripts/backup.sh` zieht einen pg_dump und sonst
+   * nichts. Eine Datei daneben wäre in keiner Sicherung, und eine
+   * Wiederherstellung gäbe alle Zahlen zurück, aber keinen Briefkopf.
+   * Es ist eine Datei je Firma, keine Ablage.
+   *
+   * Steht hier nichts, nimmt der Bericht die Wortmarke aus
+   * `public/marke`, siehe server/firma-read.ts. */
+  logo                Bytes?
+  logoTyp             String? // "image/png" oder "image/jpeg"
+  logoName            String? // Dateiname beim Hochladen, nur zur Anzeige
   markPath            String?
   canton              String   @default("LU") // für die Feiertagsquelle
   defaultVacationDays Int      @default(25)
