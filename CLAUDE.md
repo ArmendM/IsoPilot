@@ -511,7 +511,7 @@ nachgeführt.
 **Nichts offen auf GitHub.** PR #46, Briefkopf nach Handbuch in PDF und
 Excel, ist gemergt. Alles liegt auf `main`.
 
-**Tests:** 254 in `tests/einheit`, 172 in `tests/server`, beide Schichten
+**Tests:** 254 in `tests/einheit`, 176 in `tests/server`, beide Schichten
 in der CI.
 
 **M1 Fundament — fertig**
@@ -1018,11 +1018,9 @@ Person.
   Zeile beantwortet "wie stehe ich gerade", und diese Antwort darf sich
   nicht ändern, nur weil jemand im Kalender zurückblättert. Ein Test
   hält das fest.
-- **Ohne Eintrittsdatum und ohne Anfangssaldo steht keine Zahl da**,
-  sondern der Hinweis, was fehlt. Ein erfundener Anfang wäre hier
-  besonders schädlich: jeder Tag davor trüge ein Soll ohne Ist, und der
-  Saldo stünde tief im Minus, ohne dass jemand etwas falsch gemacht
-  hätte. Lieber keine Zahl als eine falsche.
+- **Ohne Stichtag des Anfangssaldos steht keine Zahl da**, sondern der
+  Hinweis, was zu setzen ist. Das ist der wichtigste Entscheid an dieser
+  Zeile, siehe den Abschnitt gleich darunter.
 - **Eine eigene Leseschicht**, `src/server/saldo-read.ts`. Die Auswertung
   liefert zu ihrem Zeitraum auch Einzelpositionen und Baustellenanteile;
   die Tagesansicht will eine Zahl, dafür über Jahre statt über einen
@@ -1035,6 +1033,42 @@ Person.
 
 In der Auswertung Mitarbeitende steht der Saldo ebenfalls, und über
 `auswertung-blaetter.ts` auch in Excel und PDF.
+
+#### Ab wann rechnet IsoPilot? Nur der Stichtag weiss es
+
+Im Betrieb gemeldet, am Tag des Baus: die Tagesansicht zeigte **minus
+1486.8 Stunden**. Beide Konten hatten Eintritt am 01.01.2026 und ein
+Pensum ab dem 01.09.2026, IsoPilot lief im ersten Halbjahr aber noch gar
+nicht. Gerechnet wurde ab Eintritt, also 177 Werktage mal 8.4 gegen null
+erfasste Stunden.
+
+**Nur `User.balanceFrom` beantwortet die Frage.** Er ist die Aussage "ab
+hier sind die Stunden in IsoPilot vollständig, alles davor steckt im
+mitgebrachten Saldo". Ohne ihn gibt es keinen laufenden Saldo, sondern
+einen Hinweis.
+
+Zwei naheliegende Ersatzlösungen sind geprüft und verworfen:
+
+- **Der Eintritt** sagt nur, seit wann jemand angestellt ist, nicht seit
+  wann er erfasst. Genau das war der Fehler.
+- **Der erste Pensumstart** trennt die beiden Fälle nicht, die sich
+  trennen müssten. Er kann heissen "ab hier wird diese Person erfasst",
+  er kann aber genauso eine Änderung sein: wer seit Jahren erfasst wird
+  und im Oktober auf 80 Prozent geht, schuldet im September weiterhin
+  die vollen Stunden. Aus den Pensumszeilen allein ist nicht zu
+  erkennen, welcher Fall vorliegt. Ein erster Anlauf hat es trotzdem so
+  gebaut, und zwei bestehende Tests sind gefallen: genau dieser Fall.
+
+**Die Auswertung über einen gewählten Zeitraum bleibt davon unberührt.**
+Dort ist der Zeitraum ausdrücklich gefragt, und das Soll darin ist eine
+wohldefinierte Antwort: ohne eigenes Pensum gilt die Vorgabe der Firma.
+Der Stichtag schneidet dort weiterhin nur ab, damit der Anfangssaldo
+dieselbe Zeit nicht zweimal zählt.
+
+Für M5 heisst das: **jede Person braucht einen Anfangssaldo mit
+Stichtag**, sonst bleibt die Saldozeile leer. Das ist ohnehin der Schritt
+des Parallelbetriebs, die vier bringen einen Saldo aus dem alten
+Vorgehen mit.
 
 ### M4f, Aufbewahrung (fertig)
 
@@ -1216,7 +1250,7 @@ später etwas ändern kann und man dann wissen will, warum sie so lautete.
 | Wo steht das Soll? | `Company.weeklyHours` mit 42, je Person `Workload` mit Stichtag |
 | Wie wird ein Tagessoll daraus? | gleichmässig, 42 durch 5 gleich 8.4 je Werktag, auch bei Teilzeit |
 | Was zählt als erfüllt? | Feiertag, Ferien- und Krankheitstag senken das Soll, halbe Tage halb |
-| Ab wann wird gerechnet? | ab `balanceFrom`, sonst ab `employedFrom` |
+| Ab wann wird gerechnet? | laufender Saldo nur ab `balanceFrom`, sonst gar nicht |
 | Anfangssaldo? | ja, `User.startBalance`, für den Parallelbetrieb in M5 |
 | Was bei einer Änderung? | eine neue `Workload`-Zeile, die alte bleibt stehen |
 | Was macht der Monatsabschluss? | nichts, gerechnet wird immer neu |

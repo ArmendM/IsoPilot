@@ -334,23 +334,27 @@ describe("Pensum pflegen", () => {
 });
 
 describe("Laufender Saldo in der Tagesansicht", () => {
-  it("bleibt ohne Eintrittsdatum und ohne Anfangssaldo aus", async () => {
-    /* Ein erfundener Anfang wäre hier besonders schädlich: jeder Tag
-     * davor trüge ein Soll ohne Ist, und der Saldo stünde tief im Minus,
-     * ohne dass jemand etwas falsch gemacht hätte. Lieber keine Zahl als
-     * eine falsche. */
-    const { daut, liridon } = await aufbau();
-
-    const r = await zeitsaldo(daut.alsSitzung(), liridon.id, "2026-09-30");
-    expect(r.stunden).toBeNull();
-    if (r.stunden === null) expect(r.grund).toMatch(/Eintrittsdatum/);
-  });
-
-  it("rechnet ab dem Eintritt, wenn kein Anfangssaldo gesetzt ist", async () => {
+  it("bleibt ohne Stichtag aus, auch wenn der Eintritt gesetzt ist", async () => {
+    /* Der Eintritt sagt nur, seit wann jemand angestellt ist, nicht seit
+     * wann er in IsoPilot erfasst. Ersatzweise ab Eintritt zu rechnen
+     * war der gemeldete Fehler. Lieber keine Zahl als eine falsche. */
     const { daut, liridon } = await aufbau();
     await db.user.update({
       where: { id: liridon.id },
-      data: { employedFrom: tag("2026-09-01") },
+      data: { employedFrom: tag("2026-01-01") },
+    });
+
+    const r = await zeitsaldo(daut.alsSitzung(), liridon.id, "2026-09-30");
+    expect(r.stunden).toBeNull();
+    if (r.stunden === null) expect(r.grund).toMatch(/Anfangssaldo mit Stichtag/);
+  });
+
+  it("rechnet ab dem Stichtag, auch ohne mitgebrachte Stunden", async () => {
+    const { daut, liridon } = await aufbau();
+    await setAnfangssaldo({
+      id: liridon.id,
+      startBalance: 0,
+      balanceFrom: "2026-09-01",
     });
     await stunden(liridon.id, "2026-09-01", 8);
 
@@ -359,7 +363,7 @@ describe("Laufender Saldo in der Tagesansicht", () => {
     expect(r.stunden).toBe(-8.8);
     if (r.stunden !== null) {
       expect(r.ab).toBe("2026-09-01");
-      expect(r.anfangssaldo).toBeNull();
+      expect(r.anfangssaldo).toBe(0);
     }
   });
 
@@ -420,5 +424,78 @@ describe("Laufender Saldo in der Tagesansicht", () => {
     await expect(zeitsaldo(daut.alsSitzung(), fremder.id, "2026-09-30")).rejects.toThrow(
       "FORBIDDEN",
     );
+  });
+});
+
+describe("Der Fall aus dem Betrieb: Eintritt im Januar, Pensum ab September", () => {
+  /* Gemeldet am 15.09.2026. Beide echten Konten hatten Eintritt
+   * 01.01.2026 und ein Pensum ab 01.09.2026, IsoPilot lief im ersten
+   * Halbjahr noch gar nicht. Die Tagesansicht zeigte einen Saldo von
+   * minus 1486.8 Stunden: 177 Werktage Soll gegen null erfasste. */
+
+  async function wieImBetrieb() {
+    const { c, daut, liridon } = await aufbau();
+    await db.user.update({
+      where: { id: liridon.id },
+      data: { employedFrom: tag("2026-01-01") },
+    });
+    await setPensum({ id: liridon.id, weeklyHours: 42, validFrom: "2026-09-01" });
+    return { c, daut, liridon };
+  }
+
+  it("zeigt gar keinen Saldo, solange kein Stichtag gesetzt ist", async () => {
+    /* Der gemeldete Fehler. Ohne Stichtag weiss IsoPilot nicht, ab wann
+     * seine Stunden vollständig sind, und darf deshalb keine Zahl
+     * nennen. Vorher wurde ab Eintritt gerechnet, und heraus kam minus
+     * 1486.8. */
+    const { daut, liridon } = await wieImBetrieb();
+
+    const r = await zeitsaldo(daut.alsSitzung(), liridon.id, "2026-09-15");
+    expect(r.stunden).toBeNull();
+    if (r.stunden === null) expect(r.grund).toMatch(/Anfangssaldo mit Stichtag/);
+  });
+
+  it("rechnet, sobald der Stichtag steht, und zwar ab ihm", async () => {
+    const { daut, liridon } = await wieImBetrieb();
+    await setAnfangssaldo({
+      id: liridon.id,
+      startBalance: 0,
+      balanceFrom: "2026-09-01",
+    });
+
+    const r = await zeitsaldo(daut.alsSitzung(), liridon.id, "2026-09-15");
+    if (r.stunden === null) throw new Error("Saldo fehlt: " + r.grund);
+
+    expect(r.ab).toBe("2026-09-01");
+    // 11 Werktage vom 01. bis 15. September, mal 8.4, ohne erfasste Stunden.
+    expect(r.stunden).toBe(-92.4);
+    // Und ausdrücklich nicht die Zahl aus dem Fehlerbild.
+    expect(r.stunden).not.toBe(-1486.8);
+  });
+
+  it("nimmt einen mitgebrachten Saldo mit", async () => {
+    const { daut, liridon } = await wieImBetrieb();
+    await setAnfangssaldo({
+      id: liridon.id,
+      startBalance: 10,
+      balanceFrom: "2026-09-08",
+    });
+
+    const r = await zeitsaldo(daut.alsSitzung(), liridon.id, "2026-09-15");
+    if (r.stunden === null) throw new Error("Saldo fehlt: " + r.grund);
+    expect(r.ab).toBe("2026-09-08");
+    // 6 Werktage vom 08. bis 15. September, mal 8.4, plus 10 mitgebracht.
+    expect(r.stunden).toBe(-40.4);
+  });
+
+  it("lässt die Auswertung über einen gewählten Zeitraum unberührt", async () => {
+    /* Dort ist der Zeitraum ausdrücklich gefragt, und das Soll darin ist
+     * eine wohldefinierte Antwort: ohne eigenes Pensum gilt die Vorgabe
+     * der Firma. Der September trägt also sein volles Soll. */
+    const { daut, liridon } = await wieImBetrieb();
+
+    const a = await auswertungPerson(daut.alsSitzung(), liridon.id, SEPTEMBER);
+    expect(a.soll.sollstunden).toBe(184.8);
+    expect(a.soll.abStichtagGekuerzt).toBe(false);
   });
 });

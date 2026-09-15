@@ -55,6 +55,34 @@ export function wochenstundenAm(
   return gilt;
 }
 
+/* **Ab wann rechnet IsoPilot?**
+ *
+ * Das kann nur der Stichtag des Anfangssaldos beantworten,
+ * `User.balanceFrom`. Er ist die Aussage "ab hier sind die Stunden in
+ * IsoPilot vollständig, alles davor steckt im mitgebrachten Saldo".
+ *
+ * Es ist verlockend, ersatzweise den Eintritt zu nehmen oder den ersten
+ * Pensumstart. Beides ist falsch, und der zweite Anlauf hat es gezeigt:
+ *
+ * - **Der Eintritt** sagt nur, seit wann jemand angestellt ist, nicht
+ *   seit wann er erfasst. Ein Konto mit Eintritt am 01.01.2026 stand im
+ *   September bei minus 1486.8 Stunden, weil 177 Werktage Soll gegen
+ *   null erfasste Stunden standen: IsoPilot lief im ersten Halbjahr noch
+ *   gar nicht.
+ * - **Der erste Pensumstart** trennt die beiden Fälle nicht, die sich
+ *   trennen müssten. Er kann heissen "ab hier wird diese Person erfasst",
+ *   er kann aber genauso eine Änderung sein: wer seit Jahren erfasst
+ *   wird und im Oktober auf 80 Prozent geht, schuldet im September
+ *   weiterhin die vollen Stunden. Aus den Pensumszeilen allein ist nicht
+ *   zu erkennen, welcher der beiden Fälle vorliegt.
+ *
+ * Deshalb: **ohne Stichtag kein laufender Saldo.** Eine fehlende Zahl
+ * mit dem Hinweis, was zu setzen ist, ist besser als eine erfundene, die
+ * niemand nachrechnen kann. Die Auswertung über einen selbst gewählten
+ * Zeitraum bleibt davon unberührt: dort ist der Zeitraum ausdrücklich
+ * gefragt, und das Soll darin ist eine wohldefinierte Antwort.
+ */
+
 /** Was an einem Tag über die Person bekannt ist. */
 export type Tagesumstand = {
   wochenende: boolean;

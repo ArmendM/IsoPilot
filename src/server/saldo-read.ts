@@ -67,22 +67,25 @@ export async function zeitsaldo(
   });
   if (!person || person.companyId !== user.companyId) throw new Error("FORBIDDEN");
 
-  /* Ohne Stichtag und ohne Eintrittsdatum gibt es keinen Anfang, ab dem
-   * zu rechnen wäre. Ein erfundener Anfang wäre hier besonders schädlich:
-   * jeder Tag davor trüge ein Soll ohne Ist, und der Saldo stünde tief
-   * im Minus, ohne dass jemand etwas falsch gemacht hätte. Lieber keine
-   * Zahl als eine falsche, und der Hinweis sagt, was zu tun ist. */
-  const ab = person.balanceFrom
-    ? isoUtc(person.balanceFrom)
-    : person.employedFrom
-      ? isoUtc(person.employedFrom)
-      : null;
+  const pensen: Pensum[] = person.workloads.map((w) => ({
+    validFrom: isoUtc(w.validFrom),
+    weeklyHours: Number(w.weeklyHours),
+  }));
+
+  /* **Nur der Stichtag des Anfangssaldos.** Er ist die einzige Aussage
+   * darüber, ab wann die Stunden in IsoPilot vollständig sind. Ersatzweise
+   * den Eintritt zu nehmen war der Fehler, der bei einem Konto mit
+   * Eintritt am 01.01.2026 einen Saldo von minus 1486.8 Stunden ergab:
+   * 177 Werktage Soll gegen null erfasste, weil IsoPilot im ersten
+   * Halbjahr noch gar nicht lief. Die Begründung steht ausführlich in
+   * `lib/sollzeit.ts`. */
+  const ab = person.balanceFrom ? isoUtc(person.balanceFrom) : null;
 
   if (!ab)
     return {
       stunden: null,
       grund:
-        "Für den Saldo fehlt das Eintrittsdatum oder ein Anfangssaldo. Beides steht unter Personen.",
+        "Für den laufenden Saldo fehlt ein Anfangssaldo mit Stichtag: erst ab dem sind die Stunden in IsoPilot vollständig. Zu setzen unter Personen.",
     };
 
   if (ab > bis)
@@ -119,10 +122,6 @@ export async function zeitsaldo(
     0,
   );
 
-  const pensen: Pensum[] = person.workloads.map((w) => ({
-    validFrom: isoUtc(w.validFrom),
-    weeklyHours: Number(w.weeklyHours),
-  }));
   const austritt = person.employedUntil ? isoUtc(person.employedUntil) : null;
 
   /* Die Tage einzeln, wie in der Auswertung: nur so lassen sich Feiertag
