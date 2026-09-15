@@ -511,7 +511,7 @@ nachgeführt.
 **Nichts offen auf GitHub.** PR #46, Briefkopf nach Handbuch in PDF und
 Excel, ist gemergt. Alles liegt auf `main`.
 
-**Tests:** 254 in `tests/einheit`, 176 in `tests/server`, beide Schichten
+**Tests:** 254 in `tests/einheit`, 180 in `tests/server`, beide Schichten
 in der CI.
 
 **M1 Fundament — fertig**
@@ -1069,6 +1069,30 @@ Für M5 heisst das: **jede Person braucht einen Anfangssaldo mit
 Stichtag**, sonst bleibt die Saldozeile leer. Das ist ohnehin der Schritt
 des Parallelbetriebs, die vier bringen einen Saldo aus dem alten
 Vorgehen mit.
+
+#### Wer eine Zahl zeigt, gehört ins Nachführen
+
+Direkt danach gemeldet: der Stichtag war gesetzt, die Auswertung stimmte,
+die Tagesansicht zeigte weiter den Hinweis, es fehle einer. Von aussen
+sah das aus, als würde der Stichtag nicht erkannt.
+
+Der Grund war nicht die Rechnung, sondern `nachfuehren` in
+`src/server/users.ts`: dort standen `/personen` und
+`/auswertung/mitarbeitende`, aber nicht `/zeiten`. Die Saldozeile dort
+kam später dazu als die Liste, und was nicht nachgeführt wird, bleibt
+im Zwischenspeicher stehen.
+
+**Wer eine Seite ergänzt, die eine gepflegte Zahl zeigt, trägt sie in
+`nachfuehren` ein.** Drei Tests in `tests/server/sollzeit.test.ts` halten
+fest, welche Pfade nach welcher Aktion nachgeführt werden, und dass bei
+abgewiesener Eingabe gar nichts nachgeführt wird. Ohne die Zeile für
+`/zeiten` fallen sie.
+
+Solche Fehler sind besonders zäh, weil sie im Datenpfad nicht sichtbar
+sind: die Tests waren grün, die Zahl in der Datenbank stimmte, und über
+HTTP mit `curl` war ebenfalls alles richtig, weil der Zwischenspeicher
+des Browsers dabei gar nicht mitspielt. Gesehen hat es nur, wer im
+Browser geklickt hat.
 
 ### M4f, Aufbewahrung (fertig)
 

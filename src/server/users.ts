@@ -209,7 +209,8 @@ export async function setStammdaten(raw: unknown): Promise<ActionResult> {
       });
     });
 
-    revalidatePath("/personen");
+    // Der Austritt begrenzt das Soll, die Tagesansicht zeigt es an.
+    nachfuehren();
     revalidatePath("/absenzen");
     return { ok: true };
   } catch (e) {
@@ -380,11 +381,20 @@ export async function setAnfangssaldo(raw: unknown): Promise<ActionResult> {
   }
 }
 
-/* Das Pensum und der Anfangssaldo gehen in jede Auswertung ein. Die
- * Auswertungen bauen ihre Zahlen bei jedem Abruf neu, dort ist nichts
- * nachzuführen. */
+/* Wo Pensum und Anfangssaldo hinwirken.
+ *
+ * **`/zeiten` gehört dazu**, und das Vergessen war ein gemeldeter
+ * Fehler: die Saldozeile dort kam später dazu als diese Liste. Wer den
+ * Stichtag unter `/personen` setzte, sah ihn in der Auswertung sofort,
+ * in der Tagesansicht aber weiter den Hinweis, es fehle einer. Von
+ * aussen sah das aus, als würde der Stichtag nicht erkannt.
+ *
+ * Wer hier eine Seite ergänzt, die den Saldo zeigt, trägt sie hier ein.
+ * Eine Seite, die eine Zahl zeigt und nicht nachgeführt wird, zeigt sie
+ * irgendwann falsch, und niemand sucht den Grund im Zwischenspeicher. */
 function nachfuehren() {
   revalidatePath("/personen");
+  revalidatePath("/zeiten");
   revalidatePath("/auswertung/mitarbeitende");
 }
 

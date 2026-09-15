@@ -9,7 +9,16 @@ import { firma, person, sitzung } from "./hilfen";
  * jenem Tag galt, dass Absenzen und Feiertage das Soll senken, und dass
  * der Anfangssaldo dieselbe Zeit nicht zweimal zählt. */
 
-vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
+/* Welche Seiten nach einem Schreibvorgang nachgeführt werden, ist hier
+ * kein Beiwerk: eine Seite, die eine Zahl zeigt und nicht nachgeführt
+ * wird, zeigt sie irgendwann falsch. Genau so kam der Fehlerbericht
+ * zustande, der Stichtag werde nicht erkannt. */
+const nachgefuehrt: string[] = [];
+vi.mock("next/cache", () => ({
+  revalidatePath: (pfad: string) => {
+    nachgefuehrt.push(pfad);
+  },
+}));
 vi.mock("@/lib/session", () => ({
   requireUser: async () => {
     if (!sitzung.user) throw new Error("UNAUTHENTICATED");
@@ -497,5 +506,51 @@ describe("Der Fall aus dem Betrieb: Eintritt im Januar, Pensum ab September", ()
     const a = await auswertungPerson(daut.alsSitzung(), liridon.id, SEPTEMBER);
     expect(a.soll.sollstunden).toBe(184.8);
     expect(a.soll.abStichtagGekuerzt).toBe(false);
+  });
+});
+
+describe("Nachführen der Seiten", () => {
+  /* Der gemeldete Fehler: die Saldozeile in `/zeiten` kam später dazu
+   * als die Liste der nachzuführenden Seiten. Wer den Stichtag setzte,
+   * sah ihn in der Auswertung sofort, in der Tagesansicht aber weiter
+   * den Hinweis, es fehle einer. Von aussen sah das aus, als würde der
+   * Stichtag nicht erkannt. */
+
+  it.each([
+    [
+      "Anfangssaldo",
+      (id: string) => setAnfangssaldo({ id, startBalance: 5, balanceFrom: "2026-09-01" }),
+    ],
+    ["Pensum", (id: string) => setPensum({ id, weeklyHours: 42, validFrom: "2026-09-01" })],
+  ])("führt nach dem Setzen des %s auch /zeiten nach", async (_name, aktion) => {
+    const { liridon } = await aufbau();
+    nachgefuehrt.length = 0;
+
+    expect(await aktion(liridon.id)).toEqual({ ok: true });
+
+    expect(nachgefuehrt).toContain("/zeiten");
+    expect(nachgefuehrt).toContain("/personen");
+    expect(nachgefuehrt).toContain("/auswertung/mitarbeitende");
+  });
+
+  it("führt auch nach dem Entfernen eines Pensums /zeiten nach", async () => {
+    const { liridon } = await aufbau();
+    await setPensum({ id: liridon.id, weeklyHours: 42, validFrom: "2026-09-01" });
+    const p = await db.workload.findFirstOrThrow({ where: { userId: liridon.id } });
+    nachgefuehrt.length = 0;
+
+    expect(await loeschePensum({ id: liridon.id, pensumId: p.id })).toEqual({ ok: true });
+    expect(nachgefuehrt).toContain("/zeiten");
+  });
+
+  it("führt nichts nach, wenn die Eingabe abgewiesen wird", async () => {
+    // Ein Nachführen ohne Schreibvorgang wäre nur Arbeit ohne Wirkung.
+    const { liridon } = await aufbau();
+    nachgefuehrt.length = 0;
+
+    expect((await setAnfangssaldo({ id: liridon.id, startBalance: 5, balanceFrom: null })).ok).toBe(
+      false,
+    );
+    expect(nachgefuehrt).toEqual([]);
   });
 });
