@@ -420,9 +420,16 @@ model TimeEntry {
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime? // Soft Delete, damit Korrekturen nachvollziehbar bleiben
 
-  // Aufbewahrung 10 Jahre nach OR 958f, per Migration als generierte Spalte:
-  // ALTER TABLE "TimeEntry" ADD COLUMN "deleteAfter" date
-  //   GENERATED ALWAYS AS (("workDate" + interval '10 years')::date) STORED;
+  /* Aufbewahrung 10 Jahre nach OR 958f. Eine generierte Spalte, angelegt
+   * in der Migration `zeiteintrag_aufbewahrung_generiert`:
+   *   GENERATED ALWAYS AS (("workDate" + INTERVAL '10 years')::date) STORED
+   * Prisma kennt das nicht und führt sie als gewöhnliche Spalte. Sie
+   * wird deshalb nie geschrieben, nur gelesen, und braucht keine
+   * Schreibdisziplin: der Wert ergibt sich aus `workDate`.
+   *
+   * Bis M4f stand hier dasselbe als Absicht, das SQL dazu gab es aber
+   * nie. Die Spalte war auf jeder Zeile null und der Aufbewahrungsjob
+   * löschte still nichts. */
   deleteAfter DateTime? @db.Date
 
   user      User  @relation("EntryOwner", fields: [userId], references: [id])

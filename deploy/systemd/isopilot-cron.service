@@ -10,5 +10,9 @@ ExecStart=/usr/bin/curl -fsS -X POST -H "x-cron-secret: ${CRON_SECRET}" http://1
 # Feiertagen von oben. Der Lauf ist wiederholbar und heilt sich selbst,
 # deshalb laeuft er taeglich und nicht nur am Jahreswechsel.
 ExecStart=/usr/bin/curl -fsS -X POST -H "x-cron-secret: ${CRON_SECRET}" http://127.0.0.1:3000/api/cron/vacation
+# Zuletzt die Aufbewahrung: Zeiteintraege nach zehn Jahren,
+# Krankheitsnotizen nach 18 Monaten, Anmeldeprotokolle und abgelaufene
+# Sitzungen nach 90 Tagen. Ein Aufruf fuer alle Fristen, der Lauf ist
+# wiederholbar. Die Zaehlung steht danach im Journal:
+#   journalctl -u isopilot -g aufbewahrung
 ExecStart=/usr/bin/curl -fsS -X POST -H "x-cron-secret: ${CRON_SECRET}" http://127.0.0.1:3000/api/cron/retention
-ExecStart=/usr/bin/curl -fsS -X POST -H "x-cron-secret: ${CRON_SECRET}" http://127.0.0.1:3000/api/cron/sessions
