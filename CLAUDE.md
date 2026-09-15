@@ -346,13 +346,29 @@ eine reine Rechenregel auf eine Datenbank:
 |---|---|---|---|
 | `tests/einheit` | `lib/dates.ts`, Statusmodell, später Import-Abgleich und Ausmassrechnung | nichts als Node, läuft in Millisekunden | **da**, `npm test` |
 | `tests/server` | Transaktion, Lagerbewegung, Berechtigung, Monatsabschluss, Soft Delete | echtes Postgres, eigene Datenbank | **da**, `npm run test:server` |
-| `tests/oberflaeche` | Formulare, Anzeige, Wechsel zwischen Datensätzen | Browser und laufende App, Playwright | offen |
+| `tests/oberflaeche` | Formulare, Anzeige, Wechsel zwischen Datensätzen | Browser und laufende App, Playwright | **da**, `npm run test:browser` |
 
 Die dritte Art ist die teuerste und zugleich die, die bisher die echten
-Fehler gefunden hat: ein Zahlenfeld zeigte `0500` statt 500, und der
-Auftraggeber kippte beim Bearbeiten lautlos auf eine andere Firma. Beides
-war im Datenpfad nicht sichtbar. Sie ersetzt die ersten beiden nicht, und
-umgekehrt genauso wenig.
+Fehler gefunden hat: ein Zahlenfeld zeigte `0500` statt 500, der
+Auftraggeber kippte beim Bearbeiten lautlos auf eine andere Firma, und in
+M4g gingen drei Meldungen aus dem Betrieb hintereinander auf dieselbe
+Lücke zurück. Alles davon war im Datenpfad nicht sichtbar. Sie ersetzt
+die ersten beiden nicht, und umgekehrt genauso wenig.
+
+**Sie ist seit M4g eingerichtet**, `tests/oberflaeche` mit Playwright.
+Sie läuft **gegen den laufenden Entwicklungsserver und dessen
+Datenbank**, nicht gegen `isopilot_test`: geprüft werden soll, was im
+Browser passiert, und dafür braucht es die Anwendung, wie sie wirklich
+läuft. Deshalb legt sie ausschliesslich Konten mit dem Präfix
+`Pruefbrowser-` an und räumt ausschliesslich diese wieder ab. In der
+Entwicklungsdatenbank stehen echte Zeiteinträge.
+
+Die Anmeldung wird übersprungen: die Sitzung kommt direkt in die
+Datenbank und als Cookie in den Browser. Über Infomaniak zu gehen gehört
+nicht in einen Test der eigenen Oberfläche.
+
+**In der CI läuft sie nicht**, sie braucht eine laufende Anwendung. Vor
+dem Zusammenführen also von Hand aufrufen, mit `npm run dev` daneben.
 
 `tests/server` braucht einmalig eine eigene Datenbank. Sie wird zwischen
 den Tests **vollständig geleert**, deshalb steht in `tests/server/env.ts`
@@ -453,6 +469,7 @@ npm run lint
 npm test             # reine Logik, tests/einheit, ohne Datenbank
 npm run test:watch   # dasselbe beim Entwickeln
 npm run test:server  # Server Actions gegen isopilot_test
+npm run test:browser # Formulare im Browser, braucht `npm run dev` daneben
 TZ=UTC npm test      # gegenprüfen wie in der CI
 ```
 
@@ -1093,6 +1110,25 @@ sind: die Tests waren grün, die Zahl in der Datenbank stimmte, und über
 HTTP mit `curl` war ebenfalls alles richtig, weil der Zwischenspeicher
 des Browsers dabei gar nicht mitspielt. Gesehen hat es nur, wer im
 Browser geklickt hat.
+
+#### Was die drei Meldungen gemeinsam hatten
+
+Drei Fehler aus dem Betrieb, in Folge, alle in M4g, alle zwischen Knopf
+und Datenbank. Keinen davon haben die Tests gefunden, und keinen die
+Abrufe über HTTP. Der Grund ist derselbe: **geprüft wurde alles ausser
+dem Formular.**
+
+Dazu kam eine falsche Schlussfolgerung, die den Blick zusätzlich
+verstellt hat: "in der Auswertung stimmt es". Die Auswertung braucht den
+Stichtag gar nicht, sie rechnet über den ausgewählten Zeitraum. Dass sie
+richtig aussah, war deshalb **kein Beleg dafür, dass gespeichert wurde**.
+Die Tagesansicht war die einzige Stelle, die den gespeicherten Wert
+wirklich braucht, und genau dort fiel es auf.
+
+Daraus ist `tests/oberflaeche` entstanden, siehe den Abschnitt "Tests".
+Der erste Test dort füllt das Formular aus, klickt, prüft die Zeile in
+der Datenbank und ruft danach die Tagesansicht auf. Alle drei Fehler
+wären daran gescheitert.
 
 #### Das Feld muss heissen, wie die Meldung es nennt
 
