@@ -30,3 +30,6 @@ next-env.d.ts
 coverage/
 .vscode/
 !.vscode/extensions.json
+
+# Zwischenspeicher von Vitest, entsteht beim Lauf mit Berichtsausgabe.
+.vitest/

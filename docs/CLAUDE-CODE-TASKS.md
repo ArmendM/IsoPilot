@@ -95,6 +95,25 @@ Akzeptanzkriterien:
 
 Validierung: Berechtigungs- und Summen-Tests sowie ein Export-Smoke-Test.
 
+### Erledigt, Ausgaben ans Markenhandbuch angeglichen
+
+Quelle: `docs/marke/MARKENHANDBUCH.md` und die gelieferte Vorlage
+`docs/marke/vorlagen/briefpapier-vordruck.html`. Umgesetzt in
+`src/server/pdf.ts` und `src/server/excel.ts`.
+
+Erfuellt: Raender, Stellung der Adresse, Trennlinie in Tiefblau,
+Leistungszeile in Versalien, dreispaltiger Fuss mit Adresse, Kontakt, UID und
+Bank aus `Company`, Kopf und Fuss auf jeder Seite. Archivo und Barlow sind als
+Schriftdateien unter `public/schriften` eingebettet, samt OFL-Lizenztexten.
+Excel traegt Wortmarke, Firmenzeile und eine Titelzeile in Tiefblau auf Weiss.
+
+Es ist ein einziger Briefkopf, derselbe wie auf Brief, Offerte und Rechnung.
+
+Geprueft ueber die Anordnung, nicht nur den Inhalt: `tests/einheit/pdf-lesen.ts`
+liest das erzeugte PDF wieder aus, samt ToUnicode-Tabellen je Schrift, und
+`tests/einheit/pdf.test.ts` prueft Stellung und Reihenfolge. Dazu Berichte aus
+einem Produktionsbuild, von Hand angesehen.
+
 ### P1, Aufbewahrung fuer Login-Protokolle vervollstaendigen
 
 Quelle: Aufbewahrung in `CLAUDE.md` und Cron in `docs/BETRIEB.md`.

@@ -16,9 +16,16 @@ function antwort(bytes: Buffer, typ: string, name: string) {
   });
 }
 
-export async function alsExcel(bericht: Bericht, teile: (string | null)[]) {
+/* Die Mappe trägt dieselbe Marke wie das PDF: Wortmarke und Firmenzeile
+ * über der Tabelle, Titelzeile in Tiefblau. Beide holen die Angaben über
+ * firmenkopf aus der Datenbank, nicht aus dem Code. */
+export async function alsExcel(
+  bericht: Bericht,
+  teile: (string | null)[],
+  user: SessionUser,
+) {
   return antwort(
-    await mappe(bericht.blaetter),
+    await mappe(bericht.blaetter, await firmenkopf(user)),
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     `${dateiname(teile)}.xlsx`,
   );

@@ -858,6 +858,65 @@ Sitzung 307, bei unsinnigem Zeitraum 400, bei fremder Kennung 403. Der
 Bündelungsfehler mit den `.afm`-Dateien wäre in keinem Vitest-Lauf
 aufgefallen.
 
+### Briefkopf und Marke in den Ausgaben (fertig)
+
+PDF und Excel folgen dem Markenhandbuch. Es ist **ein** Briefkopf, derselbe
+wie auf Brief, Offerte und Rechnung: einen zweiten für die Auswertungen zu
+bauen hiesse, dass zwei Blätter aus demselben Haus verschieden aussehen.
+
+Die Masse stammen aus der gelieferten Vorlage
+`docs/marke/vorlagen/briefpapier-vordruck.html`, nicht aus dem Fliesstext
+des Handbuchs. Wo beide sich widersprechen, gilt die Vorlage: sie ist das
+Blatt, das alle gesehen haben. Der einzige Fall ist der Seitenrand, 18
+Millimeter im Handbuch gegen 20 in der Vorlage.
+
+**PDF**, `src/server/pdf.ts`: Rand 20 Millimeter seitlich und 16 oben,
+Wortmarke oben links auf 11 Millimeter Höhe, Adresse oben rechts und
+rechtsbündig, Trennlinie 0.55 Millimeter in Tiefblau, darunter die
+Leistungszeile in Versalien. Der Fuss ist dreispaltig: Adresse, Kontakt,
+UID und Bank, alles aus `Company`. Kopf und Fuss stehen auf jeder Seite.
+Die Titelzeile der Tabelle steht in Versalien über einer Linie in
+Tiefblau.
+
+- **Archivo und Barlow sind eingebettet**, die Dateien liegen unter
+  `public/schriften` samt ihren OFL-Lizenztexten. pdfkit bringt nur
+  Helvetica mit, und `next/font` legt die Dateien unter `.next` ab,
+  worauf sich ein Bericht nicht verlassen kann. Fehlt eine Datei, fällt
+  der Bericht auf Helvetica zurück: einer in der falschen Schrift ist
+  besser als keiner.
+- **Der Fuss setzt den unteren Rand vorübergehend auf null.** pdfkit
+  fängt von sich aus eine neue Seite an, sobald Text unter den unteren
+  Rand geriete, und ein Fuss steht genau dort. Ohne das landete er oben
+  auf einem leeren Blatt, und hinter jeder Seite stand eine zweite, fast
+  leere. Ein Test hält das fest.
+
+**Excel**, `src/server/excel.ts`: Wortmarke und Firmenzeile über der
+Tabelle, Titelzeile in Tiefblau auf Weiss. **Die Schrift wird dort nur
+benannt, nicht eingebettet**, wer Barlow nicht installiert hat, sieht die
+Ersatzschrift. Deshalb tragen in der Mappe Farbe und Wortmarke die Marke,
+nicht die Schriftwahl.
+
+### Das PDF wieder auslesen: `tests/einheit/pdf-lesen.ts`
+
+Mit eingebetteter Schrift steht im Inhaltsstrom nicht mehr der
+Zeichencode, sondern die Glyphennummer der zusammengestrichenen Schrift,
+und jede Schrift zählt ab eins. Die Tests, die die **Anordnung** prüfen,
+lasen damit nur noch Zahlen. Der Leser geht deshalb den kurzen Weg über
+den Objektbaum: Schriftname im Strom auf Schriftobjekt, Schriftobjekt auf
+seine ToUnicode-Tabelle.
+
+Drei Dinge, die dabei falsch waren und es nicht mehr sind:
+
+- Ein Strom gehört nur dann zu einem Objekt, wenn das Schlüsselwort
+  **unmittelbar hinter dem Wörterbuch** steht. Wer im Umkreis sucht,
+  findet den Strom des nächsten Objekts und überspringt beim Weiterlesen
+  alles dazwischen, hier die ToUnicode-Tabellen.
+- Die Länge des Stroms kommt aus `/Length`, nicht aus der Suche nach
+  `endstream`. In gepackten Daten steht diese Zeichenfolge irgendwann
+  zufällig.
+- **Die Schriftwahl steht im Strom hinter der Textmatrix**, also
+  innerhalb des Blocks. Wer sie davor sucht, findet sie nie.
+
 ### Offen: alte Lagerbewegungen kennen ihre Baustelle nicht
 
 `StockMovement.siteId` kam erst mit M3g. Bewegungen von davor tragen die

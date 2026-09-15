@@ -79,8 +79,8 @@ describe("mappe", () => {
 
     expect(ws.getCell("A1").value).toBe("Auswertung Mitarbeitende: Liridon");
     expect(ws.getCell("A2").value).toBe("Zeitraum: September 2026");
-    // Leerzeile, dann die Titelzeile.
-    expect(ws.getCell("A4").value).toBe("Kennzahl");
+    // Leerzeile, dann die Titelzeile, nach der Vorlage in Versalien.
+    expect(ws.getCell("A4").value).toBe("KENNZAHL");
     expect(ws.getCell("A5").value).toBe("Nettostunden");
     expect(ws.getCell("B5").value).toBe(168.5);
     expect(ws.getCell("A7").value).toBe("Zusammen");
@@ -93,6 +93,46 @@ describe("mappe", () => {
     const ws = wb.getWorksheet("Übersicht")!;
 
     expect(typeof ws.getCell("B5").value).toBe("number");
+  });
+
+  /* Die Marke in der Mappe: Wortmarke und Firmenzeile über der Tabelle,
+   * Titelzeile in Tiefblau auf Weiss. Ohne Firmenangaben entsteht
+   * dieselbe Mappe ohne Kopf, eine Auswertung soll nicht daran
+   * scheitern, dass ein Logo fehlt. */
+  const firma = {
+    name: "IsoTeam Suljejmani GmbH",
+    strasse: "Gerliswilstrasse 68",
+    ort: "6020 Emmenbrücke",
+    mwst: "CHE-305.978.601",
+    telefon: null,
+    mail: null,
+    logo: null,
+  };
+
+  it("setzt Firmenzeile über die Tabelle und schiebt sie nach unten", async () => {
+    const wb = await laden(await mappe([blatt], firma));
+    const ws = wb.getWorksheet("Übersicht")!;
+
+    expect(ws.getCell("A2").value).toBe("IsoTeam Suljejmani GmbH");
+    expect(ws.getCell("A3").value).toBe("Gerliswilstrasse 68, 6020 Emmenbrücke");
+    // Zeile 1 bleibt für die Wortmarke frei, danach Kopfzeilen und Tabelle.
+    expect(ws.getCell("A5").value).toBe("Auswertung Mitarbeitende: Liridon");
+    expect(ws.getCell("A8").value).toBe("KENNZAHL");
+  });
+
+  it("färbt die Titelzeile in Tiefblau auf Weiss", async () => {
+    const wb = await laden(await mappe([blatt], firma));
+    const zelle = wb.getWorksheet("Übersicht")!.getCell("A8");
+
+    expect(zelle.fill).toMatchObject({ fgColor: { argb: "FF0A4A7C" } });
+    expect(zelle.font).toMatchObject({ color: { argb: "FFFFFFFF" }, bold: true });
+  });
+
+  it("kommt ohne Firmenangaben aus", async () => {
+    const wb = await laden(await mappe([blatt]));
+    const ws = wb.getWorksheet("Übersicht")!;
+
+    expect(ws.getCell("A1").value).toBe("Auswertung Mitarbeitende: Liridon");
   });
 
   it("nimmt mehrere Blätter auf", async () => {

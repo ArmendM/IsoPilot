@@ -7,6 +7,7 @@
  * Kein React und kein Prisma: die Beschreibung ist gewöhnliche Daten,
  * die Auswertungen füllen sie, diese Datei macht daraus eine Datei. */
 import ExcelJS from "exceljs";
+import type { Firmenkopf } from "@/server/pdf";
 
 export type Spaltenart = "text" | "zahl" | "stunden" | "franken" | "datum";
 
@@ -27,6 +28,18 @@ export type Blatt = {
   /** Fusszeile, fett und mit Linie darüber. */
   summe?: Zelle[];
 };
+
+/* Farben aus dem Markenhandbuch. In Excel als ARGB, das Format will
+ * einen Alphawert voran. */
+const TIEFBLAU = "FF0A4A7C";
+const WEISS = "FFFFFFFF";
+const TINTE = "FF131C24";
+const GRAU = "FF5D6B78";
+
+/* Barlow benannt, nicht eingebettet: eine Mappe trägt keine Schrift mit
+ * sich, wer Barlow nicht hat, sieht die Ersatzschrift. Deshalb tragen
+ * hier Farbe und Wortmarke die Marke, nicht die Schriftwahl. */
+const SCHRIFT = "Barlow";
 
 /* Schweizer Schreibweise, Apostroph als Tausendertrennung. Stunden mit
  * zwei Stellen, nicht als Uhrzeit: 8,25 Stunden sind keine 8 Uhr 25. */
@@ -76,32 +89,74 @@ export function dateiname(teile: (string | null | undefined)[]): string {
   );
 }
 
-/** Aus der Beschreibung eine .xlsx-Datei machen. */
-export async function mappe(blaetter: Blatt[]): Promise<Buffer> {
+/**
+ * Aus der Beschreibung eine .xlsx-Datei machen.
+ *
+ * Die Firmenangaben sind freiwillig. Ohne sie entsteht dieselbe Mappe,
+ * nur ohne Kopf: eine Auswertung soll nicht daran scheitern, dass ein
+ * Logo fehlt.
+ */
+export async function mappe(blaetter: Blatt[], firma?: Firmenkopf): Promise<Buffer> {
   const wb = new ExcelJS.Workbook();
   wb.creator = "IsoPilot";
   wb.created = new Date();
 
+  /* Das Bild einmal an die Mappe hängen und je Blatt einsetzen. Zweimal
+   * hinzufügen legte es auch zweimal in die Datei. */
+  let bildId: number | undefined;
+  if (firma?.logo) {
+    try {
+      /* Die Umleitung über `unknown`: exceljs erwartet ein
+       * `Buffer<ArrayBuffer>`, und `Buffer` ist in @types/node inzwischen
+       * über seinen Speicher parametrisiert. Zur Laufzeit ist es dasselbe
+       * Objekt. */
+      bildId = wb.addImage({
+        buffer: firma.logo as unknown as Parameters<typeof wb.addImage>[0]["buffer"],
+        extension: "png",
+      });
+    } catch {
+      bildId = undefined; // ein unbrauchbares Bild darf die Mappe nicht verhindern
+    }
+  }
+
   for (const b of blaetter) {
     const ws = wb.addWorksheet(blattname(b.name));
 
+    if (firma) {
+      /* Wortmarke und Firmenzeile über der Tabelle, in derselben
+       * Reihenfolge wie im PDF. Die Wortmarke liegt über den Zellen und
+       * verschiebt nichts, die Zeilen darunter halten den Platz frei. */
+      if (bildId !== undefined)
+        ws.addImage(bildId, { tl: { col: 0, row: 0 }, ext: { width: 200, height: 30 } });
+      ws.getRow(1).height = 26;
+      const zeile2 = ws.addRow([firma.name]);
+      zeile2.getCell(1).font = { name: SCHRIFT, bold: true, color: { argb: TINTE } };
+      const zeile3 = ws.addRow([`${firma.strasse}, ${firma.ort}`]);
+      zeile3.getCell(1).font = { name: SCHRIFT, size: 9, color: { argb: GRAU } };
+      ws.addRow([]);
+    }
+
     for (const zeile of b.kopf ?? []) {
       const r = ws.addRow([zeile]);
-      r.getCell(1).font = { bold: true };
+      r.getCell(1).font = { name: SCHRIFT, bold: true, color: { argb: TINTE } };
     }
     if (b.kopf?.length) ws.addRow([]);
 
-    const kopfzeile = ws.addRow(b.spalten.map((s) => s.titel));
-    kopfzeile.font = { bold: true };
+    const kopfzeile = ws.addRow(b.spalten.map((s) => s.titel.toUpperCase()));
+    kopfzeile.font = { name: SCHRIFT, bold: true, color: { argb: WEISS } };
     kopfzeile.eachCell((z) => {
+      z.fill = { type: "pattern", pattern: "solid", fgColor: { argb: TIEFBLAU } };
       z.border = { bottom: { style: "thin" } };
     });
 
-    for (const zeile of b.zeilen) ws.addRow(zeile);
+    for (const zeile of b.zeilen) {
+      const r = ws.addRow(zeile);
+      r.font = { name: SCHRIFT, color: { argb: TINTE } };
+    }
 
     if (b.summe) {
       const r = ws.addRow(b.summe);
-      r.font = { bold: true };
+      r.font = { name: SCHRIFT, bold: true, color: { argb: TINTE } };
       r.eachCell((z) => {
         z.border = { top: { style: "thin" } };
       });
@@ -119,7 +174,8 @@ export async function mappe(blaetter: Blatt[]): Promise<Buffer> {
     });
 
     // Die Kopfzeile der Tabelle bleibt beim Blättern stehen.
-    const oberhalb = (b.kopf?.length ?? 0) + (b.kopf?.length ? 1 : 0) + 1;
+    const marke = firma ? 4 : 0;
+    const oberhalb = marke + (b.kopf?.length ?? 0) + (b.kopf?.length ? 1 : 0) + 1;
     ws.views = [{ state: "frozen", ySplit: oberhalb }];
   }
 
