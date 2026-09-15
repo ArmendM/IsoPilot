@@ -4,6 +4,7 @@ import {
   GESCHAEFTSDATEN_JAHRE,
   KRANKHEITSNOTIZ_MONATE,
   anmeldungGrenze,
+  aufbewahrenBis,
   istAnmeldeprotokoll,
 } from "@/lib/aufbewahrung";
 
@@ -14,6 +15,29 @@ describe("Fristen", () => {
     expect(ANMELDUNG_TAGE).toBe(90);
     expect(KRANKHEITSNOTIZ_MONATE).toBe(18);
     expect(GESCHAEFTSDATEN_JAHRE).toBe(10);
+  });
+});
+
+describe("aufbewahrenBis", () => {
+  it("liegt zehn Jahre nach dem Arbeitstag", () => {
+    expect(aufbewahrenBis(new Date("2026-09-14T00:00:00Z")).toISOString().slice(0, 10)).toBe(
+      "2036-09-14",
+    );
+  });
+
+  it("trifft auch über einen Schalttag", () => {
+    // Der 29. Februar 2028 hat zehn Jahre später keine Entsprechung,
+    // 2038 ist kein Schaltjahr. Date.UTC rollt dann auf den 1. März.
+    expect(aufbewahrenBis(new Date("2028-02-29T00:00:00Z")).toISOString().slice(0, 10)).toBe(
+      "2038-03-01",
+    );
+  });
+
+  it("ist reine Auskunft und verschiebt den Tag nicht", () => {
+    // Gerechnet wird auf UTC-Mitternacht wie die @db.Date-Spalten. Ein
+    // Tag darf dabei nicht um eine Stunde verrutschen.
+    const d = aufbewahrenBis(new Date("2026-01-01T00:00:00Z"));
+    expect(d.toISOString()).toBe("2036-01-01T00:00:00.000Z");
   });
 });
 

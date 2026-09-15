@@ -92,20 +92,6 @@ describe("Zeiteinträge, zehn Jahre", () => {
     expect(await db.timeEntry.count()).toBe(3);
   });
 
-  it("trägt die Frist von selbst am Eintrag, ohne dass sie jemand schreibt", async () => {
-    /* `keepUntil` sagt, bis wann aufzubewahren ist, und ist Auskunft,
-     * kein Auftrag. Als generierte Spalte ergibt sie sich aus
-     * `workDate`: es gibt keinen Schreibpfad, der sie vergessen kann.
-     *
-     * Bis M4f stand dasselbe nur als Absicht im Schema, das SQL dazu gab
-     * es nie, und die Spalte war auf jeder Zeile null. */
-    const { liridon } = await aufbau();
-    const e = await zeiteintrag(liridon.id, "2026-09-14");
-
-    const frisch = await db.timeEntry.findUniqueOrThrow({ where: { id: e.id } });
-    expect(frisch.keepUntil).not.toBeNull();
-    expect(frisch.keepUntil?.toISOString().slice(0, 10)).toBe("2036-09-14");
-  });
 });
 
 describe("Krankheitsnotizen, 18 Monate", () => {

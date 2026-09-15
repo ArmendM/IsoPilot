@@ -416,9 +416,9 @@ Tabelle:
 **OR 958f ist eine Aufbewahrungspflicht, keine Löschpflicht.** Zehn Jahre
 sagen, wie lange Geschäftsunterlagen dableiben müssen, nicht wann sie weg
 sollen. **Nichts löscht sie automatisch**, und das soll so bleiben: wer
-alte Unterlagen wegräumen will, entscheidet das im Betrieb. Am Zeiteintrag
-steht die Frist als `TimeEntry.keepUntil`, und sie ist Auskunft, kein
-Auftrag.
+alte Unterlagen wegräumen will, entscheidet das im Betrieb. Bis wann
+aufzubewahren ist, sagt `aufbewahrenBis` in `src/lib/aufbewahrung.ts`,
+als Rechnung und nicht als Feld: Auskunft, kein Auftrag.
 
 Krankheitsnotizen und Anmeldespuren zeigen andersherum. Sie sind
 besonders schützenswerte Personendaten nach revDSG und spätestens dann zu
@@ -958,25 +958,28 @@ Lauf noch.
 Gelöscht wird nur, wo revDSG es verlangt: die Notiz zu einer Krankheit
 nach 18 Monaten, Anmeldeprotokolle und Sitzungen nach 90 Tagen.
 
-**Dabei gefunden: die Frist stand nie am Zeiteintrag.**
-`prisma/schema.prisma` beschrieb das Feld seit dem ersten Tag als
-generierte Spalte und nannte sogar das SQL dazu, in der Migration stand
-aber nur eine gewöhnliche Spalte, und niemand hat sie je geschrieben:
-`is_generated` war NEVER und der Wert auf jeder Zeile null. Die Migration
-`zeiteintrag_aufbewahrung_generiert` holt das nach, die Spalte rechnet
-sich aus `workDate` und füllt auch die Zeilen, die schon da sind.
+**Die Frist steht als Rechnung da, nicht als Feld**, `aufbewahrenBis` in
+`src/lib/aufbewahrung.ts`. Der Weg dahin ging über zwei Irrtümer, und
+beide sind hier aufgeschrieben, weil sie sich sonst wiederholen:
 
-**Sie heisst `keepUntil` und nicht mehr `deleteAfter`.** Der alte Name
-war der Grund für den falschen Anlauf: ein Feld, das "löschen ab" heisst,
-wird irgendwann von einem Job gelesen und befolgt. Jetzt sagt der Name,
-was der Wert ist, nämlich bis wann aufzubewahren ist, und der Rest ist
-eine Entscheidung im Betrieb.
+- Das Feld hiess einmal `deleteAfter`, und genau dieser Name war der
+  Grund für den falschen Anlauf: ein Feld, das "löschen ab" heisst, wird
+  irgendwann von einem Job gelesen und befolgt.
+- Danach stand es als **generierte Spalte** in Postgres, `workDate` plus
+  zehn Jahre. Fachlich richtig, im Werkzeug nicht: **Prisma kennt
+  generierte Spalten nicht.** Es sieht beim Abgleich einen Unterschied,
+  wo keiner ist, und schreibt in jede weitere Migration ein
+  `ALTER COLUMN ... DROP DEFAULT`, das an der Spalte scheitert. Die
+  nächste Migration lief deshalb nicht mehr durch, und jede künftige
+  hätte von Hand nachbearbeitet werden müssen.
 
-**Als generierte Spalte, nicht als Feld im Schreibpfad.** Ein Wert, den
-jeder Schreibpfad selbst setzen muss, wird irgendwo vergessen. Aus
-`workDate` abgeleitet gibt es nichts zu vergessen. Prisma kennt
-generierte Spalten nicht und führt sie als gewöhnliche: gelesen wird sie,
-geschrieben nie.
+Als Funktion gibt es beide Fallen nicht, und der Wert ist ohnehin eine
+reine Rechnung aus dem Arbeitstag. Gelesen hat die Spalte niemand:
+gelöscht wird darauf bewusst nicht. Siehe die Migration
+`keepuntil_als_regel_statt_spalte`.
+
+**Merke für das nächste Mal: keine generierten Spalten in diesem
+Schema.** Was sich rechnen lässt, wird gerechnet.
 
 **Welche Einträge im Audit-Log Anmeldeprotokolle sind, steht
 ausgeschrieben**, als `ANMELDEPROTOKOLLE` in `src/lib/aufbewahrung.ts`,
@@ -1016,8 +1019,8 @@ Geprüft mit 28 Tests in `tests/einheit` und 9 in `tests/server`, dazu
 Zählung steht als `[aufbewahrung]`-Zeile im Journal.
 
 **Gegengeprüft, indem jede Behebung einzeln zurückgenommen wurde:** mit
-der gewöhnlichen statt der generierten Spalte fällt der Test zur Frist am
-Eintrag, mit `LOCKED` in der Liste der Anmeldeprotokolle fallen zwei.
+wieder eingebautem Löschen der Zeiteinträge fallen sechs Tests, mit
+`LOCKED` in der Liste der Anmeldeprotokolle zwei.
 
 ### M4e, Firmeneinstellungen mit Logo (fertig)
 
