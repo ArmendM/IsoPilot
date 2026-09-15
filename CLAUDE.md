@@ -484,9 +484,15 @@ Mailpit-Oberfläche: http://localhost:8025
 
 ## Roadmap und Stand
 
-Stand 14.09.2026. Dieser Abschnitt ist die Antwort auf "wo stehen wir und
+Stand 15.09.2026. Dieser Abschnitt ist die Antwort auf "wo stehen wir und
 was kommt als Nächstes". Er wird bei jedem abgeschlossenen Stück
 nachgeführt.
+
+**Offen auf GitHub: PR #46**, Briefkopf nach Handbuch in PDF und Excel,
+grün, wartet auf Armends Durchsicht. Alles andere ist auf `main`.
+
+**Tests:** 195 in `tests/einheit`, 128 in `tests/server`, beide Schichten
+in der CI.
 
 **M1 Fundament — fertig**
 Next.js 16, Prisma 7, Schema, Anmeldung über Infomaniak mit Warteraum,
@@ -517,9 +523,15 @@ Rückfall, `/abschluss` Monatsabschluss.
 - M4a Auswertung Mitarbeitende, Ansicht: **fertig**
 - M4b Auswertung Baustellen, Ansicht: **fertig**
 - M4c Export Excel und PDF für beide: **fertig**
-- M4d Firmeneinstellungen mit Logo-Upload: **als Nächstes**. Das PDF
-  trägt die Firmenzeile bereits aus `Company`, es fehlt nur das Bild.
-- M4e Aufbewahrungsjob für Login-Protokolle: offen
+- M4d Briefkopf und Marke in beiden Ausgaben: **fertig, in PR #46**
+- M4e Firmeneinstellungen mit Logo-Upload: **als Nächstes**. Der Bericht
+  nimmt heute die Wortmarke aus `public/marke`, wenn unter
+  `Company.logoPath` nichts steht. Mit dem Upload fällt diese letzte fest
+  verdrahtete Stelle weg. Betroffen: eine neue Seite oder ein Abschnitt
+  unter `/personen`, Ablage der Datei, `Company.logoPath`, und die
+  übrigen Firmenangaben zum Bearbeiten, die heute nur der Seed setzt.
+- M4f Aufbewahrungsjob für Login-Protokolle: offen, siehe
+  `docs/CLAUDE-CODE-TASKS.md`, dort als P1 mit Akzeptanzkriterien
 
 Dazu **Sollstunden und Zeitsaldo**, siehe den eigenen Abschnitt weiter
 unten: dafür fehlt das Datenmodell noch ganz, und es stehen fachliche
@@ -699,6 +711,18 @@ sieben Artikel bei bis zu -115 standen. Beides steht jetzt im
 `create`-Zweig, ein erneuter Seed setzt einen gewachsenen Bestand nicht
 zurück. Eine Bewegung entsteht dazu nicht: `StockMovement` braucht eine
 Person, und beim Seed gibt es noch keine.
+
+### Offen: was beim Durchklicken zu prüfen bleibt
+
+Nichts davon ist im Browser angesehen worden, alles nur über HTTP, Tests
+und ausgelesene Dateien geprüft:
+
+- Wareneingang und Lagerverlauf, `/material` und `/lager`
+- Lagerberechtigung unter `/personen`, dazu der Wareneingang aus der
+  Sicht einer Person, die nur diese Berechtigung hat
+- Inventur je Artikel, und dass der Bestand im Artikelformular fehlt
+- Beide Auswertungen samt der Knöpfe für Excel und PDF
+- Die Wortmarke rechts oben auf allen elf Seiten
 
 ### Offen: zwei Konventionen im Lagerverlauf
 

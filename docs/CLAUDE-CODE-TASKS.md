@@ -1,6 +1,6 @@
 # Claude-Code-Aufgaben
 
-Stand: 2026-09-14. Grundlage: `CLAUDE.md`, `docs/BETRIEB.md`,
+Stand: 2026-09-15. Grundlage: `CLAUDE.md`, `docs/BETRIEB.md`,
 `docs/lifecycle.md`, Git-Historie und `.next/dev/logs/next-development.log`.
 
 **Die Roadmap und der genaue Stand stehen in `CLAUDE.md`, Abschnitt
@@ -142,9 +142,11 @@ Validierung: Retention-Tests mit eingefrorener Zeit und Cron-Smoke-Test.
 
 ## Pruefprotokoll
 
-- `npm run typecheck`: bestanden am 2026-09-14.
-- `npm run lint`: bestanden am 2026-09-14.
-- `npm test`: 117 bestanden am 2026-09-14.
-- `npm run test:server`: 74 bestanden am 2026-09-14.
+- `npm run typecheck`: bestanden am 2026-09-15.
+- `npm run lint`: bestanden am 2026-09-15.
+- `npm test`: 195 bestanden am 2026-09-15, auch mit `TZ=UTC`.
+- `npm run test:server`: 128 bestanden am 2026-09-15.
+- `npm run build`: bestanden am 2026-09-15, dazu ein Lauf des Standalone-Servers
+  mit eingesetzter Sitzung, alle vier Exportrouten mit 200.
 - `.next/dev/logs/next-development.log`: nur erfolgreiche Kompilierungen und
   React-DevTools-Hinweise, keine ungeloeste Exception im gelesenen Verlauf.
