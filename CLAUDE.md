@@ -488,10 +488,10 @@ Stand 15.09.2026. Dieser Abschnitt ist die Antwort auf "wo stehen wir und
 was kommt als Nächstes". Er wird bei jedem abgeschlossenen Stück
 nachgeführt.
 
-**Offen auf GitHub: PR #46**, Briefkopf nach Handbuch in PDF und Excel,
-grün, wartet auf Armends Durchsicht. Alles andere ist auf `main`.
+**Nichts offen auf GitHub.** PR #46, Briefkopf nach Handbuch in PDF und
+Excel, ist gemergt. Alles liegt auf `main`.
 
-**Tests:** 195 in `tests/einheit`, 128 in `tests/server`, beide Schichten
+**Tests:** 209 in `tests/einheit`, 141 in `tests/server`, beide Schichten
 in der CI.
 
 **M1 Fundament — fertig**
@@ -523,14 +523,9 @@ Rückfall, `/abschluss` Monatsabschluss.
 - M4a Auswertung Mitarbeitende, Ansicht: **fertig**
 - M4b Auswertung Baustellen, Ansicht: **fertig**
 - M4c Export Excel und PDF für beide: **fertig**
-- M4d Briefkopf und Marke in beiden Ausgaben: **fertig, in PR #46**
-- M4e Firmeneinstellungen mit Logo-Upload: **als Nächstes**. Der Bericht
-  nimmt heute die Wortmarke aus `public/marke`, wenn unter
-  `Company.logoPath` nichts steht. Mit dem Upload fällt diese letzte fest
-  verdrahtete Stelle weg. Betroffen: eine neue Seite oder ein Abschnitt
-  unter `/personen`, Ablage der Datei, `Company.logoPath`, und die
-  übrigen Firmenangaben zum Bearbeiten, die heute nur der Seed setzt.
-- M4f Aufbewahrungsjob für Login-Protokolle: offen, siehe
+- M4d Briefkopf und Marke in beiden Ausgaben: **fertig**
+- M4e Firmeneinstellungen mit Logo-Upload: **fertig**, siehe unten
+- M4f Aufbewahrungsjob für Login-Protokolle: **als Nächstes**, siehe
   `docs/CLAUDE-CODE-TASKS.md`, dort als P1 mit Akzeptanzkriterien
 
 Dazu **Sollstunden und Zeitsaldo**, siehe den eigenen Abschnitt weiter
@@ -866,14 +861,15 @@ zwischen Überschrift und Titelzeile Luft bleibt. Ein Test, der nur fragt,
 ob ein Text vorkommt, hätte den schrägen Kopf nie gefunden: inhaltlich
 war alles da, im Bericht stand es übereinander. In den Textmatrizen wird
 `y` nach unten kleiner, weiter oben heisst also grösseres `y`.
-- **Das Logo ist die Wortmarke aus `public/marke`**, solange unter
-  `Company.logoPath` nichts steht. Steht dort ein Pfad, gilt dieser: eine
-  zweite Firma soll ihr eigenes Logo tragen können, ohne dass jemand im
-  Code etwas ändert. Eine fehlende oder unlesbare Datei übergeht der
-  Bericht, statt abzubrechen: sonst steht jemand vor einer leeren Seite,
-  weil ein Bild fehlt. **Ins PDF geht die PNG**, pdfkit kennt nur PNG und
-  JPEG und wirft bei einer SVG "Unknown image format". Das Übrige steht
-  in `public/marke/EINBAU.md`.
+- **Das Logo ist die Wortmarke aus `public/marke`**, solange an der Firma
+  keines hochgeladen ist. Liegt eines an `Company.logo`, gilt dieses:
+  eine zweite Firma soll ihr eigenes Logo tragen können, ohne dass jemand
+  im Code etwas ändert. Hochgeladen wird es unter `/firma`, siehe M4e.
+  Eine fehlende oder unlesbare Datei übergeht der Bericht, statt
+  abzubrechen: sonst steht jemand vor einer leeren Seite, weil ein Bild
+  fehlt. **Ins PDF geht die PNG**, pdfkit kennt nur PNG und JPEG und
+  wirft bei einer SVG "Unknown image format". Das Übrige steht in
+  `public/marke/EINBAU.md`.
 
 Geprüft wurde nicht nur mit Vitest, sondern gegen einen
 **Produktionsbuild mit `output: "standalone"`** und einer eingesetzten
@@ -919,6 +915,63 @@ Tabelle, Titelzeile in Tiefblau auf Weiss. **Die Schrift wird dort nur
 benannt, nicht eingebettet**, wer Barlow nicht installiert hat, sieht die
 Ersatzschrift. Deshalb tragen in der Mappe Farbe und Wortmarke die Marke,
 nicht die Schriftwahl.
+
+### M4e, Firmeneinstellungen mit Logo (fertig)
+
+`/firma`, nur für Vorgesetzte. Damit fällt die letzte fest verdrahtete
+Stelle weg: Anschrift, Kontakt, UID, IBAN und das Logo stehen in der
+Datenbank und werden in der Oberfläche gepflegt, nicht mehr im Seed.
+
+- **Das Logo liegt als Bytes an `Company.logo`, nicht als Datei auf dem
+  Volume.** `deploy/scripts/backup.sh` zieht einen `pg_dump` und sonst
+  nichts. Eine Datei unter `/var/lib/isopilot/uploads` wäre in keiner
+  Sicherung, und eine Wiederherstellung gäbe alle Zahlen zurück, aber
+  keinen Briefkopf. Dazu kommt, dass es lokal kein `/app/uploads` gibt:
+  ein Pfad bräuchte in Entwicklung und Betrieb eine andere Wurzel, also
+  genau die Art Unterschied, die lokal trägt und auf dem Server bricht.
+  Es ist eine Datei je Firma, keine Ablage. `Company.logoPath` ist damit
+  weg, es hat nie etwas gesetzt.
+- **Geprüft wird, was in der Datei steht, nicht was der Browser meldet.**
+  `bildmasse` in `src/lib/bildmass.ts` liest die Kennung am Dateianfang
+  und die Masse, ohne Prisma und ohne React, festgenagelt in
+  `tests/einheit/bildmass.test.ts`. Eine als `image/png` angekündigte SVG
+  käme sonst erst im Bericht als Abbruch an, und zwar bei jemand
+  anderem. Genommen werden nur PNG und JPEG, und das ist keine
+  Sparsamkeit: pdfkit kennt genau diese beiden.
+- **Die Bytes gehen nie ins Protokoll.** `before` und `after` im
+  Audit-Log sind JSON. Ein Bild darin stünde als Zahlenreihe mit
+  hunderttausend Einträgen, und jeder Austausch bliese die Tabelle auf.
+  Im Eintrag stehen Name, Typ und Masse. Aus demselben Grund wählt
+  `FIRMENFELDER` in `server/firma-read.ts` das Feld `logo` nicht mit,
+  nur `firmenkopf` holt es dazu.
+- **Nebenbei behoben: Excel verzerrte das Logo.** Es setzte jedes Bild
+  auf feste 200 mal 30 Punkte. Bei der breiten Wortmarke fiel das kaum
+  auf, ein quadratisches Firmenlogo wäre um mehr als das Sechsfache in
+  die Breite gezogen worden. Jetzt rechnet `einpassen` das
+  Seitenverhältnis aus, mit derselben Zahl, die auch die Prüfung beim
+  Hochladen liest. pdfkit kann das von sich aus, mit `fit`.
+- **Eine eigene Adresse `/firma/logo` für die Vorschau**, statt einer
+  Daten-URL im HTML: das Bild darf zwei Megabyte gross sein, als Base64
+  wären das drei bei jedem Aufruf der Seite. Ohne eigenes Logo gibt es
+  dort nichts, und die Seite zeigt die Wortmarke als Komponente, wie
+  überall sonst in der Oberfläche.
+- **Der Seed schreibt die Firmendaten nur noch im `create`-Zweig.** Bis
+  hierhin standen sie auch im `update`, damit eine berichtigte UID
+  durchkommt. Seit sie unter `/firma` gepflegt werden, setzte der
+  nächste Seed eine dort geänderte Telefonnummer stillschweigend zurück,
+  und niemand suchte den Grund beim Seed. Dieselbe Lehre wie beim
+  Lagerbestand in M3i.
+- **Der Kanton steht nicht im Formular.** Er ist nicht Teil der
+  Anschrift, sondern die Quelle der Feiertage. Ein Wechsel müsste die
+  bereits geholten Feiertage mitziehen, und dann ist es kein Feld mehr,
+  sondern ein Vorgang mit eigenen Fragen.
+
+Geprüft nicht nur mit Vitest, sondern über HTTP mit eingesetzter
+Sitzung: `/firma` liefert 200 für Vorgesetzte, 307 nach `/` für
+Mitarbeitende und 307 nach `/login` ohne Sitzung, `/firma/logo` 404 ohne
+und 200 mit Logo. Mit einem quadratischen Logo in der Datenbank steht es
+im PDF als 31.2 mal 31.2 Punkte und in der Mappe als 30 mal 30, beide
+also unverzerrt; nach dem Entfernen ist die Wortmarke wieder drin.
 
 ### Das PDF wieder auslesen: `tests/einheit/pdf-lesen.ts`
 

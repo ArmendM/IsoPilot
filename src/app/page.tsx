@@ -125,6 +125,16 @@ export default async function StartPage() {
               </p>
             </Link>
             <Link
+              href="/firma"
+              className="rounded-lg border border-black/10 p-4 hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/5"
+            >
+              <h2 className="text-sm font-medium">Firma</h2>
+              <p className="mt-1 text-sm text-black/60 dark:text-white/60">
+                Anschrift, Kontakt und Logo für den Briefkopf, dazu die
+                Vorgaben für neue Konten.
+              </p>
+            </Link>
+            <Link
               href="/abschluss"
               className="rounded-lg border border-black/10 p-4 hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/5"
             >

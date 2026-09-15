@@ -16,6 +16,7 @@
  * gegen 20 in der Vorlage. */
 import { join } from "node:path";
 import PDFDocument from "pdfkit";
+import type { Bildmass } from "@/lib/bildmass";
 import type { Blatt, Zelle } from "@/server/excel";
 import type { Bericht } from "@/server/auswertung-blaetter";
 
@@ -26,9 +27,13 @@ export type Firmenkopf = {
   mwst: string | null;
   telefon: string | null;
   mail: string | null;
-  /** Bild als Bytes. Der Upload kommt mit den Firmeneinstellungen, bis
-   *  dahin bleibt der Platz leer und der Kopf steht trotzdem. */
+  /** Bild als Bytes, hochgeladen unter /firma oder die Wortmarke aus
+   *  `public/marke`. Fehlt es, bleibt der Platz leer und der Kopf steht
+   *  trotzdem. */
   logo: Buffer | null;
+  /** Format und Masse dazu, aus den Bytes gelesen. pdfkit kommt hier
+   *  ohne aus, es passt mit `fit` selbst ein. Excel braucht beides. */
+  logoMass: Bildmass | null;
 };
 
 /** Millimeter in Punkt, die Einheit von PDF. */

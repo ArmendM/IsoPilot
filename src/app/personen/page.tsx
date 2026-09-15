@@ -26,6 +26,9 @@ export default async function PersonenPage() {
         <Link href="/absenzen" className="text-black/60 underline dark:text-white/60">
           Absenzen
         </Link>
+        <Link href="/firma" className="text-black/60 underline dark:text-white/60">
+          Firma
+        </Link>
       </Kopfleiste>
 
       <h1 className="mt-4 text-2xl font-semibold tracking-tight">Personen</h1>

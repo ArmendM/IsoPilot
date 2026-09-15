@@ -15,6 +15,7 @@ const firma: Firmenkopf = {
   telefon: null,
   mail: null,
   logo: null,
+  logoMass: null,
 };
 
 const bericht: Bericht = {

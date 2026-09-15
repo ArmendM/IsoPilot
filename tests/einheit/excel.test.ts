@@ -13,6 +13,17 @@ async function laden(bytes: Buffer) {
   return wb;
 }
 
+/** Eine PNG mit echten Kopfdaten, mehr braucht exceljs zum Einbetten nicht. */
+function png(breite: number, hoehe: number) {
+  const d = Buffer.alloc(24);
+  Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).copy(d, 0);
+  d.writeUInt32BE(13, 8);
+  d.write("IHDR", 12, "ascii");
+  d.writeUInt32BE(breite, 16);
+  d.writeUInt32BE(hoehe, 20);
+  return d;
+}
+
 /* Die Mappe selbst wird erzeugt und wieder gelesen: ein Export, der eine
  * kaputte Datei schreibt, fällt sonst erst beim Öffnen auf, und das tut
  * niemand in einem Test. */
@@ -107,6 +118,7 @@ describe("mappe", () => {
     telefon: null,
     mail: null,
     logo: null,
+    logoMass: null,
   };
 
   it("setzt Firmenzeile über die Tabelle und schiebt sie nach unten", async () => {
@@ -126,6 +138,26 @@ describe("mappe", () => {
 
     expect(zelle.fill).toMatchObject({ fgColor: { argb: "FF0A4A7C" } });
     expect(zelle.font).toMatchObject({ color: { argb: "FFFFFFFF" }, bold: true });
+  });
+
+  it("passt das Logo ein, statt es auf ein festes Mass zu ziehen", async () => {
+    /* Die Wortmarke ist breit, ein anderes Firmenlogo kann hochkant
+     * sein. exceljs richtet sich nicht selbst nach dem Bild: mit einem
+     * festen Mass wird aus einem quadratischen Logo eine breitgezogene
+     * Wortmarke, und das fällt erst auf dem gedruckten Blatt auf. */
+    const quadrat = {
+      ...firma,
+      logo: png(500, 500),
+      logoMass: { typ: "image/png" as const, breite: 500, hoehe: 500 },
+    };
+    const wb = await laden(await mappe([blatt], quadrat));
+    const bild = wb.getWorksheet("Übersicht")!.getImages()[0];
+
+    /* Der Bereich eines Bildes ist in exceljs zweierlei: von Zelle zu
+     * Zelle, oder eine Ecke plus Ausdehnung. Gesetzt wird hier die
+     * zweite Art, und nur die trägt das Mass. */
+    const bereich = bild?.range as { ext?: { width: number; height: number } };
+    expect(bereich?.ext).toEqual({ width: 30, height: 30 });
   });
 
   it("kommt ohne Firmenangaben aus", async () => {
